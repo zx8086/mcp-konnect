@@ -188,4 +188,76 @@ export class KongApi {
 
     return this.kongRequest<any>(endpoint);
   }
+
+  // Service CRUD operations
+  async createService(controlPlaneId: string, serviceData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services`, "POST", serviceData);
+  }
+
+  async getService(controlPlaneId: string, serviceId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`);
+  }
+
+  async updateService(controlPlaneId: string, serviceId: string, serviceData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`, "PATCH", serviceData);
+  }
+
+  async deleteService(controlPlaneId: string, serviceId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`, "DELETE");
+  }
+
+  // Route CRUD operations
+  async createRoute(controlPlaneId: string, routeData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes`, "POST", routeData);
+  }
+
+  async getRoute(controlPlaneId: string, routeId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`);
+  }
+
+  async updateRoute(controlPlaneId: string, routeId: string, routeData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`, "PATCH", routeData);
+  }
+
+  async deleteRoute(controlPlaneId: string, routeId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`, "DELETE");
+  }
+
+  // Consumer CRUD operations
+  async createConsumer(controlPlaneId: string, consumerData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers`, "POST", consumerData);
+  }
+
+  async getConsumer(controlPlaneId: string, consumerId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`);
+  }
+
+  async updateConsumer(controlPlaneId: string, consumerId: string, consumerData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`, "PATCH", consumerData);
+  }
+
+  async deleteConsumer(controlPlaneId: string, consumerId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`, "DELETE");
+  }
+
+  // Plugin CRUD operations  
+  async createPlugin(controlPlaneId: string, pluginData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins`, "POST", pluginData);
+  }
+
+  async getPlugin(controlPlaneId: string, pluginId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`);
+  }
+
+  async updatePlugin(controlPlaneId: string, pluginId: string, pluginData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`, "PATCH", pluginData);
+  }
+
+  async deletePlugin(controlPlaneId: string, pluginId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`, "DELETE");
+  }
+
+  async listPluginSchemas(controlPlaneId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/schemas/plugins`);
+  }
 }

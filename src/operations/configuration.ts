@@ -197,3 +197,211 @@ export async function listPlugins(
     throw error;
   }
 }
+
+/**
+ * Create a new service in a control plane
+ */
+export async function createService(
+  api: KongApi,
+  controlPlaneId: string,
+  serviceData: {
+    name: string;
+    host: string;
+    port?: number;
+    protocol?: string;
+    path?: string;
+    retries?: number;
+    connectTimeout?: number;
+    writeTimeout?: number;
+    readTimeout?: number;
+    tags?: string[];
+    enabled?: boolean;
+  }
+) {
+  try {
+    const requestData = {
+      name: serviceData.name,
+      host: serviceData.host,
+      port: serviceData.port || 80,
+      protocol: serviceData.protocol || "http",
+      path: serviceData.path,
+      retries: serviceData.retries || 5,
+      connect_timeout: serviceData.connectTimeout || 60000,
+      write_timeout: serviceData.writeTimeout || 60000,
+      read_timeout: serviceData.readTimeout || 60000,
+      tags: serviceData.tags,
+      enabled: serviceData.enabled ?? true
+    };
+
+    const result = await api.createService(controlPlaneId, requestData);
+
+    return {
+      success: true,
+      service: {
+        serviceId: result.id,
+        name: result.name,
+        host: result.host,
+        port: result.port,
+        protocol: result.protocol,
+        path: result.path,
+        retries: result.retries,
+        connectTimeout: result.connect_timeout,
+        writeTimeout: result.write_timeout,
+        readTimeout: result.read_timeout,
+        tags: result.tags,
+        enabled: result.enabled,
+        metadata: {
+          createdAt: result.created_at,
+          updatedAt: result.updated_at
+        }
+      },
+      message: `Service '${result.name}' created successfully with ID: ${result.id}`,
+      relatedTools: [
+        "Use create-route to create routes that point to this service",
+        "Use list-services to see all services in this control plane",
+        "Use create-plugin to add plugins to this service"
+      ]
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Get detailed information about a specific service
+ */
+export async function getService(
+  api: KongApi,
+  controlPlaneId: string,
+  serviceId: string
+) {
+  try {
+    const result = await api.getService(controlPlaneId, serviceId);
+
+    return {
+      service: {
+        serviceId: result.id,
+        name: result.name,
+        host: result.host,
+        port: result.port,
+        protocol: result.protocol,
+        path: result.path,
+        retries: result.retries,
+        connectTimeout: result.connect_timeout,
+        writeTimeout: result.write_timeout,
+        readTimeout: result.read_timeout,
+        tags: result.tags,
+        clientCertificate: result.client_certificate,
+        tlsVerify: result.tls_verify,
+        tlsVerifyDepth: result.tls_verify_depth,
+        caCertificates: result.ca_certificates,
+        enabled: result.enabled,
+        metadata: {
+          createdAt: result.created_at,
+          updatedAt: result.updated_at
+        }
+      },
+      relatedTools: [
+        "Use list-routes to find routes that point to this service",
+        "Use list-plugins to see plugins configured for this service",
+        "Use update-service to modify this service's configuration"
+      ]
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Update an existing service
+ */
+export async function updateService(
+  api: KongApi,
+  controlPlaneId: string,
+  serviceId: string,
+  serviceData: {
+    name?: string;
+    host?: string;
+    port?: number;
+    protocol?: string;
+    path?: string;
+    retries?: number;
+    connectTimeout?: number;
+    writeTimeout?: number;
+    readTimeout?: number;
+    tags?: string[];
+    enabled?: boolean;
+  }
+) {
+  try {
+    const requestData: any = {};
+    
+    if (serviceData.name !== undefined) requestData.name = serviceData.name;
+    if (serviceData.host !== undefined) requestData.host = serviceData.host;
+    if (serviceData.port !== undefined) requestData.port = serviceData.port;
+    if (serviceData.protocol !== undefined) requestData.protocol = serviceData.protocol;
+    if (serviceData.path !== undefined) requestData.path = serviceData.path;
+    if (serviceData.retries !== undefined) requestData.retries = serviceData.retries;
+    if (serviceData.connectTimeout !== undefined) requestData.connect_timeout = serviceData.connectTimeout;
+    if (serviceData.writeTimeout !== undefined) requestData.write_timeout = serviceData.writeTimeout;
+    if (serviceData.readTimeout !== undefined) requestData.read_timeout = serviceData.readTimeout;
+    if (serviceData.tags !== undefined) requestData.tags = serviceData.tags;
+    if (serviceData.enabled !== undefined) requestData.enabled = serviceData.enabled;
+
+    const result = await api.updateService(controlPlaneId, serviceId, requestData);
+
+    return {
+      success: true,
+      service: {
+        serviceId: result.id,
+        name: result.name,
+        host: result.host,
+        port: result.port,
+        protocol: result.protocol,
+        path: result.path,
+        retries: result.retries,
+        connectTimeout: result.connect_timeout,
+        writeTimeout: result.write_timeout,
+        readTimeout: result.read_timeout,
+        tags: result.tags,
+        enabled: result.enabled,
+        metadata: {
+          createdAt: result.created_at,
+          updatedAt: result.updated_at
+        }
+      },
+      message: `Service '${result.name}' updated successfully`,
+      relatedTools: [
+        "Use get-service to see the updated service details",
+        "Use list-routes to see routes affected by this change"
+      ]
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Delete a service from a control plane
+ */
+export async function deleteService(
+  api: KongApi,
+  controlPlaneId: string,
+  serviceId: string
+) {
+  try {
+    await api.deleteService(controlPlaneId, serviceId);
+
+    return {
+      success: true,
+      message: `Service ${serviceId} deleted successfully`,
+      warning: "All routes pointing to this service have been orphaned and may need to be updated or deleted",
+      relatedTools: [
+        "Use list-routes to check for orphaned routes",
+        "Use list-services to see remaining services in this control plane"
+      ]
+    };
+  } catch (error) {
+    throw error;
+  }
+}

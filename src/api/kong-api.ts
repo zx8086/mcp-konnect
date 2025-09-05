@@ -163,6 +163,60 @@ export class KongApi {
     return this.kongRequest<any>(`/control-planes/${controlPlaneId}/group-member-status`);
   }
 
+  // Control Plane CRUD operations
+  async createControlPlane(controlPlaneData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes`, "POST", controlPlaneData);
+  }
+
+  async updateControlPlane(controlPlaneId: string, controlPlaneData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}`, "PATCH", controlPlaneData);
+  }
+
+  async deleteControlPlane(controlPlaneId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}`, "DELETE");
+  }
+
+  // Data Plane Node Management
+  async listDataPlaneNodes(controlPlaneId: string, pageSize = 10, pageNumber?: number, filterStatus?: string, filterHostname?: string): Promise<any> {
+    let endpoint = `/control-planes/${controlPlaneId}/dp-nodes?page[size]=${pageSize}`;
+    
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
+    if (filterHostname) endpoint += `&filter[hostname][contains]=${encodeURIComponent(filterHostname)}`;
+    
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async getDataPlaneNode(controlPlaneId: string, nodeId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/dp-nodes/${nodeId}`);
+  }
+
+  // Data Plane Token Management
+  async createDataPlaneToken(controlPlaneId: string, tokenData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/dp-tokens`, "POST", tokenData);
+  }
+
+  async listDataPlaneTokens(controlPlaneId: string, pageSize = 10, pageNumber?: number): Promise<any> {
+    let endpoint = `/control-planes/${controlPlaneId}/dp-tokens?page[size]=${pageSize}`;
+    
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async revokeDataPlaneToken(controlPlaneId: string, tokenId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/dp-tokens/${tokenId}`, "DELETE");
+  }
+
+  // Control Plane Configuration
+  async getControlPlaneConfig(controlPlaneId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/config`);
+  }
+
+  async updateControlPlaneConfig(controlPlaneId: string, configData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/config`, "PATCH", configData);
+  }
+
   // ===========================
   // Configuration API methods
   // ===========================
@@ -226,6 +280,10 @@ export class KongApi {
     }
 
     return this.kongRequest<any>(endpoint);
+  }
+
+  async createConsumer(controlPlaneId: string, consumerData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers`, "POST", consumerData);
   }
 
   async listPlugins(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
@@ -375,5 +433,178 @@ export class KongApi {
 
   async deleteConsumerKey(controlPlaneId: string, consumerId: string, keyId: string): Promise<any> {
     return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}/key-auth/${keyId}`, "DELETE");
+  }
+
+  // ===========================
+  // Portal API Methods
+  // ===========================
+  
+  // Portal APIs
+  async listPortalApis(pageSize = 10, pageNumber?: number, filterName?: string, filterStatus?: string, sort?: string): Promise<any> {
+    let endpoint = `/portal/apis?page[size]=${pageSize}`;
+    
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    if (filterName) endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
+    if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
+    if (sort) endpoint += `&sort=${encodeURIComponent(sort)}`;
+    
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async fetchPortalApi(apiIdOrSlug: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/apis/${apiIdOrSlug}`);
+  }
+
+  async getPortalApiActions(apiIdOrSlug: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/apis/${apiIdOrSlug}/actions`);
+  }
+
+  async listPortalApiDocuments(apiIdOrSlug: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/apis/${apiIdOrSlug}/documents`);
+  }
+
+  async fetchPortalApiDocument(apiIdOrSlug: string, documentIdOrSlug: string, format = "json"): Promise<any> {
+    const headers = {
+      "Accept": format === "yaml" ? "application/yaml" : 
+               format === "html" ? "text/html" :
+               format === "markdown" ? "text/markdown" : 
+               "application/json"
+    };
+    return this.kongRequest<any>(`/portal/apis/${apiIdOrSlug}/documents/${documentIdOrSlug}`, "GET");
+  }
+
+  // Application Management
+  async listPortalApplications(pageSize = 10, pageNumber?: number, filterName?: string, filterAuthStrategy?: string): Promise<any> {
+    let endpoint = `/portal/applications?page[size]=${pageSize}`;
+    
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    if (filterName) endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
+    if (filterAuthStrategy) endpoint += `&filter[auth_strategy_id][eq]=${filterAuthStrategy}`;
+    
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async createPortalApplication(applicationData: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications`, "POST", applicationData);
+  }
+
+  async getPortalApplication(applicationId: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}`);
+  }
+
+  async updatePortalApplication(applicationId: string, applicationData: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}`, "PATCH", applicationData);
+  }
+
+  async deletePortalApplication(applicationId: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}`, "DELETE");
+  }
+
+  // Application Registrations
+  async listPortalApplicationRegistrations(applicationId: string, pageSize = 10, pageNumber?: number, filterStatus?: string, filterApiName?: string): Promise<any> {
+    let endpoint = `/portal/applications/${applicationId}/registrations?page[size]=${pageSize}`;
+    
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
+    if (filterApiName) endpoint += `&filter[api_name][contains]=${encodeURIComponent(filterApiName)}`;
+    
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async createPortalApplicationRegistration(applicationId: string, registrationData: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/registrations`, "POST", registrationData);
+  }
+
+  async getPortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/registrations/${registrationId}`);
+  }
+
+  async deletePortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/registrations/${registrationId}`, "DELETE");
+  }
+
+  // Credential Management
+  async listPortalCredentials(applicationId: string, pageSize = 10, pageNumber?: number): Promise<any> {
+    let endpoint = `/portal/applications/${applicationId}/credentials?page[size]=${pageSize}`;
+    
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async createPortalCredential(applicationId: string, credentialData: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/credentials`, "POST", credentialData);
+  }
+
+  async updatePortalCredential(applicationId: string, credentialId: string, credentialData: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/credentials/${credentialId}`, "PATCH", credentialData);
+  }
+
+  async deletePortalCredential(applicationId: string, credentialId: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/credentials/${credentialId}`, "DELETE");
+  }
+
+  async regeneratePortalApplicationSecret(applicationId: string): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/regenerate-secret`, "POST");
+  }
+
+  // Developer Authentication
+  async registerPortalDeveloper(developerData: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/register`, "POST", developerData);
+  }
+
+  async authenticatePortalDeveloper(credentials: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/authenticate`, "POST", credentials);
+  }
+
+  async getPortalDeveloperMe(): Promise<any> {
+    return this.kongRequest<any>(`/portal/me`);
+  }
+
+  async logoutPortalDeveloper(): Promise<any> {
+    return this.kongRequest<any>(`/portal/logout`, "POST");
+  }
+
+  // Application Analytics
+  async queryPortalApplicationAnalytics(applicationId: string, analyticsQuery: any): Promise<any> {
+    return this.kongRequest<any>(`/portal/applications/${applicationId}/analytics`, "POST", analyticsQuery);
+  }
+
+  // Portal Management Methods
+  async listPortals(pageSize = 10, pageNumber?: number): Promise<any> {
+    let endpoint = `/portals?page[size]=${pageSize}`;
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async createPortal(portalData: any): Promise<any> {
+    return this.kongRequest<any>(`/portals`, "POST", portalData);
+  }
+
+  async getPortal(portalId: string): Promise<any> {
+    return this.kongRequest<any>(`/portals/${portalId}`);
+  }
+
+  async updatePortal(portalId: string, portalData: any): Promise<any> {
+    return this.kongRequest<any>(`/portals/${portalId}`, "PATCH", portalData);
+  }
+
+  async deletePortal(portalId: string): Promise<any> {
+    return this.kongRequest<any>(`/portals/${portalId}`, "DELETE");
+  }
+
+  // Portal Products/APIs Management
+  async listPortalProducts(portalId: string, pageSize = 10, pageNumber?: number): Promise<any> {
+    let endpoint = `/portals/${portalId}/products?page[size]=${pageSize}`;
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    return this.kongRequest<any>(endpoint);
+  }
+
+  async publishPortalProduct(portalId: string, productData: any): Promise<any> {
+    return this.kongRequest<any>(`/portals/${portalId}/products`, "POST", productData);
+  }
+
+  async unpublishPortalProduct(portalId: string, productId: string): Promise<any> {
+    return this.kongRequest<any>(`/portals/${portalId}/products/${productId}`, "DELETE");
   }
 }

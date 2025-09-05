@@ -237,3 +237,90 @@ OUTPUT:
     - conflicts: Array - List of configuration conflicts if any
   - relatedTools: Array - List of related tools for group management
 `;
+
+export const createServicePrompt = () => `
+Create a new service in a Kong control plane.
+
+INPUT:
+  - controlPlaneId: String - ID of the control plane
+  - name: String - Service name (must be unique within control plane)
+  - host: String - Hostname or IP address of the upstream service
+  - port: Number - Port of the upstream service (default: 80)
+  - protocol: String - Protocol to use: http, https, grpc, grpcs, tcp, tls, udp (default: http)
+  - path: String (optional) - Path to be used in requests to upstream
+  - retries: Number - Number of retries on failure (default: 5)
+  - connectTimeout: Number - Connection timeout in ms (default: 60000)
+  - writeTimeout: Number - Write timeout in ms (default: 60000)
+  - readTimeout: Number - Read timeout in ms (default: 60000)
+  - tags: Array (optional) - Tags to associate with the service
+  - enabled: Boolean - Whether the service is enabled (default: true)
+
+OUTPUT:
+  - success: Boolean - Whether the operation succeeded
+  - service: Object - Created service details including serviceId and all configuration
+  - message: String - Success message with service ID
+  - relatedTools: Array - Suggested next steps and related tools
+`;
+
+export const getServicePrompt = () => `
+Get detailed information about a specific service.
+
+INPUT:
+  - controlPlaneId: String - ID of the control plane
+  - serviceId: String - ID of the service to retrieve
+
+OUTPUT:
+  - service: Object - Complete service configuration including:
+    - serviceId: String - Unique service identifier
+    - name: String - Service name
+    - host: String - Upstream host
+    - port: Number - Upstream port
+    - protocol: String - Protocol used
+    - path: String - Path prefix
+    - retries: Number - Retry configuration
+    - timeout settings: Connection, write, and read timeouts
+    - security settings: TLS configuration
+    - tags: Array - Associated tags
+    - enabled: Boolean - Service status
+    - metadata: Object - Creation and update timestamps
+  - relatedTools: Array - Related operations for this service
+`;
+
+export const updateServicePrompt = () => `
+Update an existing service configuration.
+
+INPUT:
+  - controlPlaneId: String - ID of the control plane
+  - serviceId: String - ID of the service to update
+  - name: String (optional) - New service name
+  - host: String (optional) - New hostname or IP address
+  - port: Number (optional) - New port number
+  - protocol: String (optional) - New protocol
+  - path: String (optional) - New path prefix
+  - retries: Number (optional) - New retry count
+  - connectTimeout: Number (optional) - New connection timeout
+  - writeTimeout: Number (optional) - New write timeout
+  - readTimeout: Number (optional) - New read timeout
+  - tags: Array (optional) - New tags array
+  - enabled: Boolean (optional) - New enabled status
+
+OUTPUT:
+  - success: Boolean - Whether the update succeeded
+  - service: Object - Updated service configuration
+  - message: String - Success message
+  - relatedTools: Array - Suggested follow-up actions
+`;
+
+export const deleteServicePrompt = () => `
+Delete a service from a control plane.
+
+INPUT:
+  - controlPlaneId: String - ID of the control plane
+  - serviceId: String - ID of the service to delete
+
+OUTPUT:
+  - success: Boolean - Whether the deletion succeeded
+  - message: String - Confirmation message
+  - warning: String - Important information about orphaned routes
+  - relatedTools: Array - Recommended cleanup actions
+`;

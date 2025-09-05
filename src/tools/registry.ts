@@ -4,6 +4,9 @@ import { z } from "zod";
 import { analyticsTools } from "./analytics/tools.js";
 import { controlPlanesTools } from "./control-planes/tools.js";
 import { certificatesTools } from "./certificates/tools.js";
+import { configurationTools } from "./configuration/tools.js";
+import { portalTools } from "./portal/tools.js";
+import { portalManagementTools } from "./portal-management/tools.js";
 
 // Common tool interface
 export interface MCPTool {
@@ -28,8 +31,16 @@ export function getAllTools(): MCPTool[] {
     // Certificate management tools (5 tools)
     ...certificatesTools(),
     
+    // Configuration management tools (21 tools) - Enhanced CRUD operations for services, routes, consumers, plugins
+    ...configurationTools(),
+    
+    // Portal management tools (23 tools) - Developer portal, applications, registrations, credentials
+    ...portalTools(),
+    
+    // Portal management tools (8 tools) - Portal creation, configuration, API publishing
+    ...portalManagementTools(),
+    
     // TODO: Add remaining tool categories
-    // ...configurationTools(), - Enhanced CRUD operations for services, routes, consumers, plugins
     // ...upstreamsTools(), - Upstream and target management
     // ...dataPlanesTools(), - Data plane node management
     // ...credentialsTools(), - Consumer credentials and SNI management

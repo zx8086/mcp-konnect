@@ -91,5 +91,37 @@ export const tools = (): Tool[] => [
     description: prompts.checkControlPlaneGroupMembershipPrompt(),
     parameters: parameters.checkControlPlaneGroupMembershipParameters(),
     category: "control_planes"
+  },
+
+  // =========================
+  // Service CRUD Tools
+  // =========================
+  {
+    method: "create_service",
+    name: "Create Service",
+    description: prompts.createServicePrompt(),
+    parameters: parameters.createServiceParameters(),
+    category: "configuration"
+  },
+  {
+    method: "get_service",
+    name: "Get Service",
+    description: prompts.getServicePrompt(),
+    parameters: parameters.getServiceParameters(),
+    category: "configuration"
+  },
+  {
+    method: "update_service",
+    name: "Update Service",
+    description: prompts.updateServicePrompt(),
+    parameters: parameters.updateServiceParameters(),
+    category: "configuration"
+  },
+  {
+    method: "delete_service",
+    name: "Delete Service",
+    description: prompts.deleteServicePrompt(),
+    parameters: parameters.deleteServiceParameters(),
+    category: "configuration"
   }
 ];

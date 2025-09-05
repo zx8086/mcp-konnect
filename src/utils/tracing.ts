@@ -106,9 +106,14 @@ export class UniversalTracingManager {
         console.warn('Failed to import traceable functions:', traceableError.message);
       }
       
-      // Set up environment variables for LangSmith SDK
-      process.env.LANGSMITH_TRACING = 'true';
+      // Set up environment variables for LangSmith SDK (both standard and legacy)
       process.env.LANGCHAIN_TRACING_V2 = 'true';
+      process.env.LANGCHAIN_API_KEY = this.config.apiKey;
+      process.env.LANGCHAIN_PROJECT = this.config.project || 'konnect-mcp-server';
+      process.env.LANGCHAIN_ENDPOINT = this.config.endpoint || 'https://api.smith.langchain.com';
+      
+      // Legacy custom names for backward compatibility
+      process.env.LANGSMITH_TRACING = 'true';
       process.env.LANGSMITH_API_KEY = this.config.apiKey;
       if (this.config.project) {
         process.env.LANGSMITH_PROJECT = this.config.project;
