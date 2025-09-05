@@ -8,6 +8,14 @@ import { KongApi, API_REGIONS } from "./api/kong-api.js";
 import { formatError } from "./utils/error-handling.js";
 import { UniversalTracingManager } from "./utils/tracing.js";
 import { ToolPerformanceCollector } from "./utils/tool-tracer.js";
+import { 
+  createSessionContext, 
+  generateSessionId, 
+  detectClient, 
+  runWithSession, 
+  logSessionInfo,
+  getCurrentSession 
+} from "./utils/session-manager.js";
 import { getEnvVar, getEnvVarWithDefault, initializeEnvironment, getRuntimeInfo } from "./utils/env.js";
 import { loadConfiguration } from "./config/index.js";
 
@@ -21,7 +29,7 @@ import * as certificatesOps from "./tools/certificates/operations.js";
  */
 class KongKonnectMcpServer extends McpServer {
   private api: KongApi;
-  private tracingManager: UniversalTracingManager;
+  public tracingManager: UniversalTracingManager;
   private performanceCollector: ToolPerformanceCollector;
 
   constructor(options: { apiKey?: string; apiRegion?: string } = {}) {
@@ -40,6 +48,9 @@ class KongKonnectMcpServer extends McpServer {
     // Initialize tracing and performance monitoring
     this.tracingManager = new UniversalTracingManager();
     this.performanceCollector = new ToolPerformanceCollector();
+
+    // Log session information for tracing
+    this.logMCPSessionInfo();
 
     // Validate tool registry
     const validation = validateToolRegistry();
@@ -278,6 +289,24 @@ class KongKonnectMcpServer extends McpServer {
   getTracingStats() {
     return this.tracingManager.getStats();
   }
+
+  /**
+   * Log session information for this MCP server instance
+   */
+  private logMCPSessionInfo() {
+    this.tracingManager.logSessionInfo({
+      serverVersion: '2.0.0',
+      runtime: 'bun',
+      apiRegion: this.api.region || 'us',
+      toolCount: 11,
+      capabilities: [
+        'analytics',
+        'control-planes', 
+        'certificates',
+        'configuration'
+      ]
+    });
+  }
 }
 
 /**
@@ -306,8 +335,28 @@ async function main() {
     console.error(`Environment: ${config.application.environment} | Log Level: ${config.application.logLevel}`);
     console.error(`Tracing: ${config.tracing.enabled ? 'ENABLED' : 'DISABLED'} | Monitoring: ${config.monitoring.enabled ? 'ENABLED' : 'DISABLED'}`);
     
-    await server.connect(transport);
-    console.error("Kong Konnect MCP Server running successfully");
+    // Create session context for connection (implementing AsyncLocalStorage pattern from guide)
+    const connectionId = `conn-${Date.now()}`;
+    const clientInfo = detectClient("stdio");
+    const sessionId = generateSessionId(connectionId, clientInfo);
+    const sessionContext = createSessionContext(connectionId, "stdio", sessionId, clientInfo);
+    
+    console.error("Session context created:", {
+      sessionId,
+      connectionId,
+      clientName: clientInfo.name,
+      transportMode: "stdio"
+    });
+    
+    // Wrap server connection in session context (critical for session grouping)
+    await runWithSession(sessionContext, async () => {
+      // All tool calls within this scope inherit session context
+      await server.connect(transport);
+      console.error("Kong Konnect MCP Server running successfully");
+      
+      // Log session info for debugging
+      logSessionInfo("MCP Server Session Established");
+    });
     
   } catch (error: any) {
     console.error("ERROR: Failed to start Kong Konnect MCP Server:");

@@ -4,6 +4,7 @@
  */
 
 import { loadTracingConfig, validateTracingConfig, initializeEnvironment, getRuntimeInfo, type TracingConfig } from '../config/tracing-config.js';
+import { getCurrentSession, incrementToolCallCount, createNamedConnectionTrace } from './session-manager.js';
 
 interface TraceMetadata {
   category: string;
@@ -116,9 +117,7 @@ export class UniversalTracingManager {
       this.client = new Client({
         apiKey: this.config.apiKey,
         apiUrl: this.config.endpoint,
-        metadata: {
-          project: this.config.project
-        }
+        projectName: this.config.project,
       });
 
       this.enabled = true;
@@ -174,6 +173,9 @@ export class UniversalTracingManager {
     // Ensure initialization is complete
     await this.ensureInitialized();
 
+    // Get current session context for grouping (new from guide)
+    const session = getCurrentSession();
+
     // If tracing is disabled, execute directly (graceful degradation)
     if (!this.enabled || !traceable) {
       const result = await operation();
@@ -187,16 +189,36 @@ export class UniversalTracingManager {
         return { result };
       }
 
+      // Increment tool call counter for session tracking
+      incrementToolCallCount();
+
       // Create traceable function with dynamic tool name (proven pattern from guide)
       const toolTracer = traceable(
         async () => {
           const startTime = Date.now();
           const currentRun = getCurrentRunTree ? getCurrentRunTree() : null;
 
+          console.error("Executing tool with session context", {
+            toolName,
+            project: this.config.project,
+            sessionId: session?.sessionId,
+            clientName: session?.clientInfo?.name,
+            hasParentTrace: !!currentRun,
+            parentTraceId: currentRun?.id,
+          });
+
           try {
             const result = await operation();
 
             const executionTime = Date.now() - startTime;
+
+            console.error("Tool execution completed", {
+              toolName,
+              project: this.config.project,
+              executionTime,
+              sessionId: session?.sessionId,
+              hasResult: !!result,
+            });
 
             // Return result with trace metadata (as per guide pattern)
             return {
@@ -204,8 +226,10 @@ export class UniversalTracingManager {
               _trace: {
                 runId: currentRun?.id,
                 executionTime,
-                sessionId: this.sessionId,
-                toolName
+                sessionId: session?.sessionId,
+                clientName: session?.clientInfo?.name,
+                toolName,
+                category: metadata.category || 'kong-konnect'
               },
             };
           } catch (error: any) {
@@ -214,6 +238,7 @@ export class UniversalTracingManager {
             // Log error with context (as per guide)
             console.error(`Tool execution failed: ${toolName}`, {
               executionTime,
+              sessionId: session?.sessionId,
               error: error instanceof Error ? error.message : String(error),
             });
             
@@ -224,6 +249,29 @@ export class UniversalTracingManager {
           name: toolName, // Dynamic - uses the actual tool name (CRITICAL)
           run_type: "tool",
           project_name: this.config.project, // Ensure correct project
+          metadata: {
+            tool_name: toolName,
+            session_id: session?.sessionId, // Session grouping identifier
+            thread_id: session?.sessionId, // Alternative grouping key
+            conversation_id: session?.sessionId, // Alternative grouping key
+            connection_id: session?.connectionId,
+            client_name: session?.clientInfo?.name,
+            client_version: session?.clientInfo?.version,
+            transport_mode: session?.transportMode,
+            category: metadata.category || 'kong-konnect',
+            toolVersion: '2.0.0',
+            runtime: 'bun',
+            ...metadata
+          },
+          tags: [
+            'mcp-server',
+            'mcp-tool',
+            `tool:${toolName}`,
+            session?.clientInfo?.name ? `client:${session.clientInfo.name}` : 'client:unknown',
+            `transport:${session?.transportMode}`,
+            'kong-konnect',
+            metadata.category || 'unknown'
+          ].filter(Boolean) as string[]
         }
       );
 
@@ -232,7 +280,7 @@ export class UniversalTracingManager {
       return { 
         result, 
         traceContext: { 
-          sessionId: this.sessionId,
+          sessionId: session?.sessionId || this.sessionId,
           runId: result._trace?.runId 
         } 
       };
@@ -246,31 +294,80 @@ export class UniversalTracingManager {
   }
 
   /**
-   * Create a traced session for related operations
+   * Create a session-level trace that acts as parent for all tool calls
    */
-  async createTracedSession(sessionName: string, metadata: Record<string, any> = {}) {
+  async createSessionTrace<T>(sessionContext: any, operation: () => Promise<T>): Promise<T> {
     await this.ensureInitialized();
-    
-    if (!this.enabled) {
-      return null;
+
+    if (!this.enabled || !traceable) {
+      return await operation();
     }
 
     try {
-      const session = await this.client.createSession({
-        name: sessionName,
-        description: 'Kong Konnect MCP Tool Session',
-        metadata: {
-          ...metadata,
-          createdAt: new Date().toISOString(),
-          version: '2.0.0'
+      const traceName = createNamedConnectionTrace(sessionContext);
+      
+      const sessionTracer = traceable(
+        async () => {
+          const startTime = Date.now();
+          
+          console.error(`🔗 Starting MCP session: ${traceName}`, {
+            connectionId: sessionContext.connectionId,
+            transportMode: sessionContext.transportMode,
+            clientInfo: sessionContext.clientInfo,
+            sessionId: sessionContext.sessionId,
+          });
+          
+          try {
+            const result = await operation();
+            const executionTime = Date.now() - startTime;
+            
+            console.error(`✅ MCP session established: ${traceName}`, {
+              executionTime
+            });
+            
+            return result;
+          } catch (error) {
+            console.error(`❌ MCP session failed: ${traceName}`, { error });
+            throw error;
+          }
+        },
+        {
+          name: traceName,
+          run_type: "chain", // Session-level trace
+          project_name: this.config.project,
+          metadata: {
+            session_type: "mcp-connection",
+            transport_mode: sessionContext.transportMode,
+            client_name: sessionContext.clientInfo?.name || "unknown",
+            client_version: sessionContext.clientInfo?.version || "unknown",
+            session_id: sessionContext.sessionId,
+            user_id: sessionContext.userId,
+          },
+          tags: [
+            "mcp-connection",
+            `transport:${sessionContext.transportMode}`,
+            sessionContext.clientInfo?.name ? `client:${sessionContext.clientInfo.name}` : "client:unknown"
+          ].filter(Boolean) as string[]
         }
-      });
+      );
 
-      return session;
+      return await sessionTracer();
     } catch (error: any) {
-      console.warn('Failed to create traced session:', error.message);
-      return null;
+      console.warn('Session tracing error:', error.message);
+      return await operation();
     }
+  }
+
+  /**
+   * Log session information for debugging (sessions are created via metadata)
+   */
+  logSessionInfo(metadata: Record<string, any> = {}) {
+    console.error(`Session ID: ${this.sessionId}`);
+    console.error(`Session metadata:`, {
+      createdAt: new Date().toISOString(),
+      version: '2.0.0',
+      ...metadata
+    });
   }
 
   /**
