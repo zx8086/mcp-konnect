@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://kong-konnect-mcp.example.com/schemas/config.json",
+  "title": "Kong Konnect MCP Configuration",
+  "type": "object",
+  "properties": {
+    "application": {
+      "type": "object",
+      "description": "Core application settings",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "environment": {
+          "type": "string",
+          "enum": [
+            "development",
+            "staging",
+            "production",
+            "test"
+          ]
+        },
+        "logLevel": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "environment",
+        "logLevel"
+      ]
+    },
+    "kong": {
+      "type": "object",
+      "description": "Kong Konnect API configuration",
+      "properties": {
+        "accessToken": {
+          "type": "string",
+          "minLength": 1
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "us",
+            "eu",
+            "au",
+            "me",
+            "in"
+          ]
+        },
+        "baseUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "timeout": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 60000
+        },
+        "retryAttempts": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "retryDelay": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 5000
+        }
+      },
+      "required": [
+        "accessToken",
+        "region",
+        "timeout",
+        "retryAttempts",
+        "retryDelay"
+      ]
+    },
+    "tracing": {
+      "type": "object",
+      "description": "LangSmith tracing and observability",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "apiKey": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "sessionName": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "samplingRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "enabled",
+        "project",
+        "endpoint",
+        "sessionName",
+        "tags",
+        "samplingRate"
+      ]
+    },
+    "monitoring": {
+      "type": "object",
+      "description": "Monitoring and health check configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "healthCheckInterval": {
+          "type": "number",
+          "minimum": 5000,
+          "maximum": 300000
+        },
+        "metricsCollection": {
+          "type": "boolean"
+        },
+        "performanceThresholds": {
+          "type": "object",
+          "properties": {
+            "responseTimeMs": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10000
+            },
+            "errorRate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "responseTimeMs",
+            "errorRate"
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "healthCheckInterval",
+        "metricsCollection",
+        "performanceThresholds"
+      ]
+    },
+    "runtime": {
+      "type": "object",
+      "description": "Runtime-specific configuration",
+      "properties": {
+        "preferBunEnv": {
+          "type": "boolean"
+        },
+        "envFileAutoLoad": {
+          "type": "boolean"
+        },
+        "debugMode": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "preferBunEnv",
+        "envFileAutoLoad",
+        "debugMode"
+      ]
+    }
+  },
+  "required": [
+    "application",
+    "kong",
+    "tracing",
+    "monitoring",
+    "runtime"
+  ]
+}

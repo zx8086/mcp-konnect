@@ -183,3 +183,84 @@ export interface ApiRequestFilter {
     created_at: string;
     updated_at: string;
   }
+
+  // Additional types for enhanced features
+  export interface Certificate {
+    id: string;
+    cert: string;
+    key: string;
+    cert_alt?: string;
+    key_alt?: string;
+    tags?: string[];
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface Upstream {
+    id: string;
+    name: string;
+    algorithm: string;
+    hash_on?: string;
+    hash_fallback?: string;
+    hash_on_cookie?: string;
+    hash_on_cookie_path?: string;
+    hash_on_header?: string;
+    hash_on_query_arg?: string;
+    hash_fallback_header?: string;
+    hash_fallback_query_arg?: string;
+    hash_fallback_uri_capture?: string;
+    hash_on_uri_capture?: string;
+    slots: number;
+    healthchecks?: any;
+    tags?: string[];
+    host_header?: string;
+    client_certificate?: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface UpstreamTarget {
+    id: string;
+    target: string;
+    weight: number;
+    tags?: string[];
+    upstream: {
+      id: string;
+    };
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface DataPlaneNode {
+    id: string;
+    hostname: string;
+    ip: string;
+    last_seen: string;
+    config_hash?: string;
+    labels?: Record<string, string>;
+    status: string;
+    version: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface SNI {
+    id: string;
+    name: string;
+    certificate: {
+      id: string;
+    };
+    tags?: string[];
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface ConsumerKey {
+    id: string;
+    key?: string;
+    consumer: {
+      id: string;
+    };
+    tags?: string[];
+    created_at: string;
+  }

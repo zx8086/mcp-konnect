@@ -2,32 +2,81 @@
   "name": "kong-konnect-mcp",
   "version": "1.0.0",
   "description": "Kong Konnect MCP Server",
-  "main": "build/index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc",
-    "start": "node build/index.js",
-    "dev": "tsc && node build/index.js"
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --minify --sourcemap=external --splitting",
+    "build:dev": "bun build ./src/index.ts --outdir ./dist --target bun --sourcemap=inline",
+    "build:production": "bun build ./src/index.ts --outdir ./dist --target bun --minify --sourcemap=external --splitting",
+    "build:node": "bun build src/index.ts --outdir=./dist --target=node",
+    "build:analyze": "bun build ./src/index.ts --outdir ./dist --target bun --analyze",
+    "start": "bun run dist/index.js",
+    "start:production": "NODE_ENV=production bun run dist/index.js",
+    "start:dev": "bun src/index.ts",
+    "inspector": "bun x --bun @modelcontextprotocol/inspector bun ./dist/index.js",
+    "build:inspector": "bun run build && bun run inspector",
+    "dev": "bun run src/index.ts",
+    "dev:hot": "bun --hot run src/index.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "lint": "echo 'Add linting tool here'",
+    "format": "echo 'Add formatting tool here'",
+    "env:check": "bun run src/utils/env-check.ts",
+    "config:health": "bun run src/utils/config-health.ts",
+    "config:health:prod": "bun run src/utils/config-health.ts --production-check",
+    "config:schema": "bun run src/utils/config-health.ts --export-schema",
+    "config:validate": "bun run src/utils/config-health.ts",
+    "health-check": "echo 'Add health check script here'",
+    "pre-commit": "bun run lint && bun run test"
   },
   "keywords": [
     "mcp",
     "kong",
     "konnect",
     "api",
-    "gateway"
+    "gateway",
+    "bun"
   ],
-  "author": "",
+  "author": "Simon Owusu",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",
     "axios": "^1.6.2",
-    "zod": "^3.22.2"
+    "zod": "^3.22.2",
+    "langsmith": "^0.2.0",
+    "@langchain/core": "^0.3.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "@types/node": "^20.9.0", 
+    "@types/bun": "^1.2.21",
+    "@types/node": "^20.9.0",
+    "bun-types": "^1.2.21",
     "typescript": "^5.2.2"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "bun": ">=1.0.0"
+  },
+  "bun": {
+    "install": {
+      "peer": true,
+      "frozenLockfile": true,
+      "cache": {
+        "dir": ".bun-cache"
+      }
+    },
+    "build": {
+      "target": "bun",
+      "minify": true,
+      "sourcemap": "external",
+      "splitting": true,
+      "define": {
+        "process.env.NODE_ENV": "production",
+        "typeof Bun": "object"
+      }
+    }
   }
 }
