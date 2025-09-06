@@ -51,18 +51,18 @@
   "author": "Simon Owusu",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.7.0",
-    "axios": "^1.6.2",
+    "@modelcontextprotocol/sdk": "^1.17.5",
+    "axios": "^1.11.0",
     "zod": "^3.22.2",
-    "langsmith": "^0.2.0",
-    "@langchain/core": "^0.3.0",
-    "dotenv": "^16.3.1"
+    "langsmith": "^0.3.67",
+    "@langchain/core": "^0.3.75",
+    "dotenv": "^17.2.2"
   },
   "devDependencies": {
     "@types/bun": "^1.2.21",
-    "@types/node": "^20.9.0",
+    "@types/node": "^24.3.1",
     "bun-types": "^1.2.21",
-    "typescript": "^5.2.2"
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": ">=20.0.0",
