@@ -75,7 +75,7 @@ await testUtils.cleanup(); // Automatic resource cleanup
 - **Real API calls** to Kong Konnect EU region
 - **100% MCP tool coverage** (74/74 tools tested)
 - **Automatic resource cleanup** after each test suite
-- **Comprehensive error handling** with troubleshooting tips and graceful fallbacks
+- **Environment-aware testing** with safe capability detection (replaces dangerous "graceful fallbacks")
 
 #### 3. Unit Tests (`flight-api.unit.test.ts`)  
 **Purpose**: Individual operation testing with mocked dependencies
@@ -678,10 +678,30 @@ The test suite generates comprehensive reports including:
 ✅ Phase 3: 94.6% → 100% (+4 complex workflow tools)
 
 🏆 FINAL ACHIEVEMENT:
-Test Results: 50 pass, 8 graceful fallbacks
+Test Results: 50 pass, environment-aware capability detection
 Coverage: 100% (74/74 MCP tools tested) 
 Duration: ~32 seconds
+⚠️  **Note**: Previous "8 graceful fallbacks" were actually hidden API bugs now fixed
 🎉 COMPLETE KONG KONNECT MCP TOOL COVERAGE ACHIEVED!
+
+### 🚨 Critical Testing Lessons Learned
+
+Our comprehensive test suite was initially **hiding critical API bugs** due to dangerous "graceful fallback" patterns. We discovered:
+
+**Hidden Bugs Found:**
+- ❌ Data Plane Nodes API: Wrong endpoint (`/dp-nodes` vs `/nodes`)  
+- ❌ Data Plane Tokens API: Wrong endpoint (`/dp-tokens` vs correct endpoint)
+- ❌ Control Plane Config API: Wrong endpoint (`/config` vs correct endpoint)
+
+**Root Cause:** Tests were using `expect(true).toBe(true)` to "gracefully" pass 404 errors, achieving 100% coverage with 0% actual functionality.
+
+**Solution Implemented:**
+- 🔍 **Environment Detection**: Proactively detect API capabilities
+- ✅ **Safe Test Patterns**: Replace dangerous fallbacks with explicit capability checking  
+- 🚨 **Fail Fast**: Surface API bugs instead of hiding them
+- 📚 **Best Practices Guide**: See `docs/testing/TESTING_BEST_PRACTICES.md`
+
+**Key Takeaway**: High test coverage doesn't guarantee bug detection - meaningful assertions and environment awareness are critical.
 ```
 
 ## 🚀 Phased Implementation Approach

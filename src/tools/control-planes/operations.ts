@@ -325,22 +325,22 @@ export async function listDataPlaneNodes(
         pagination: {
           pageSize: pageSize,
           pageNumber: pageNumber || 1,
-          totalPages: result.meta?.page?.total || 1,
-          totalItems: result.meta?.page?.total_count || 0
+          totalPages: Math.ceil((result.page?.total_count || result.meta?.page?.total_count || 0) / pageSize),
+          totalItems: result.page?.total_count || result.meta?.page?.total_count || 0
         },
         filters: {
           status: filterStatus,
           hostname: filterHostname
         }
       },
-      nodes: result.data?.map((node: any) => ({
+      nodes: (result.items || result.data)?.map((node: any) => ({
         nodeId: node.id,
         hostname: node.hostname,
-        status: node.status,
+        status: node.connection_state?.is_connected ? 'connected' : 'disconnected',
         version: node.version,
-        lastSeen: node.last_seen,
-        syncStatus: node.sync_status,
-        compatibility: node.compatibility,
+        lastSeen: node.last_ping || node.last_seen,
+        syncStatus: node.sync_status || 'synced',
+        compatibility: node.compatibility_status?.state || node.compatibility,
         labels: node.labels || {},
         connections: {
           ip: node.ip,
@@ -348,15 +348,15 @@ export async function listDataPlaneNodes(
           protocol: node.protocol
         },
         health: {
-          status: node.health_status,
+          status: node.connection_state?.is_connected ? 'healthy' : 'unhealthy',
           checks: node.health_checks || []
         }
       })) || [],
       summary: {
-        totalNodes: result.meta?.page?.total_count || 0,
-        connectedNodes: result.summary?.connected || 0,
-        disconnectedNodes: result.summary?.disconnected || 0,
-        overallHealth: result.summary?.health_status || "unknown"
+        totalNodes: result.page?.total_count || result.meta?.page?.total_count || 0,
+        connectedNodes: (result.items || result.data)?.filter((n: any) => n.connection_state?.is_connected || n.status === 'connected').length || 0,
+        disconnectedNodes: (result.items || result.data)?.filter((n: any) => !n.connection_state?.is_connected && n.status !== 'connected').length || 0,
+        overallHealth: result.summary?.health_status || "healthy"
       },
       relatedTools: [
         "Use get-data-plane-node for detailed node information",

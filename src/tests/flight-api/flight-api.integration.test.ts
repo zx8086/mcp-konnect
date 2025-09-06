@@ -13,16 +13,22 @@ import {
   type FlightTestRoute,
   type FlightTestConsumer
 } from './test-helpers.js';
+import { TestEnvironmentDetector, safeTest, criticalTest } from './test-environment.js';
 
 describe('Flight API Integration Tests', () => {
   let testUtils: FlightApiTestUtils;
+  let environmentDetector: TestEnvironmentDetector;
   let flightService: FlightTestService;
   let flightRoutes: FlightTestRoute[];
   let testConsumer: FlightTestConsumer;
 
   beforeAll(async () => {
     testUtils = new FlightApiTestUtils();
+    environmentDetector = new TestEnvironmentDetector(testUtils);
     console.log('🚀 Starting Flight API Integration Tests');
+    
+    // Detect environment capabilities upfront
+    await environmentDetector.detectCapabilities();
   });
 
   afterAll(async () => {
@@ -563,37 +569,24 @@ describe('Flight API Phase 1 Expansion Tests', () => {
     await testUtils.cleanup();
   });
 
-  // Helper function for graceful error handling
-  const testWithGracefulFallback = async (testFn: () => Promise<void>, testName: string) => {
-    try {
-      await testFn();
-    } catch (error: any) {
-      if (error.message.includes('404') || error.message.includes('not found') || 
-          error.message.includes('400') || error.message.includes('Invalid Parameters')) {
-        console.log(`⚠️  ${testName} endpoint not available - skipping test`);
-        expect(true).toBe(true); // Pass test gracefully
-      } else {
-        throw error;
-      }
-    }
-  };
+  // ⚠️  DEPRECATED: Replaced dangerous "graceful fallback" with safe environment detection
+  // The old testWithGracefulFallback pattern was hiding real API bugs
+  // Use safeTest() with environment detection instead
 
   // Data Plane Token Management Tests
   describe('Data Plane Token Management', () => {
     test('should list data plane tokens', async () => {
-      try {
-        const tokens = await testUtils.listDataPlaneTokens();
-        expect(tokens).toBeDefined();
-        expect(Array.isArray(tokens.tokens || [])).toBe(true);
-        console.log('✅ Listed data plane tokens');
-      } catch (error: any) {
-        if (error.message.includes('404') || error.message.includes('not found')) {
-          console.log('⚠️  Data plane tokens endpoint not available - skipping test');
-          expect(true).toBe(true);
-        } else {
-          throw error;
-        }
-      }
+      await safeTest(
+        'Data Plane Tokens Listing',
+        async () => {
+          const tokens = await testUtils.listDataPlaneTokens();
+          expect(tokens).toBeDefined();
+          expect(Array.isArray(tokens.tokens || [])).toBe(true);
+          console.log('✅ Listed data plane tokens');
+        },
+        'hasDataPlaneTokens',
+        environmentDetector
+      );
     });
 
     test('should create and manage data plane token lifecycle', async () => {
@@ -628,38 +621,34 @@ describe('Flight API Phase 1 Expansion Tests', () => {
   // Data Plane Node Management Tests
   describe('Data Plane Node Management', () => {
     test('should list data plane nodes', async () => {
-      try {
-        const nodes = await testUtils.listDataPlaneNodes();
-        expect(nodes).toBeDefined();
-        expect(Array.isArray(nodes.nodes || [])).toBe(true);
-        console.log(`✅ Listed ${nodes.nodes?.length || 0} data plane nodes`);
-      } catch (error: any) {
-        if (error.message.includes('400') || error.message.includes('404')) {
-          console.log('⚠️  Data plane nodes endpoint not available - skipping test');
-          expect(true).toBe(true);
-        } else {
-          throw error;
-        }
-      }
+      await safeTest(
+        'Data Plane Nodes Listing',
+        async () => {
+          const nodes = await testUtils.listDataPlaneNodes();
+          expect(nodes).toBeDefined();
+          expect(Array.isArray(nodes.nodes || [])).toBe(true);
+          console.log(`✅ Listed ${nodes.nodes?.length || 0} data plane nodes`);
+        },
+        'hasDataPlaneNodes',
+        environmentDetector
+      );
     });
   });
 
   // Control Plane Configuration Tests
   describe('Control Plane Configuration', () => {
     test('should get control plane configuration', async () => {
-      try {
-        const config = await testUtils.getControlPlaneConfig();
-        expect(config).toBeDefined();
-        expect(config.proxyUrl).toBeDefined();
-        console.log('✅ Retrieved control plane configuration');
-      } catch (error: any) {
-        if (error.message.includes('404') || error.message.includes('not found')) {
-          console.log('⚠️  Control plane config endpoint not available - skipping test');
-          expect(true).toBe(true);
-        } else {
-          throw error;
-        }
-      }
+      await safeTest(
+        'Control Plane Configuration',
+        async () => {
+          const config = await testUtils.getControlPlaneConfig();
+          expect(config).toBeDefined();
+          expect(config.proxyUrl).toBeDefined();
+          console.log('✅ Retrieved control plane configuration');
+        },
+        'hasControlPlaneConfig',
+        environmentDetector
+      );
     });
   });
 

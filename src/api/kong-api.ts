@@ -176,20 +176,7 @@ export class KongApi {
     return this.kongRequest<any>(`/control-planes/${controlPlaneId}`, "DELETE");
   }
 
-  // Data Plane Node Management
-  async listDataPlaneNodes(controlPlaneId: string, pageSize = 10, pageNumber?: number, filterStatus?: string, filterHostname?: string): Promise<any> {
-    let endpoint = `/control-planes/${controlPlaneId}/dp-nodes?page[size]=${pageSize}`;
-    
-    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
-    if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
-    if (filterHostname) endpoint += `&filter[hostname][contains]=${encodeURIComponent(filterHostname)}`;
-    
-    return this.kongRequest<any>(endpoint);
-  }
-
-  async getDataPlaneNode(controlPlaneId: string, nodeId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/dp-nodes/${nodeId}`);
-  }
+  // Data Plane Node Management (deprecated - using newer /nodes endpoint below)
 
   // Data Plane Token Management
   async createDataPlaneToken(controlPlaneId: string, tokenData: any): Promise<any> {
@@ -375,12 +362,12 @@ export class KongApi {
   // ===========================
   // Data Plane Nodes Management
   // ===========================
-  async listDataPlaneNodes(controlPlaneId: string, pageSize = 100, pageAfter?: string): Promise<any> {
+  async listDataPlaneNodes(controlPlaneId: string, pageSize = 10, pageNumber?: number, filterStatus?: string, filterHostname?: string): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/nodes?page[size]=${pageSize}`;
 
-    if (pageAfter) {
-      endpoint += `&page[after]=${pageAfter}`;
-    }
+    if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
+    if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
+    if (filterHostname) endpoint += `&filter[hostname][contains]=${encodeURIComponent(filterHostname)}`;
 
     return this.kongRequest<any>(endpoint);
   }
