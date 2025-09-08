@@ -61,6 +61,92 @@ The business logic is organized into three main operation categories:
 - **Zod Validation**: All tool parameters are validated using Zod schemas before processing
 - **Comprehensive Error Handling**: API errors include troubleshooting tips and context
 
+## 🚨 CRITICAL: Tool-First Thinking Protocol
+
+### ⚡ IMMEDIATE RECOGNITION TRIGGERS
+
+**BEFORE** any task, ask: "What MCP tools do I have available for this?"
+
+#### 🔧 Tool Recognition Patterns
+
+When you see these request patterns, **IMMEDIATELY** use direct MCP tools:
+
+```yaml
+Kong/API Gateway Tasks:
+  - "migrate deck configuration" → mcp__kong-konnect__* tools
+  - "create service/route/consumer" → mcp__kong-konnect__create_* tools
+  - "update Kong configuration" → mcp__kong-konnect__update_* tools
+  - "@kong-konnect-engineer" mentioned → USE MCP TOOLS DIRECTLY
+
+Performance Testing:
+  - "performance test" → k6 tools via testing-specialist
+  - "load test API" → k6 tools via testing-specialist
+
+GraphQL Tasks:  
+  - "GraphQL schema/resolver" → graphql-specialist tools
+  - "Houdini/GraphQL Yoga" → graphql-specialist tools
+  
+Other Specialist Tools:
+  - Database issues → couchbase-capella-specialist tools
+  - Observability → observability-engineer tools
+  - Configuration → config-manager tools
+```
+
+#### 🚫 ANTI-PATTERN RECOGNITION
+
+**NEVER** do these when MCP tools are available:
+
+```yaml
+❌ WRONG_PATTERNS:
+  - See "Kong" + immediately think "use Task tool"
+  - See "@agent-name" + immediately invoke agent
+  - Complex task + default to agent delegation
+  - Specialist mention + agent invocation reflex
+
+✅ CORRECT_PATTERNS:  
+  - See "Kong" + scan available mcp__kong-konnect__* tools
+  - See "@agent-name" + check what tools that agent uses directly
+  - Complex task + break down into available tool operations
+  - Specialist mention + use specialist's tools directly
+```
+
+#### 🎯 Decision Tree Protocol
+
+```yaml
+TASK_ANALYSIS:
+  step_1: "What MCP tools are available for this domain?"
+  step_2: "Can I accomplish this with direct tool calls?"
+  step_3_if_yes: "Use MCP tools directly"
+  step_3_if_no: "Only then consider agent invocation"
+  
+TOOL_AVAILABILITY_CHECK:
+  kong_tasks: "66+ mcp__kong-konnect__* tools available"
+  testing_tasks: "k6 performance tools available" 
+  graphql_tasks: "GraphQL specialist tools available"
+  config_tasks: "Configuration management tools available"
+  observability: "OpenTelemetry tools available"
+```
+
+#### 📋 Pre-Task Verification
+
+**MANDATORY** checklist before ANY task:
+
+1. ✅ "Have I checked what MCP tools are available?"
+2. ✅ "Can I use direct tool calls instead of agents?"  
+3. ✅ "Am I falling into the agent invocation reflex?"
+4. ✅ "Is this a Kong task? (Use mcp__kong-konnect__* tools directly)"
+
+#### 🔄 Behavioral Override Protocol
+
+**When you catch yourself about to invoke an agent:**
+
+1. **STOP** - "Wait, what tools do I have available?"
+2. **SCAN** - Review available MCP tools for this domain
+3. **EXECUTE** - Use direct tools instead of agent invocation
+4. **VALIDATE** - Did I accomplish the task with direct tools?
+
+This protocol prevents the recurring issue of defaulting to agent invocation when direct tools are available and more effective.
+
 ## Environment Configuration
 
 Required environment variables:
@@ -242,9 +328,25 @@ When working with Kong configurations, **ALL entities MUST be tagged**:
 ```yaml
 MANDATORY_KONG_TAGS:
   required_tags: ["env-{environment}", "domain-{domain-name}", "team-{team}"]
+  contextual_tags_required: ["function-{purpose}", "type-{classification}", "criticality-{level}"]
+  minimum_tag_count: 5
+  maximum_tag_count: 8
   extraction_priority: "ALWAYS extract domain from user context first"
   format_requirement: "lowercase-with-hyphens"
-  validation: "BLOCK deployment if any mandatory tag missing"
+  validation: "BLOCK deployment if any mandatory tag missing OR total tags < 5"
+  
+CONTEXTUAL_ANALYSIS_REQUIRED:
+  before_any_entity_creation:
+    - "What function does this entity serve?" → function-{purpose}
+    - "What type/classification is this?" → type-{classification} 
+    - "How critical/important is this?" → criticality-{level}
+    - "What access scope?" → access-{scope}
+    - "What protocol/technology?" → protocol-{type}
+  
+  validation_gate:
+    if_cannot_answer_contextual_questions: "BLOCK deployment until analysis complete"
+    minimum_contextual_tags: 2
+    recommended_contextual_tags: 3-5
 
 DOMAIN_EXTRACTION_PATTERNS:
   user_phrases:
@@ -284,8 +386,18 @@ PRE_DEPLOYMENT_CHECKLIST:
   ✅ Domain extracted from user request?
   ✅ Control plane identified with mcp__kong-konnect__list_control_planes?
   ✅ All entities will include ["env-*", "domain-*", "team-*"] tags?
+  ✅ CONTEXTUAL ANALYSIS completed for each entity?
+  ✅ Each entity has minimum 5 total tags?
+  ✅ Function and type tags determined for each entity?
   ✅ Using mcp__kong-konnect__* tools directly (not Task tool)?
   ✅ Tag format follows lowercase-with-hyphens?
+
+BLOCKING_CONDITIONS:
+  - Any entity with < 5 total tags
+  - Missing function-{purpose} tag
+  - Missing type-{classification} tag  
+  - Cannot explain entity purpose in contextual terms
+  - Deployment MUST be halted until complete tagging analysis
 ```
 
 ## Documentation Structure

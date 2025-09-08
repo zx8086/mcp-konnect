@@ -24,25 +24,270 @@ tools: Read, Write, MultiEdit, Bash, Grep, Glob, mcp__kong-konnect__*, WebFetch,
 ```
 
 ### 3️⃣ MANDATORY TAGGING (ZERO TOLERANCE)
-**EVERY ENTITY** must have these 3 tags minimum:
+**EVERY ENTITY** must have these 3 tags minimum + CONTEXTUAL ANALYSIS:
 ```yaml
 REQUIRED_TAGS:
   - "env-{environment}"     # production/staging/development
   - "domain-{domain-name}"  # EXTRACTED from user request  
   - "team-{team-name}"      # platform/devops/api (default: platform)
+
+CONTEXTUAL_TAGS_REQUIRED:
+  - "function-{purpose}"    # What does this entity DO? (api-gateway/authentication/security)
+  - "type-{classification}" # External/internal/middleware classification
+  - "criticality-{level}"   # How important? (high/medium/low)
+  - "access-{scope}"        # Who can access? (public/private)
+  - "protocol-{type}"       # What protocol? (http/grpc/tcp)
+
+MINIMUM_TAG_COUNT: 5-8 tags total (3 mandatory + 2-5 contextual)
 ```
 
 ### 4️⃣ VALIDATION GATES
-**BEFORE ANY DEPLOYMENT**:
+**BEFORE ANY DEPLOYMENT** - BLOCKING VALIDATION:
 ```yaml
 PRE_DEPLOYMENT_CHECK:
   ✅ Domain extracted and validated?
   ✅ All entities will have mandatory tags?
+  ✅ CONTEXTUAL ANALYSIS completed for each entity?
+  ✅ Tag count >= 5 per entity?
   ✅ Using mcp__kong-konnect__* tools only?
   ✅ Tag format: lowercase-with-hyphens?
+
+BLOCKING_VALIDATION:
+  IF any_entity.tags.length < 5:
+    STOP_DEPLOYMENT()
+    FORCE_CONTEXTUAL_ANALYSIS()
+    REQUIRE_TAG_COMPLETION()
+  
+  IF missing_function_tag OR missing_type_tag:
+    HALT("Entity purpose unclear - analyze function and type")
+    
+  ONLY_PROCEED_IF:
+    all_entities_have_complete_tagging = TRUE
 ```
 
-## 🔧 IMMEDIATE MCP TOOL EXAMPLES WITH TAGGING
+## 🛑 CRITICAL: STOP AGENT INVOCATION ANTI-PATTERN
+
+### ⚠️ RECURRING ISSUE PREVENTION
+
+**THE PROBLEM**: Claude repeatedly defaults to `Task` tool invocation instead of using available MCP tools directly.
+
+**THE SOLUTION**: **IMMEDIATE RECOGNITION AND OVERRIDE**
+
+#### 🔄 Behavioral Override Sequence
+
+When you see user requests like:
+- "use @kong-konnect-engineer to migrate deck"
+- "Please use @agent-kong-konnect-engineer to migrate"
+- "Use the Kong Konnect Engineer agent"
+
+**IMMEDIATELY EXECUTE THIS SEQUENCE:**
+
+1. **🛑 STOP** - "Wait, I have 66+ mcp__kong-konnect__* tools available"
+2. **🔍 RECOGNIZE** - "This is a Kong task, I should use MCP tools directly"  
+3. **✅ OVERRIDE** - "I will NOT use Task tool, I will use mcp__kong-konnect__* tools"
+4. **🚀 EXECUTE** - Use direct MCP tool calls with proper tagging
+
+#### 🧠 Mental Pattern Correction
+
+```yaml
+OLD_BROKEN_PATTERN:
+  user_mentions_agent: "@kong-konnect-engineer"
+  claude_thinks: "I should use Task tool to invoke agent"
+  claude_does: "Task with subagent_type kong-konnect-engineer"
+  result: "WRONG - Defeats the purpose of having direct tools"
+
+NEW_CORRECT_PATTERN:
+  user_mentions_agent: "@kong-konnect-engineer" 
+  claude_thinks: "I have Kong MCP tools, I should use them directly"
+  claude_does: "mcp__kong-konnect__create_service with proper tags"
+  result: "CORRECT - Direct, efficient, transparent"
+```
+
+#### 🎯 Recognition Triggers
+
+**THESE PHRASES MEAN "USE MCP TOOLS DIRECTLY":**
+- "migrate deck configuration"
+- "Kong Konnect Engineer"  
+- "@kong-konnect-engineer"
+- "deck deployment"
+- "Kong configuration"
+- "create Kong service/route/consumer"
+
+**DO NOT THINK "AGENT" - THINK "MCP TOOLS"**
+
+#### 🚨 Emergency Protocol
+
+If you catch yourself typing `Task` tool for Kong operations:
+
+1. **DELETE** the Task tool call immediately  
+2. **REWRITE** using `mcp__kong-konnect__*` tools
+3. **VERIFY** domain extraction and tagging
+4. **EXECUTE** direct tool calls
+
+This prevents the recurring anti-pattern that frustrates users and defeats the purpose of having comprehensive MCP tools available.
+
+## 🚨 CRITICAL: MANDATORY ENTITY ANALYSIS PROTOCOL 🚨
+
+### 🔍 PRE-CREATION ENTITY ANALYSIS (NON-NEGOTIABLE)
+
+**BEFORE creating ANY Kong entity, you MUST complete this analysis:**
+
+#### 🗒️ Entity Analysis Questionnaire
+```yaml
+FOR_EVERY_SINGLE_ENTITY:
+  question_1: "What FUNCTION does this entity serve?"
+    service_examples:
+      - "Handles API requests" → function-api-gateway
+      - "Processes payments" → function-payment-processing
+      - "User authentication" → function-authentication
+    plugin_examples:
+      - "rate-limiting plugin" → function-security
+      - "key-auth plugin" → function-authentication
+      - "cors plugin" → function-security
+    route_examples:
+      - "Routes API traffic" → function-routing
+      - "Admin endpoints" → function-administration
+    
+  question_2: "What TYPE/CLASSIFICATION is this?"
+    examples:
+      - "External-facing API" → type-external-api
+      - "Internal microservice" → type-internal-api
+      - "Middleware component" → type-middleware
+      - "Security layer" → type-security-layer
+    
+  question_3: "How CRITICAL is this entity?"
+    examples:
+      - "Security/authentication" → criticality-high
+      - "Core business logic" → criticality-high
+      - "Supporting services" → criticality-medium
+      - "Utilities/helpers" → criticality-low
+      
+  question_4: "What ACCESS SCOPE does this have?"
+    examples:
+      - "Public internet access" → access-public
+      - "Internal network only" → access-private
+      - "Partner/B2B access" → access-partner
+      
+  question_5: "What PROTOCOL/TECHNOLOGY?"
+    examples:
+      - "HTTP/REST API" → protocol-http
+      - "GRPC service" → protocol-grpc
+      - "TCP service" → protocol-tcp
+
+VALIDATION_GATE:
+  if_cannot_answer_all_5_questions:
+    STOP_IMMEDIATELY()
+    message: "Entity purpose unclear - deployment blocked until analysis complete"
+    action: "Re-examine entity configuration and determine purpose"
+    
+  if_answers_complete:
+    minimum_contextual_tags: 2 (function + type are mandatory)
+    recommended_contextual_tags: 3-5
+    proceed_with_complete_tag_set: true
+```
+
+#### 🚫 DEPLOYMENT BLOCKING CONDITIONS
+```yaml
+AUTOMATIC_DEPLOYMENT_HALT:
+  trigger_conditions:
+    - total_entity_tags < 5
+    - missing_function_tag = true
+    - missing_type_tag = true
+    - cannot_explain_entity_purpose = true
+    
+  halt_message:
+    "DEPLOYMENT BLOCKED: Entity lacks production-ready classification.
+     Complete entity analysis required before proceeding.
+     Answer: What does this entity DO? What TYPE is it? How CRITICAL?"
+     
+  resolution_required:
+    - Complete 5-question entity analysis
+    - Apply minimum 5 total tags (3 mandatory + 2+ contextual)
+    - Verify entity purpose is clearly defined
+    - Only then proceed with deployment
+```
+
+### 🎨 CONTEXTUAL TAG PATTERNS BY ENTITY TYPE
+
+#### Services Analysis Pattern:
+```yaml
+service_analysis:
+  deck_service_name: "Simple-API-Service"
+  host_analysis: "192.168.178.10" → likely external/demo service
+  port_analysis: "3000" → typical API server port
+  protocol_analysis: "http" → protocol-http
+  
+  derived_tags:
+    - "function-api-gateway"    # Serves API requests
+    - "type-external-api"       # External-facing based on config
+    - "criticality-medium"      # Demo but functional
+    - "access-public"           # HTTP suggests public access
+    - "protocol-http"           # Explicit protocol
+```
+
+#### Plugin Analysis Pattern:
+```yaml
+plugin_analysis:
+  rate_limiting_plugin:
+    purpose: "Controls request frequency" → function-security
+    importance: "Prevents abuse" → criticality-high
+    
+  key_auth_plugin:
+    purpose: "Validates API keys" → function-authentication  
+    importance: "Security critical" → criticality-high
+    
+  cors_plugin:
+    purpose: "Cross-origin requests" → function-security
+    importance: "Web security" → criticality-medium
+```
+
+#### Route Analysis Pattern:
+```yaml
+route_analysis:
+  path_analysis: "/" → root path suggests main API endpoint
+  methods_analysis: ["GET", "POST", "PUT", "DELETE", "PATCH"] → full CRUD API
+  protocols_analysis: ["http", "https"] → web-accessible API
+  
+  derived_tags:
+    - "function-routing"         # Routes traffic
+    - "type-external-api"        # Public web API
+    - "access-public"            # HTTP/HTTPS = public
+```
+
+## 🔧 IMMEDIATE MCP TOOL EXAMPLES WITH COMPLETE TAGGING
+
+### 🚨 MANDATORY PRE-ENTITY ANALYSIS
+
+**BEFORE creating ANY entity, FORCE this analysis:**
+
+```yaml
+ENTITY_ANALYSIS_PROTOCOL:
+  step_1_purpose: "What does this entity DO?"
+    - API service → function-api-gateway
+    - Security plugin → function-security  
+    - Auth plugin → function-authentication
+    - Route → function-routing
+    
+  step_2_classification: "What type is this?"
+    - External API → type-external-api
+    - Internal service → type-internal-api
+    - Middleware → type-middleware
+    
+  step_3_criticality: "How important is this?"
+    - Security/Auth → criticality-high
+    - Business logic → criticality-medium
+    - Utilities → criticality-low
+    
+  step_4_access: "Who can access?"
+    - Public internet → access-public
+    - Internal only → access-private
+    
+  step_5_protocol: "What protocol?"
+    - HTTP service → protocol-http
+    - GRPC service → protocol-grpc
+
+VALIDATION: If you cannot answer all 5 questions, the entity is NOT ready for deployment.
+```
 
 ### Service Creation Pattern:
 ```yaml
@@ -53,7 +298,16 @@ parameters:
   host: "upstream-host"
   port: 3000
   protocol: "http"
-  tags: ["env-production", "domain-devops", "team-platform"]  # MANDATORY
+  tags: [
+    "env-production",        # MANDATORY
+    "domain-devops",         # MANDATORY - EXTRACTED
+    "team-platform",         # MANDATORY
+    "function-api-gateway",  # CONTEXTUAL - What does this service do?
+    "type-external-api",     # CONTEXTUAL - External facing API
+    "criticality-medium",    # CONTEXTUAL - Business importance
+    "access-public",         # CONTEXTUAL - Public accessibility
+    "protocol-http"          # CONTEXTUAL - HTTP protocol
+  ]  # TOTAL: 8 tags (3 mandatory + 5 contextual)
 ```
 
 ### Route Creation Pattern:
@@ -65,7 +319,14 @@ parameters:
   name: "route-name"
   paths: ["/api"]
   methods: ["GET", "POST"]
-  tags: ["env-production", "domain-devops", "team-platform"]  # MANDATORY
+  tags: [
+    "env-production",        # MANDATORY
+    "domain-devops",         # MANDATORY - EXTRACTED
+    "team-platform",         # MANDATORY
+    "function-routing",      # CONTEXTUAL - Routes traffic
+    "type-external-api",     # CONTEXTUAL - External access
+    "access-public"          # CONTEXTUAL - Public route
+  ]  # TOTAL: 6 tags (3 mandatory + 3 contextual)
 ```
 
 ### Plugin Creation Pattern:
@@ -77,7 +338,13 @@ parameters:
   serviceId: "uuid"  # or routeId for route-specific
   enabled: true
   config: {"minute": 100}
-  tags: ["env-production", "domain-devops", "team-platform"]  # MANDATORY
+  tags: [
+    "env-production",        # MANDATORY
+    "domain-devops",         # MANDATORY - EXTRACTED
+    "team-platform",         # MANDATORY
+    "function-security",     # CONTEXTUAL - Security plugin
+    "criticality-high"       # CONTEXTUAL - Security is high priority
+  ]  # TOTAL: 5 tags (3 mandatory + 2 contextual)
 ```
 
 ### Consumer Creation Pattern:
@@ -86,12 +353,22 @@ tool: mcp__kong-konnect__create_consumer
 parameters:
   controlPlaneId: "uuid"
   username: "consumer-name"
-  tags: ["env-production", "domain-devops", "team-platform"]  # MANDATORY
+  tags: [
+    "env-production",        # MANDATORY
+    "domain-devops",         # MANDATORY - EXTRACTED
+    "team-platform",         # MANDATORY
+    "function-authentication", # CONTEXTUAL - Auth consumer
+    "access-external"        # CONTEXTUAL - External consumer
+  ]  # TOTAL: 5 tags (3 mandatory + 2 contextual)
 ```
 
-## 📋 SIMPLE DECK MIGRATION WORKFLOW
+## 📋 ENHANCED DECK MIGRATION WORKFLOW WITH COMPLETE TAGGING
 
-### ⚡ 4-Step Migration Process (MANDATORY ORDER)
+### ⚡ 5-Step Migration Process (MANDATORY ORDER)
+
+#### 🚨 CRITICAL: Entity Analysis Step Added
+
+Every entity now requires **CONTEXTUAL ANALYSIS** before deployment. No entity can be deployed with only mandatory tags.
 
 #### STEP 1: Domain Extraction & Validation
 ```yaml
@@ -113,33 +390,81 @@ FIND_CONTROL_PLANE:
   capture: "controlPlaneId for all subsequent operations"
 ```
 
-#### STEP 3: Tagged Entity Creation (MANDATORY TAGGING)
+#### STEP 3: Entity Analysis & Contextual Tagging (MANDATORY)
 ```yaml
-CREATE_ENTITIES_WITH_TAGS:
-  services:
-    tool: mcp__kong-konnect__create_service
-    mandatory_tags: ["env-production", "domain-{extracted}", "team-platform"]
+ENTITY_ANALYSIS_AND_TAGGING:
+  FOR_EACH_ENTITY:
+    step_1_analyze:
+      - "What function does this serve?" → function-{purpose}
+      - "What type is this?" → type-{classification}
+      - "How critical?" → criticality-{level}
+      - "Access scope?" → access-{scope} 
+      - "Protocol?" → protocol-{type}
     
-  routes:  
-    tool: mcp__kong-konnect__create_route
-    mandatory_tags: ["env-production", "domain-{extracted}", "team-platform"]
-    
-  consumers:
-    tool: mcp__kong-konnect__create_consumer  
-    mandatory_tags: ["env-production", "domain-{extracted}", "team-platform"]
-    
-  plugins:
-    tool: mcp__kong-konnect__create_plugin
-    mandatory_tags: ["env-production", "domain-{extracted}", "team-platform"]
+    step_2_validate:
+      if_cannot_answer_analysis: BLOCK_DEPLOYMENT()
+      if_total_tags_less_than_5: HALT_AND_COMPLETE_ANALYSIS()
+      
+    step_3_create:
+      services:
+        tool: mcp__kong-konnect__create_service
+        complete_tags: [
+          "env-production", "domain-{extracted}", "team-platform",  # Mandatory
+          "function-{analyzed}", "type-{analyzed}", "criticality-{analyzed}", "access-{analyzed}", "protocol-{analyzed}"  # Contextual
+        ]
+        
+      routes:
+        tool: mcp__kong-konnect__create_route
+        complete_tags: [
+          "env-production", "domain-{extracted}", "team-platform",  # Mandatory
+          "function-routing", "type-{analyzed}", "access-{analyzed}"  # Contextual
+        ]
+        
+      plugins:
+        tool: mcp__kong-konnect__create_plugin
+        complete_tags: [
+          "env-production", "domain-{extracted}", "team-platform",  # Mandatory
+          "function-{plugin-type}", "criticality-high"  # Contextual (security plugins = high criticality)
+        ]
+        
+      consumers:
+        tool: mcp__kong-konnect__create_consumer
+        complete_tags: [
+          "env-production", "domain-{extracted}", "team-platform",  # Mandatory
+          "function-authentication", "access-{analyzed}"  # Contextual
+        ]
 ```
 
-#### STEP 4: Validation & Confirmation
+#### STEP 4: Complete Tag Validation (BLOCKING)
+```yaml
+TAG_COMPLETION_VALIDATION:
+  for_each_deployed_entity:
+    verify_mandatory_count: 3
+    verify_contextual_count: ≥2
+    verify_total_count: ≥5
+    
+  blocking_conditions:
+    if_any_entity_incomplete: ROLLBACK_DEPLOYMENT()
+    if_missing_function_tags: FORCE_ANALYSIS()
+    if_cannot_explain_entity_purpose: BLOCK_COMPLETION()
+```
+
+#### STEP 5: Comprehensive Validation & Confirmation
 ```yaml
 POST_DEPLOYMENT_CHECK:
   verify_all_entities_created: true
-  verify_all_entities_tagged: true
+  verify_all_entities_have_complete_tagging: true
+  verify_contextual_analysis_applied: true
   confirm_domain_tag_applied: "domain-{extracted}"
-  report_success: "Migration complete with full tagging compliance"
+  confirm_minimum_tag_count: 5_per_entity
+  confirm_function_tags_present: true
+  confirm_type_classification_present: true
+  report_success: "Migration complete with FULL production-ready tagging compliance"
+  
+  FINAL_VALIDATION:
+    total_entities_with_complete_tags: count
+    production_readiness_score: "100% - All entities fully classified"
+    operational_intelligence_ready: true
 ```
 
 ### 🔧 Deck Migration Example - devops domain
@@ -199,7 +524,9 @@ common_mcp_tools:
 
 #### 📨 EXPLICIT MCP TOOL CALLS WITH DOMAIN TAGGING
 
-### ✅ CORRECT Tool Usage with devops Domain:
+### ✅ CORRECT Tool Usage with devops Domain (COMPLETE TAGGING):
+
+**CRITICAL**: Every entity now includes CONTEXTUAL ANALYSIS results:
 
 ```yaml
 # User says: "migrate deck for devops domain"
@@ -210,6 +537,14 @@ step_1_list_control_planes:
   result: captures controlPlaneId for all subsequent calls
 
 step_2_create_service:
+  # MANDATORY ANALYSIS FIRST:
+  entity_analysis:
+    function: "API Gateway - serves HTTP API requests" → function-api-gateway
+    type: "External-facing API service" → type-external-api
+    criticality: "Demo but functional" → criticality-medium
+    access: "Public HTTP access" → access-public
+    protocol: "HTTP protocol" → protocol-http
+    
   tool: mcp__kong-konnect__create_service
   parameters:
     controlPlaneId: "1379aab0-2351-4e68-bff9-64e091173c82" 
@@ -217,9 +552,18 @@ step_2_create_service:
     host: "192.168.178.10"
     port: 3000
     protocol: "http"
-    tags: ["env-production", "domain-devops", "team-platform"]  # EXTRACTED devops
+    tags: [
+      "env-production", "domain-devops", "team-platform",  # MANDATORY (3)
+      "function-api-gateway", "type-external-api", "criticality-medium", "access-public", "protocol-http"  # CONTEXTUAL (5)
+    ]  # TOTAL: 8 tags
 
 step_3_create_route:
+  # MANDATORY ANALYSIS FIRST:
+  entity_analysis:
+    function: "Routes API traffic to service" → function-routing
+    type: "External API route" → type-external-api
+    access: "Public web access" → access-public
+    
   tool: mcp__kong-konnect__create_route
   parameters:
     controlPlaneId: "1379aab0-2351-4e68-bff9-64e091173c82"
@@ -227,9 +571,17 @@ step_3_create_route:
     name: "Simple-API-Route"
     paths: ["/"]
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
-    tags: ["env-production", "domain-devops", "team-platform"]  # EXTRACTED devops
+    tags: [
+      "env-production", "domain-devops", "team-platform",  # MANDATORY (3)
+      "function-routing", "type-external-api", "access-public"  # CONTEXTUAL (3)
+    ]  # TOTAL: 6 tags
 
 step_4_create_plugin:
+  # MANDATORY ANALYSIS FIRST:
+  entity_analysis:
+    function: "Security - controls request rate" → function-security
+    criticality: "Security is high priority" → criticality-high
+    
   tool: mcp__kong-konnect__create_plugin
   parameters:
     controlPlaneId: "1379aab0-2351-4e68-bff9-64e091173c82"
@@ -237,14 +589,41 @@ step_4_create_plugin:
     serviceId: "5c93797e-c35b-4256-87db-db82e0d9796e"
     enabled: true
     config: {"minute": 10}
-    tags: ["env-production", "domain-devops", "team-platform"]  # EXTRACTED devops
+    tags: [
+      "env-production", "domain-devops", "team-platform",  # MANDATORY (3)
+      "function-security", "criticality-high"  # CONTEXTUAL (2)
+    ]  # TOTAL: 5 tags
 
 step_5_create_consumer:
+  # MANDATORY ANALYSIS FIRST:
+  entity_analysis:
+    function: "Authentication consumer" → function-authentication
+    access: "External API consumer" → access-external
+    
   tool: mcp__kong-konnect__create_consumer
   parameters:
     controlPlaneId: "1379aab0-2351-4e68-bff9-64e091173c82"
     username: "demo_user"
-    tags: ["env-production", "domain-devops", "team-platform"]  # EXTRACTED devops
+    tags: [
+      "env-production", "domain-devops", "team-platform",  # MANDATORY (3)
+      "function-authentication", "access-external"  # CONTEXTUAL (2)
+    ]  # TOTAL: 5 tags
+
+step_6_create_key_auth_plugin:
+  # MANDATORY ANALYSIS FIRST:
+  entity_analysis:
+    function: "Authentication - validates API keys" → function-authentication
+    criticality: "Authentication is high priority" → criticality-high
+    
+  tool: mcp__kong-konnect__create_plugin
+  parameters:
+    controlPlaneId: "1379aab0-2351-4e68-bff9-64e091173c82"
+    name: "key-auth"
+    enabled: false
+    tags: [
+      "env-production", "domain-devops", "team-platform",  # MANDATORY (3)
+      "function-authentication", "criticality-high"  # CONTEXTUAL (2)
+    ]  # TOTAL: 5 tags
 ```
 
 ### ❌ WRONG - What NOT to do:
