@@ -72,6 +72,9 @@ export const fetchApiDocumentParameters = () => z.object({
 // =========================
 
 export const listApplicationsParameters = () => z.object({
+  portalId: z.string()
+    .min(1)
+    .describe("Portal ID (obtainable from list-portals tool)"),
   pageSize: z.number().int()
     .min(1).max(100)
     .default(10)

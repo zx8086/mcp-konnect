@@ -4,6 +4,7 @@ import {
   TimeRange, 
   ApiRequestsResponse 
 } from "../types.js";
+import { PortalApi, PortalApiOptions } from "./portal-api.js";
 
 /**
  * Kong API Regions - Different geographical API endpoints 
@@ -24,11 +25,12 @@ export interface KongApiOptions {
 export class KongApi {
   private baseUrl: string;
   private apiKey: string;
+  private apiRegion: string;
 
   constructor(options: KongApiOptions = {}) {
     // Default to US region if not specified
-    const apiRegion = options.apiRegion || process.env.KONNECT_REGION || API_REGIONS.US;
-    this.baseUrl = `https://${apiRegion}.api.konghq.com/v2`;
+    this.apiRegion = options.apiRegion || process.env.KONNECT_REGION || API_REGIONS.US;
+    this.baseUrl = `https://${this.apiRegion}.api.konghq.com/v2`;
     this.apiKey = options.apiKey || process.env.KONNECT_ACCESS_TOKEN || "";
 
     if (!this.apiKey) {
@@ -180,11 +182,11 @@ export class KongApi {
 
   // Data Plane Token Management
   async createDataPlaneToken(controlPlaneId: string, tokenData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/dp-tokens`, "POST", tokenData);
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/tokens`, "POST", tokenData);
   }
 
   async listDataPlaneTokens(controlPlaneId: string, pageSize = 10, pageNumber?: number): Promise<any> {
-    let endpoint = `/control-planes/${controlPlaneId}/dp-tokens?page[size]=${pageSize}`;
+    let endpoint = `/control-planes/${controlPlaneId}/tokens?page[size]=${pageSize}`;
     
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
     
@@ -192,7 +194,7 @@ export class KongApi {
   }
 
   async revokeDataPlaneToken(controlPlaneId: string, tokenId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/dp-tokens/${tokenId}`, "DELETE");
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/tokens/${tokenId}`, "DELETE");
   }
 
   // Control Plane Configuration
@@ -271,6 +273,18 @@ export class KongApi {
 
   async createConsumer(controlPlaneId: string, consumerData: any): Promise<any> {
     return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers`, "POST", consumerData);
+  }
+
+  async getConsumer(controlPlaneId: string, consumerId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`);
+  }
+
+  async updateConsumer(controlPlaneId: string, consumerId: string, consumerData: any): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`, "PUT", consumerData);
+  }
+
+  async deleteConsumer(controlPlaneId: string, consumerId: string): Promise<any> {
+    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`, "DELETE");
   }
 
   async listPlugins(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
@@ -462,7 +476,7 @@ export class KongApi {
 
   // Application Management
   async listPortalApplications(pageSize = 10, pageNumber?: number, filterName?: string, filterAuthStrategy?: string): Promise<any> {
-    let endpoint = `/portal/applications?page[size]=${pageSize}`;
+    let endpoint = `/api/v3/applications?page[size]=${pageSize}`;
     
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
     if (filterName) endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
@@ -472,24 +486,24 @@ export class KongApi {
   }
 
   async createPortalApplication(applicationData: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications`, "POST", applicationData);
+    return this.kongRequest<any>(`/api/v3/applications`, "POST", applicationData);
   }
 
   async getPortalApplication(applicationId: string): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}`);
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}`);
   }
 
   async updatePortalApplication(applicationId: string, applicationData: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}`, "PATCH", applicationData);
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}`, "PATCH", applicationData);
   }
 
   async deletePortalApplication(applicationId: string): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}`, "DELETE");
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}`, "DELETE");
   }
 
   // Application Registrations
   async listPortalApplicationRegistrations(applicationId: string, pageSize = 10, pageNumber?: number, filterStatus?: string, filterApiName?: string): Promise<any> {
-    let endpoint = `/portal/applications/${applicationId}/registrations?page[size]=${pageSize}`;
+    let endpoint = `/api/v3/applications/${applicationId}/registrations?page[size]=${pageSize}`;
     
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
     if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
@@ -499,20 +513,20 @@ export class KongApi {
   }
 
   async createPortalApplicationRegistration(applicationId: string, registrationData: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/registrations`, "POST", registrationData);
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/registrations`, "POST", registrationData);
   }
 
   async getPortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/registrations/${registrationId}`);
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/registrations/${registrationId}`);
   }
 
   async deletePortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/registrations/${registrationId}`, "DELETE");
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/registrations/${registrationId}`, "DELETE");
   }
 
   // Credential Management
   async listPortalCredentials(applicationId: string, pageSize = 10, pageNumber?: number): Promise<any> {
-    let endpoint = `/portal/applications/${applicationId}/credentials?page[size]=${pageSize}`;
+    let endpoint = `/api/v3/applications/${applicationId}/credentials?page[size]=${pageSize}`;
     
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
     
@@ -520,41 +534,41 @@ export class KongApi {
   }
 
   async createPortalCredential(applicationId: string, credentialData: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/credentials`, "POST", credentialData);
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/credentials`, "POST", credentialData);
   }
 
   async updatePortalCredential(applicationId: string, credentialId: string, credentialData: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/credentials/${credentialId}`, "PATCH", credentialData);
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/credentials/${credentialId}`, "PATCH", credentialData);
   }
 
   async deletePortalCredential(applicationId: string, credentialId: string): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/credentials/${credentialId}`, "DELETE");
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/credentials/${credentialId}`, "DELETE");
   }
 
   async regeneratePortalApplicationSecret(applicationId: string): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/regenerate-secret`, "POST");
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/regenerate-secret`, "POST");
   }
 
   // Developer Authentication
   async registerPortalDeveloper(developerData: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/register`, "POST", developerData);
+    return this.kongRequest<any>(`/api/v3/register`, "POST", developerData);
   }
 
   async authenticatePortalDeveloper(credentials: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/authenticate`, "POST", credentials);
+    return this.kongRequest<any>(`/api/v3/authenticate`, "POST", credentials);
   }
 
   async getPortalDeveloperMe(): Promise<any> {
-    return this.kongRequest<any>(`/portal/me`);
+    return this.kongRequest<any>(`/api/v3/me`);
   }
 
   async logoutPortalDeveloper(): Promise<any> {
-    return this.kongRequest<any>(`/portal/logout`, "POST");
+    return this.kongRequest<any>(`/api/v3/logout`, "POST");
   }
 
   // Application Analytics
   async queryPortalApplicationAnalytics(applicationId: string, analyticsQuery: any): Promise<any> {
-    return this.kongRequest<any>(`/portal/applications/${applicationId}/analytics`, "POST", analyticsQuery);
+    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/analytics`, "POST", analyticsQuery);
   }
 
   // Portal Management Methods
@@ -594,4 +608,91 @@ export class KongApi {
   async unpublishPortalProduct(portalId: string, productId: string): Promise<any> {
     return this.kongRequest<any>(`/portals/${portalId}/products/${productId}`, "DELETE");
   }
+
+  // =========================
+  // Portal API Client Factory
+  // =========================
+
+  /**
+   * Create a Portal API client for portal-specific operations
+   * This handles operations that require the portal domain rather than management API
+   */
+  async createPortalClient(portalId: string, options?: Partial<PortalApiOptions>): Promise<PortalApi> {
+    // Fetch portal info to get the correct domain
+    const portalInfo = await this.getPortal(portalId);
+    
+    const portalOptions: PortalApiOptions = {
+      apiKey: options?.apiKey || this.apiKey,
+      apiRegion: options?.apiRegion || this.apiRegion,
+      portalDomain: portalInfo.default_domain
+    };
+    
+    return new PortalApi(portalId, portalOptions);
+  }
+
+  // Legacy synchronous method for backward compatibility
+  createPortalClientSync(portalId: string, options?: Partial<PortalApiOptions>): PortalApi {
+    const portalOptions: PortalApiOptions = {
+      apiKey: options?.apiKey || this.apiKey,
+      apiRegion: options?.apiRegion || this.apiRegion
+    };
+    
+    return new PortalApi(portalId, portalOptions);
+  }
+
+  // =========================
+  // Portal Application Methods (Delegated to PortalApi)
+  // =========================
+
+  /**
+   * @deprecated Use createPortalClient(portalId).listApplications() instead
+   * This method requires a portalId to work properly
+   */
+  async listPortalApplications(pageSize = 10, pageNumber?: number, filterName?: string, filterAuthStrategy?: string): Promise<any> {
+    throw new Error(
+      "listPortalApplications requires a portal context. Use createPortalClient(portalId).listApplications() instead.\n" +
+      "Example:\n" +
+      "  const portalClient = api.createPortalClient(portalId);\n" +
+      "  const apps = await portalClient.listApplications();"
+    );
+  }
+
+  /**
+   * @deprecated Use createPortalClient(portalId).createApplication() instead
+   */
+  async createPortalApplication(applicationData: any): Promise<any> {
+    throw new Error(
+      "createPortalApplication requires a portal context. Use createPortalClient(portalId).createApplication() instead."
+    );
+  }
+
+  /**
+   * @deprecated Use createPortalClient(portalId).getApplication() instead
+   */
+  async getPortalApplication(applicationId: string): Promise<any> {
+    throw new Error(
+      "getPortalApplication requires a portal context. Use createPortalClient(portalId).getApplication() instead."
+    );
+  }
+
+  /**
+   * @deprecated Use createPortalClient(portalId).updateApplication() instead
+   */
+  async updatePortalApplication(applicationId: string, applicationData: any): Promise<any> {
+    throw new Error(
+      "updatePortalApplication requires a portal context. Use createPortalClient(portalId).updateApplication() instead."
+    );
+  }
+
+  /**
+   * @deprecated Use createPortalClient(portalId).deleteApplication() instead
+   */
+  async deletePortalApplication(applicationId: string): Promise<any> {
+    throw new Error(
+      "deletePortalApplication requires a portal context. Use createPortalClient(portalId).deleteApplication() instead."
+    );
+  }
+
+  // Similar deprecation for other portal application methods...
+  // (Registration, Credentials, Developer Auth methods would also be deprecated here)
 }

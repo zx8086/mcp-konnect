@@ -1,0 +1,769 @@
+_format_version: "3.0"
+_info:
+  defaults: {}
+  select_tags:
+  - shared-svc
+_workspace: default
+plugins:
+- name: opentelemetry
+  config:
+    batch_flush_delay: 3
+    batch_span_count: 200
+    connect_timeout: 1000
+    headers: {}
+    read_timeout: 5000
+    resource_attributes:
+      deployment.environment: development
+      service.name: kong-eu_shared_services
+    send_timeout: 5000
+    traces_endpoint: http://collector.dev.shared-services.eu.pvh.cloud:4318/v1/traces
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+- name: correlation-id
+  config:
+    echo_downstream: true
+    generator: uuid#counter
+    header_name: Kong-Request-ID
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+- name: http-log
+  config:
+    content_type: application/json
+    custom_fields_by_lua: {}
+    flush_timeout: 2
+    headers: {}
+    http_endpoint: https://kong_http-logs:{{ssm:///pvh/dev/shared_services/kong_kibana/kong_beta_password}}@eu-b2b.es.vpce.eu-central-1.aws.elastic-cloud.com/logs-kong.dev-eu_shared_services/_doc?pipeline=add-timestamp-kong-http-log
+    keepalive: 60000
+    method: POST
+    queue_size: 1
+    retry_count: 10
+    timeout: 10000
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+- name: jwt
+  config:
+    anonymous: 56456a01-65ec-4415-aec8-49fec6403c9c
+    claims_to_verify:
+    - exp
+    - nbf
+    cookie_names: []
+    header_names:
+    - authorization
+    key_claim_name: key
+    maximum_expiration: 0
+    run_on_preflight: true
+    secret_is_base64: false
+    uri_param_names:
+    - jwt
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  route: prices-api-v2
+  service: prices-api-v2
+- name: jwt
+  config:
+    anonymous: 56456a01-65ec-4415-aec8-49fec6403c9c
+    claims_to_verify:
+    - exp
+    - nbf
+    cookie_names: []
+    header_names:
+    - authorization
+    key_claim_name: key
+    maximum_expiration: 0
+    run_on_preflight: true
+    secret_is_base64: false
+    uri_param_names:
+    - jwt
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  route: prices-producer-v2
+  service: prices-producer-v2
+- name: mocking
+  config:
+    api_specification: |-
+      openapi: 3.0.2
+      info:
+        title: Test subscriber
+        description: Test subscriber
+        version: '0.1'
+      host: gateway.dev.shared-services.eu.pvh.cloud
+      basePath: /
+      schemes:
+        - http
+        - https
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      paths:
+        /test/notifications:
+          get:
+            summary: Send notifications
+            requestBody:
+              description: 'notification body'
+              required: true
+            responses:
+              '200':
+                description: Notification received by consumer
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        response:
+                          type: string
+                      required:
+                        - response
+                    examples:
+                        body:
+                          summary: Notification example
+                          value:
+                            response: ok
+    max_delay_time: 1
+    min_delay_time: 0.001
+    random_delay: false
+    random_examples: false
+    random_status_code: false
+  enabled: false
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  route: notifications-mock
+  service: notifications
+- name: proxy-cache
+  config:
+    cache_control: false
+    cache_ttl: 120
+    content_type:
+    - text/plain
+    - application/json
+    memory:
+      dictionary_name: kong_db_cache
+    request_method:
+    - GET
+    - HEAD
+    response_code:
+    - 200
+    - 301
+    - 404
+    strategy: memory
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  route: notifications
+  service: notifications
+- name: session
+  config:
+    cookie_name: session
+    cookie_path: /
+    cookie_secure: true
+    logout_methods:
+    - POST
+    - DELETE
+    logout_post_arg: session_logout
+    logout_query_arg: session_logout
+    secret: W8zORZCioqaq08VdoyW40ldpQ8lnWciCe7wkYsNLNgom
+    storage: cookie
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+- name: proxy-cache
+  config:
+    cache_control: false
+    cache_ttl: 120
+    content_type:
+    - text/plain
+    - application/json
+    memory:
+      dictionary_name: kong_db_cache
+    request_method:
+    - GET
+    - HEAD
+    response_code:
+    - 200
+    - 301
+    - 404
+    strategy: memory
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  route: sap-car-odata
+  service: sap-car-odata
+- name: request-transformer
+  config:
+    add:
+      body: []
+      headers:
+      - "Authorization: Basic {{ssm:///pvh/kong/sap-car/basic-auth}}"
+      querystring: []
+    append:
+      body: []
+      headers: []
+      querystring: []
+    http_method: null
+    remove:
+      body: []
+      headers:
+      - Authorization
+      querystring: []
+    rename:
+      body: []
+      headers: []
+      querystring: []
+    replace:
+      body: []
+      headers: []
+      querystring: []
+      uri: null
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  service: sap-car-odata
+- name: proxy-cache
+  config:
+    cache_control: false
+    cache_ttl: 120
+    content_type:
+    - text/plain
+    - application/json
+    memory:
+      dictionary_name: kong_db_cache
+    request_method:
+    - GET
+    - HEAD
+    response_code:
+    - 200
+    - 301
+    - 404
+    strategy: memory
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  route: sap-gw
+  service: sap-gw
+- name: request-transformer
+  config:
+    add:
+      body: []
+      headers:
+      - "Authorization: Basic {{ssm:///pvh/kong/sap-gw/basic-auth}}"
+      querystring: []
+    append:
+      body: []
+      headers: []
+      querystring: []
+    http_method: null
+    remove:
+      body: []
+      headers:
+      - Authorization
+      querystring: []
+    rename:
+      body: []
+      headers: []
+      querystring: []
+    replace:
+      body: []
+      headers: []
+      querystring: []
+      uri: null
+  enabled: true
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
+  service: sap-gw
+routes:
+- name: test-mock
+  https_redirect_status_code: 426
+  path_handling: v0
+  paths:
+  - /test/mock
+  plugins:
+  - config:
+      api_specification: |
+        swagger: '2.0'
+        host: gateway.dev.shared-services.eu.pvh.cloud
+        info:
+          version: v1
+          title: Mocking
+        paths:
+          /test/mock:
+            get:
+              tags:
+                - Token
+              responses:
+                '200':
+                  description: Success
+            post:
+              tags:
+                - Token
+              responses:
+                '200':
+                  description: Success
+        definitions: {}
+      api_specification_filename: null
+      included_status_codes: null
+      max_delay_time: 1
+      min_delay_time: 0.001
+      random_delay: false
+      random_examples: false
+      random_status_code: false
+    enabled: true
+    name: mocking
+    protocols:
+    - grpc
+    - grpcs
+    - http
+    - https
+  preserve_host: false
+  protocols:
+  - http
+  - https
+  regex_priority: 0
+  request_buffering: true
+  response_buffering: true
+  strip_path: true
+services:
+- name: customer-assignments
+  connect_timeout: 60000
+  enabled: true
+  host: customer-assignments.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: customer-assignments
+    path_handling: v0
+    paths:
+    - /customer-assignments
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+    tags:
+    - shared-svc
+  write_timeout: 60000
+  plugins:
+    - config:
+        anonymous: 56456a01-65ec-4415-aec8-49fec6403c9c
+        claims_to_verify:
+          - exp
+          - nbf
+        cookie_names: [ ]
+        header_names:
+          - authorization
+        key_claim_name: key
+        maximum_expiration: 0
+        run_on_preflight: true
+        secret_is_base64: false
+        uri_param_names:
+          - jwt
+      enabled: true
+      name: jwt
+      protocols:
+        - grpc
+        - grpcs
+        - http
+        - https
+- name: authentication
+  connect_timeout: 60000
+  enabled: true
+  host: authentication.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: authentication
+    path_handling: v1
+    paths:
+    - /tokens
+    plugins:
+    - config:
+        hide_credentials: true
+        key_in_body: false
+        key_in_header: true
+        key_in_query: true
+        key_names:
+        - apikey
+        run_on_preflight: true
+      enabled: true
+      name: key-auth
+      protocols:
+      - grpc
+      - grpcs
+      - http
+      - https
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  write_timeout: 60000
+- name: corrected-delivery-dates
+  connect_timeout: 60000
+  enabled: true
+  host: corrected-delivery-dates.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: corrected-delivery-dates
+    path_handling: v1
+    paths:
+    - /v3/deliveryDates
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+- name: images
+  connect_timeout: 60000
+  enabled: true
+  host: images.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: images
+    path_handling: v1
+    paths:
+    - /images
+    plugins:
+    - config:
+        anonymous: 56456a01-65ec-4415-aec8-49fec6403c9c
+        claims_to_verify:
+        - exp
+        - nbf
+        cookie_names: []
+        header_names:
+        - authorization
+        key_claim_name: key
+        maximum_expiration: 0
+        run_on_preflight: true
+        secret_is_base64: false
+        uri_param_names:
+        - jwt
+      enabled: true
+      name: jwt
+      protocols:
+      - grpc
+      - grpcs
+      - http
+      - https
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  write_timeout: 60000
+- name: notifications
+  connect_timeout: 60000
+  enabled: true
+  host: notifications-service.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: notifications
+    path_handling: v1
+    paths:
+    - /v1/notifications
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: notifications-health-swagger
+    path_handling: v1
+    paths:
+    - /notifications-service
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+  - https_redirect_status_code: 426
+    name: notifications-mock
+    path_handling: v1
+    paths:
+    - /test/notifications
+    plugins:
+    - config:
+        credentials: false
+        exposed_headers: []
+        headers: []
+        methods:
+        - GET
+        - HEAD
+        - PUT
+        - PATCH
+        - POST
+        - DELETE
+        - OPTIONS
+        - TRACE
+        - CONNECT
+        origins:
+        - '*'
+        preflight_continue: false
+      enabled: true
+      name: cors
+      protocols:
+      - grpc
+      - grpcs
+      - http
+      - https
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+  write_timeout: 60000
+- name: prices-api-v2
+  connect_timeout: 60000
+  enabled: true
+  host: prices-api-v2.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: prices-api-v2
+    path_handling: v1
+    paths:
+    - /prices-api-v2
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+  write_timeout: 60000
+- name: prices-producer-v2
+  connect_timeout: 60000
+  enabled: true
+  host: prices-producer-v2.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: prices-producer-v2
+    path_handling: v1
+    paths:
+    - /prices-producer-v2
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+  write_timeout: 60000
+- name: process-api
+  connect_timeout: 60000
+  enabled: true
+  host: process-api.dev.shared-services.eu.pvh.cloud
+  path: /
+  port: 443
+  protocol: https
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: process-api
+    path_handling: v1
+    paths:
+    - /process-api
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+  write_timeout: 60000
+- name: sapcar-price
+  connect_timeout: 60000
+  enabled: true
+  host: 10.80.134.204
+  path: /PVH/ODF/ArticlePrice/ArticlePrice.xsodata
+  port: 8000
+  protocol: http
+  read_timeout: 60000
+  retries: 5
+  routes:
+  - hosts:
+    - gateway.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: sapcar-price
+    path_handling: v1
+    paths:
+    - /v1/Price
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: true
+  write_timeout: 60000
+- name: sap-car-odata
+  connect_timeout: 90000
+  enabled: true
+  host: pvhdcdpr.pvhcorp.com
+  path: /
+  port: 8000
+  protocol: http
+  read_timeout: 90000
+  retries: 5
+  routes:
+  - hosts:
+    - sap-car.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: sap-car-odata
+    path_handling: v0
+    paths:
+    - /PVH/ODF/ArticlePrice/v3/service.xsodata/ArticlePrice/
+    - /PVH/OAA/ATP_SNP_ARTICLE_ID_RCAT.xsodata/ATP/
+    - /PVH/ODF/DynamicAssortment/AssortmentArticles.xsodata/Articles/
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  write_timeout: 60000
+- name: sap-gw
+  connect_timeout: 90000
+  enabled: true
+  host: pvhgwp01.pvhcorp.com
+  path: /
+  port: 80
+  protocol: http
+  read_timeout: 90000
+  retries: 5
+  routes:
+  - hosts:
+    - sap-gw.dev.shared-services.eu.pvh.cloud
+    https_redirect_status_code: 426
+    name: sap-gw
+    path_handling: v0
+    paths:
+    - /PVH/ODF/ArticlePrice/v3/service.xsodata/ArticlePrice/
+    - /PVH/OAA/ATP_SNP_ARTICLE_ID_RCAT.xsodata/ATP/
+    - /PVH/ODF/DynamicAssortment/AssortmentArticles.xsodata/Articles/
+    preserve_host: false
+    protocols:
+    - http
+    - https
+    regex_priority: 0
+    request_buffering: true
+    response_buffering: true
+    strip_path: false
+  write_timeout: 60000

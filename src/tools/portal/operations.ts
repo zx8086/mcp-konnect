@@ -192,13 +192,15 @@ export async function fetchApiDocument(
  */
 export async function listApplications(
   api: KongApi,
+  portalId: string,
   pageSize = 10,
   pageNumber?: number,
   filterName?: string,
   filterAuthStrategy?: string
 ) {
   try {
-    const result = await api.listPortalApplications(pageSize, pageNumber, filterName, filterAuthStrategy);
+    const portalClient = api.createPortalClient(portalId);
+    const result = await portalClient.listApplications(pageSize, pageNumber, filterName, filterAuthStrategy);
 
     return {
       metadata: {

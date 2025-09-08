@@ -153,10 +153,7 @@ export const createRouteParameters = () => z.object({
     .describe("Priority for regex-based routes"),
   tags: z.array(z.string())
     .optional()
-    .describe("Optional list of tags to associate with the route"),
-  enabled: z.boolean()
-    .default(true)
-    .describe("Whether the route is enabled")
+    .describe("Optional list of tags to associate with the route")
 });
 
 export const getRouteParameters = () => z.object({

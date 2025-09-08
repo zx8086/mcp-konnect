@@ -427,8 +427,7 @@ class KongKonnectMcpServer extends McpServer {
                     stripPath: args.stripPath,
                     preserveHost: args.preserveHost,
                     regexPriority: args.regexPriority,
-                    tags: args.tags,
-                    enabled: args.enabled
+                    tags: args.tags
                   }
                 );
                 break;
@@ -622,6 +621,7 @@ class KongKonnectMcpServer extends McpServer {
               case "list_portal_applications":
                 result = await portalOps.listApplications(
                   this.api,
+                  args.portalId,
                   args.pageSize,
                   args.pageNumber,
                   args.filterName,

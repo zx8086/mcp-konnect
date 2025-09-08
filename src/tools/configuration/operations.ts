@@ -331,7 +331,6 @@ export async function createRoute(
     preserveHost?: boolean;
     regexPriority?: number;
     tags?: string[];
-    enabled?: boolean;
   }
 ) {
   try {
@@ -339,8 +338,7 @@ export async function createRoute(
       protocols: routeData.protocols || ["http", "https"],
       strip_path: routeData.stripPath ?? true,
       preserve_host: routeData.preserveHost ?? false,
-      regex_priority: routeData.regexPriority || 0,
-      enabled: routeData.enabled ?? true
+      regex_priority: routeData.regexPriority || 0
     };
 
     if (routeData.name) requestData.name = routeData.name;
@@ -366,7 +364,6 @@ export async function createRoute(
         regexPriority: result.regex_priority,
         serviceId: result.service?.id,
         tags: result.tags,
-        enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
           updatedAt: result.updated_at
