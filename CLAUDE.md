@@ -219,6 +219,75 @@ When removing deck configurations, follow this exact sequence to avoid dependenc
 - ✅ Check for any orphaned entities
 - ✅ Confirm non-deck entities preserved
 
+## Agent MCP Tool Access and Kong Konnect Rules
+
+### 🔧 Agent Direct MCP Tool Access
+ALL specialized agents have DIRECT access to MCP tools and should use them instead of invoking other agents:
+
+```yaml
+AGENT_MCP_ACCESS_RULES:
+  all_agents_have_access: "66+ mcp__kong-konnect__* tools available"
+  preferred_approach: "Use MCP tools directly in agent operations"
+  avoid: "Agent-to-agent invocation when MCP tools sufficient"
+  
+AGENT_EFFICIENCY:
+  direct_mcp_usage: "Faster execution, clearer troubleshooting"
+  agent_invocation: "Only when complex orchestration needed"
+```
+
+### 🏷️ Kong Konnect Mandatory Tagging Rules
+
+When working with Kong configurations, **ALL entities MUST be tagged**:
+
+```yaml
+MANDATORY_KONG_TAGS:
+  required_tags: ["env-{environment}", "domain-{domain-name}", "team-{team}"]
+  extraction_priority: "ALWAYS extract domain from user context first"
+  format_requirement: "lowercase-with-hyphens"
+  validation: "BLOCK deployment if any mandatory tag missing"
+
+DOMAIN_EXTRACTION_PATTERNS:
+  user_phrases:
+    - "for the devops domain" → domain=devops
+    - "migrate to api domain" → domain=api
+    - "using finance domain" → domain=finance
+  fallback_action: "STOP and ask user to specify domain"
+```
+
+### ✅ Kong Agent Usage Examples
+
+**CORRECT Kong Konnect Engineer usage:**
+```yaml
+# User: "migrate deck config for devops domain"
+agent_should_do:
+  1. extract_domain: "devops" 
+  2. use_mcp_tools: "mcp__kong-konnect__create_service"
+  3. apply_tags: ["env-production", "domain-devops", "team-platform"]
+  4. validate_deployment: "all entities properly tagged"
+```
+
+**INCORRECT approach:**
+```yaml
+agent_should_NOT_do:
+  1. invoke_task_tool: "Task with subagent_type"
+  2. skip_domain_extraction: "ignore domain from user request"
+  3. deploy_without_tags: "create entities without mandatory tags"
+  4. use_placeholders: "domain-{USER_SPECIFIED}" instead of extracted domain
+```
+
+### 🚨 Kong Deployment Validation Gates
+
+Before ANY Kong entity creation, agents must verify:
+
+```yaml
+PRE_DEPLOYMENT_CHECKLIST:
+  ✅ Domain extracted from user request?
+  ✅ Control plane identified with mcp__kong-konnect__list_control_planes?
+  ✅ All entities will include ["env-*", "domain-*", "team-*"] tags?
+  ✅ Using mcp__kong-konnect__* tools directly (not Task tool)?
+  ✅ Tag format follows lowercase-with-hyphens?
+```
+
 ## Documentation Structure
 
 All project documentation is organized in the `docs/` directory:
