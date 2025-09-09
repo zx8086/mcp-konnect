@@ -734,10 +734,37 @@ class KongKonnectMcpServer extends McpServer {
               // Credentials Management Tools
 
               // ===========================
-              // Elicitation Tools - HANDLED BY ENFORCEMENT SYSTEM
+              // Elicitation Tools
               // ===========================
-              // Note: Elicitation tools are now handled by ELICITATION_TOOL_HANDLERS
-              // in the enforcement system to prevent duplicate registrations
+              case "analyze_migration_context":
+                result = await this.elicitationOps.analyzeContext(
+                  args.userMessage,
+                  args.deckFiles,
+                  args.deckConfigs,
+                  args.gitContext
+                );
+                break;
+
+              case "create_elicitation_session":
+                result = await this.elicitationOps.createElicitationSession(
+                  args.analysisResult,
+                  args.context
+                );
+                break;
+
+              case "process_elicitation_response":
+                result = await this.elicitationOps.processElicitationResponse(
+                  args.sessionId,
+                  args.requestId,
+                  args.response
+                );
+                break;
+
+              case "get_session_status":
+                result = await this.elicitationOps.getSessionStatus(
+                  args.sessionId
+                );
+                break;
 
               default:
                 throw new Error(`Unknown tool method: ${tool.method}`);
