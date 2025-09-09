@@ -5,6 +5,9 @@
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { UniversalTracingManager } from "./tracing.js";
 import { getToolByMethod } from "../tools/registry.js";
+import { getOrCreateConversation, trackConversationFlow } from "./conversation-tracker.js";
+import { detectIntent } from "./intent-detector.js";
+import { getCurrentSession } from "./session-manager.js";
 
 interface ToolExecutionContext {
   toolName: string;
@@ -12,10 +15,16 @@ interface ToolExecutionContext {
   parameters: any;
   region?: string;
   timestamp: string;
+  // Enhanced conversation context
+  conversationId?: string;
+  messageCount?: number;
+  userIntent?: string;
+  conversationFlow?: string;
+  sessionId?: string;
 }
 
 /**
- * Create a traced tool handler that wraps the original handler with LangSmith tracing
+ * Create a traced tool handler with enhanced conversation awareness
  */
 export function createTracedToolHandler(
   originalHandler: (args: any, extra: RequestHandlerExtra) => Promise<any>,
@@ -27,34 +36,66 @@ export function createTracedToolHandler(
     const toolInfo = getToolByMethod(toolName);
     const category = toolInfo?.category || 'unknown';
 
+    // Get current session for conversation tracking
+    const session = getCurrentSession();
+    
+    // Enhanced conversation context
+    let conversationContext: any = {};
+    if (session?.sessionId) {
+      const conversation = getOrCreateConversation(session.sessionId, toolName);
+      const intent = detectIntent(toolName, args, conversation.toolSequence);
+      
+      // Track conversation flow before execution
+      trackConversationFlow(toolName, intent.primary);
+      
+      conversationContext = {
+        conversationId: conversation.conversationId,
+        messageCount: conversation.messageCount + 1, // Next message
+        userIntent: intent.primary,
+        conversationFlow: conversation.toolSequence.length > 1 ? 'continuing' : 'new',
+        sessionId: session.sessionId
+      };
+    }
+
     // Extract contextual metadata from arguments
     const metadata = extractToolMetadata(toolName, args);
 
-    // Create execution context
+    // Create enhanced execution context
     const context: ToolExecutionContext = {
       toolName,
       category,
       parameters: sanitizeParameters(args),
       region: process.env.KONNECT_REGION || 'us',
       timestamp: new Date().toISOString(),
+      ...conversationContext,
       ...metadata
     };
 
-    // Execute with tracing
+    // Execute with enhanced tracing
     const { result, traceContext } = await tracingManager.traceToolExecution(
       toolName,
       () => originalHandler(args, extra),
       context
     );
 
-    // Enhance result with trace context if available
+    // Enhance result with comprehensive trace context
     if (traceContext && await tracingManager.isEnabled()) {
       return {
         ...result,
         _trace: {
           runId: traceContext.runId,
           traceUrl: traceContext.traceUrl,
-          sessionId: traceContext.sessionId
+          sessionId: traceContext.sessionId,
+          // Enhanced conversation context in trace
+          conversationId: traceContext.conversationId,
+          conversationFlow: traceContext.conversationFlow,
+          userIntent: traceContext.userIntent,
+          messageCount: conversationContext.messageCount,
+          conversationQuality: traceContext.conversationQuality ? {
+            coherenceScore: traceContext.conversationQuality.coherenceScore,
+            efficiencyScore: traceContext.conversationQuality.efficiencyScore,
+            userExperienceScore: traceContext.conversationQuality.userExperienceScore
+          } : undefined
         }
       };
     }
@@ -164,20 +205,42 @@ function sanitizeParameters(args: any): any {
 }
 
 /**
- * Create a batch tracer for multiple related tool executions
+ * Create a conversation-aware batch tracer for multiple related tool executions
  */
 export class BatchToolTracer {
   private tracingManager: UniversalTracingManager;
   private sessionName: string;
   private session: any = null;
+  private conversationContext?: any;
 
   constructor(tracingManager: UniversalTracingManager, sessionName: string) {
     this.tracingManager = tracingManager;
     this.sessionName = sessionName;
+    
+    // Capture conversation context at batch start
+    const currentSession = getCurrentSession();
+    if (currentSession?.sessionId) {
+      const conversation = getOrCreateConversation(currentSession.sessionId, 'batch');
+      this.conversationContext = {
+        sessionId: currentSession.sessionId,
+        conversationId: conversation.conversationId,
+        batchStartMessageCount: conversation.messageCount
+      };
+    }
   }
 
   async startSession(metadata: Record<string, any> = {}) {
-    this.session = await this.tracingManager.createTracedSession(this.sessionName, metadata);
+    // Enhanced metadata with conversation context
+    const enhancedMetadata = {
+      ...metadata,
+      conversationContext: this.conversationContext,
+      batchType: 'conversation-aware',
+      timestamp: new Date().toISOString()
+    };
+    
+    this.session = await this.tracingManager.createSessionTrace(enhancedMetadata, async () => {
+      return { sessionStarted: true, sessionName: this.sessionName };
+    });
     return this.session;
   }
 
@@ -187,6 +250,12 @@ export class BatchToolTracer {
     batchMetadata: Record<string, any> = {}
   ): Promise<T[]> {
     const results: T[] = [];
+    const session = getCurrentSession();
+    
+    // Track batch as a workflow
+    if (session?.sessionId) {
+      trackConversationFlow(`batch_${toolName}`, 'bulk_operation');
+    }
     
     for (let i = 0; i < operations.length; i++) {
       const operation = operations[i];
@@ -195,7 +264,11 @@ export class BatchToolTracer {
         ...batchMetadata,
         batchIndex: i,
         batchSize: operations.length,
-        sessionName: this.sessionName
+        sessionName: this.sessionName,
+        // Enhanced conversation metadata
+        conversationId: this.conversationContext?.conversationId,
+        batchStartMessageCount: this.conversationContext?.batchStartMessageCount,
+        batchProgressPercent: Math.round((i / operations.length) * 100)
       };
 
       const { result } = await this.tracingManager.traceToolExecution(
@@ -208,6 +281,21 @@ export class BatchToolTracer {
     }
 
     return results;
+  }
+
+  /**
+   * Get batch execution summary with conversation context
+   */
+  getBatchSummary(): {
+    sessionName: string;
+    conversationContext?: any;
+    completedAt: string;
+  } {
+    return {
+      sessionName: this.sessionName,
+      conversationContext: this.conversationContext,
+      completedAt: new Date().toISOString()
+    };
   }
 }
 

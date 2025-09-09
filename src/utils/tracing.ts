@@ -4,7 +4,10 @@
  */
 
 import { loadTracingConfig, validateTracingConfig, initializeEnvironment, getRuntimeInfo, type TracingConfig } from '../config/tracing-config.js';
-import { getCurrentSession, incrementToolCallCount, createNamedConnectionTrace } from './session-manager.js';
+import { getCurrentSession, incrementToolCallCount, createNamedConnectionTrace, updateSessionWithConversation, detectSessionResumption, getSessionConversationSummary } from './session-manager.js';
+import { getOrCreateConversation, updateConversation, createConversationAwareTraceName, trackConversationFlow, getConversationStats, type ConversationInfo } from './conversation-tracker.js';
+import { detectIntent, detectContextTransition, type UserIntent } from './intent-detector.js';
+import { analyzeConversationQuality, generateConversationInsights, type ConversationQuality } from './conversation-metrics.js';
 
 interface TraceMetadata {
   category: string;
@@ -14,6 +17,12 @@ interface TraceMetadata {
   success?: boolean;
   errorType?: string;
   toolVersion?: string;
+  // Enhanced conversation context
+  conversationId?: string;
+  messageCount?: number;
+  conversationFlow?: string;
+  userIntent?: string;
+  topicTransition?: boolean;
   [key: string]: any;
 }
 
@@ -21,6 +30,11 @@ interface TraceContext {
   runId?: string;
   traceUrl?: string;
   sessionId?: string;
+  // Enhanced conversation context
+  conversationId?: string;
+  conversationFlow?: string;
+  userIntent?: string;
+  conversationQuality?: ConversationQuality;
 }
 
 // Import traceable function for the proven pattern
@@ -168,7 +182,7 @@ export class UniversalTracingManager {
   }
 
   /**
-   * Trace a tool execution using the proven traceable pattern
+   * Trace a tool execution with enhanced conversation awareness
    */
   async traceToolExecution<T>(
     toolName: string,
@@ -178,7 +192,7 @@ export class UniversalTracingManager {
     // Ensure initialization is complete
     await this.ensureInitialized();
 
-    // Get current session context for grouping (new from guide)
+    // Get current session context for grouping
     const session = getCurrentSession();
 
     // If tracing is disabled, execute directly (graceful degradation)
@@ -194,19 +208,61 @@ export class UniversalTracingManager {
         return { result };
       }
 
+      // Enhanced conversation tracking
+      let conversation: ConversationInfo | null = null;
+      let conversationAwareTraceName = toolName;
+      let userIntent: UserIntent | undefined;
+      let conversationQuality: ConversationQuality | undefined;
+      let conversationStats: any;
+
+      if (session?.sessionId) {
+        // Get or create conversation context
+        conversation = getOrCreateConversation(session.sessionId, toolName);
+        
+        // Track conversation flow before execution
+        trackConversationFlow(toolName);
+        
+        // Detect user intent
+        userIntent = detectIntent(toolName, metadata, conversation.toolSequence);
+        
+        // Update session with conversation context
+        const primaryTopic = userIntent.primary;
+        updateSessionWithConversation(toolName, userIntent.primary, primaryTopic);
+        
+        // Get conversation statistics for metadata
+        conversationStats = getConversationStats(session.sessionId);
+        
+        // Create conversation-aware trace name
+        conversationAwareTraceName = createConversationAwareTraceName(toolName, conversation);
+        
+        // Detect session resumption
+        const resumption = detectSessionResumption(session.sessionId);
+        if (resumption.isResumption) {
+          console.error('Session resumption detected', {
+            sessionId: session.sessionId.substring(0, 8) + '...',
+            gapDuration: resumption.gapDuration,
+            contextLoss: resumption.contextLoss
+          });
+        }
+      }
+
       // Increment tool call counter for session tracking
       incrementToolCallCount();
 
-      // Create traceable function with dynamic tool name (proven pattern from guide)
+      // Create enhanced traceable function
       const toolTracer = traceable(
         async () => {
           const startTime = Date.now();
           const currentRun = getCurrentRunTree ? getCurrentRunTree() : null;
 
-          console.error("Executing tool with session context", {
+          console.error("Executing tool with enhanced session context", {
             toolName,
+            conversationAwareTraceName,
             project: this.config.project,
             sessionId: session?.sessionId,
+            conversationId: conversation?.conversationId,
+            messageCount: conversation?.messageCount,
+            userIntent: userIntent?.primary,
             clientName: session?.clientInfo?.name,
             hasParentTrace: !!currentRun,
             parentTraceId: currentRun?.id,
@@ -214,36 +270,83 @@ export class UniversalTracingManager {
 
           try {
             const result = await operation();
-
             const executionTime = Date.now() - startTime;
+            const success = true;
 
-            console.error("Tool execution completed", {
+            // Update conversation with execution results
+            if (session?.sessionId && conversation) {
+              const updatedConversation = updateConversation(
+                session.sessionId, 
+                toolName, 
+                executionTime, 
+                success
+              );
+              
+              // Analyze conversation quality
+              const conversationStats = getConversationStats(session.sessionId);
+              if (conversationStats.conversation) {
+                conversationQuality = analyzeConversationQuality(
+                  conversationStats.conversation,
+                  userIntent,
+                  conversationStats.flow
+                );
+              }
+            }
+
+            console.error("Tool execution completed with conversation context", {
               toolName,
+              conversationAwareTraceName,
               project: this.config.project,
               executionTime,
               sessionId: session?.sessionId,
+              conversationId: conversation?.conversationId,
+              messageCount: conversation?.messageCount + 1,
+              userIntent: userIntent?.primary,
+              conversationQuality: conversationQuality ? {
+                coherenceScore: conversationQuality.coherenceScore,
+                efficiencyScore: conversationQuality.efficiencyScore,
+                completeness: conversationQuality.conversationCompleteness
+              } : undefined,
               hasResult: !!result,
             });
 
-            // Return result with trace metadata (as per guide pattern)
+            // Enhanced result with comprehensive trace metadata
             return {
               ...result,
               _trace: {
                 runId: currentRun?.id,
                 executionTime,
                 sessionId: session?.sessionId,
+                conversationId: conversation?.conversationId,
                 clientName: session?.clientInfo?.name,
                 toolName,
-                category: metadata.category || 'kong-konnect'
+                conversationFlow: conversationStats?.flow?.type,
+                userIntent: userIntent?.primary,
+                messageCount: conversation?.messageCount,
+                category: metadata.category || 'kong-konnect',
+                conversationQuality: conversationQuality ? {
+                  coherenceScore: conversationQuality.coherenceScore,
+                  efficiencyScore: conversationQuality.efficiencyScore,
+                  userExperienceScore: conversationQuality.userExperienceScore
+                } : undefined
               },
             };
           } catch (error: any) {
             const executionTime = Date.now() - startTime;
+            const success = false;
             
-            // Log error with context (as per guide)
+            // Update conversation with execution failure
+            if (session?.sessionId && conversation) {
+              updateConversation(session.sessionId, toolName, executionTime, success);
+            }
+            
+            // Log error with enhanced context
             console.error(`Tool execution failed: ${toolName}`, {
+              conversationAwareTraceName,
               executionTime,
               sessionId: session?.sessionId,
+              conversationId: conversation?.conversationId,
+              userIntent: userIntent?.primary,
               error: error instanceof Error ? error.message : String(error),
             });
             
@@ -251,31 +354,59 @@ export class UniversalTracingManager {
           }
         },
         {
-          name: toolName, // Dynamic - uses the actual tool name (CRITICAL)
+          name: conversationAwareTraceName, // Enhanced dynamic name with conversation context
           run_type: "tool",
-          project_name: this.config.project, // Ensure correct project
+          project_name: this.config.project,
           metadata: {
+            // Core tool metadata
             tool_name: toolName,
-            session_id: session?.sessionId, // Session grouping identifier
-            thread_id: session?.sessionId, // Alternative grouping key
-            conversation_id: session?.sessionId, // Alternative grouping key
+            category: metadata.category || 'kong-konnect',
+            toolVersion: '2.1.0', // Updated version with conversation support
+            runtime: 'bun',
+            
+            // Session metadata
+            session_id: session?.sessionId,
             connection_id: session?.connectionId,
             client_name: session?.clientInfo?.name,
             client_version: session?.clientInfo?.version,
             transport_mode: session?.transportMode,
-            category: metadata.category || 'kong-konnect',
-            toolVersion: '2.0.0',
-            runtime: 'bun',
-            ...metadata
+            
+            // Enhanced conversation metadata
+            conversation_id: conversation?.conversationId,
+            message_count: conversation?.messageCount,
+            is_new_conversation: conversation?.isNewConversation,
+            context_switches: conversation?.contextSwitches,
+            topic_count: conversation?.topics?.length || 0,
+            current_topic: conversation?.currentTopic,
+            
+            // Intent and flow metadata
+            user_intent_primary: userIntent?.primary,
+            user_intent_secondary: userIntent?.secondary,
+            intent_confidence: userIntent?.confidence,
+            conversation_flow_type: conversationStats?.flow?.type,
+            conversation_flow_confidence: conversationStats?.flow?.confidence,
+            
+            // Quality metrics
+            conversation_efficiency: conversationStats?.efficiency,
+            conversation_coherence: conversationStats?.coherence,
+            
+            // Session resumption
+            session_resumption: session ? detectSessionResumption(session.sessionId).isResumption : false,
+            
+            ...metadata // Include any additional metadata
           },
           tags: [
             'mcp-server',
             'mcp-tool',
+            'conversation-aware',
             `tool:${toolName}`,
+            `category:${metadata.category || 'unknown'}`,
             session?.clientInfo?.name ? `client:${session.clientInfo.name}` : 'client:unknown',
             `transport:${session?.transportMode}`,
-            'kong-konnect',
-            metadata.category || 'unknown'
+            userIntent?.primary ? `intent:${userIntent.primary}` : 'intent:unknown',
+            conversation?.isNewConversation ? 'conversation:new' : 'conversation:continuing',
+            conversationStats?.flow ? `flow:${conversationStats.flow.type}` : null,
+            'kong-konnect'
           ].filter(Boolean) as string[]
         }
       );
@@ -286,7 +417,11 @@ export class UniversalTracingManager {
         result, 
         traceContext: { 
           sessionId: session?.sessionId || this.sessionId,
-          runId: result._trace?.runId 
+          runId: result._trace?.runId,
+          conversationId: conversation?.conversationId,
+          conversationFlow: conversationStats?.flow?.type,
+          userIntent: userIntent?.primary,
+          conversationQuality
         } 
       };
 
@@ -424,7 +559,7 @@ export class UniversalTracingManager {
   }
 
   /**
-   * Get tracing statistics
+   * Get enhanced tracing statistics with conversation awareness
    */
   async getStats(): Promise<{
     enabled: boolean;
@@ -433,9 +568,28 @@ export class UniversalTracingManager {
     sessionId: string;
     samplingRate: number;
     runtime: string;
+    // Enhanced conversation stats
+    conversationSupport: boolean;
+    sessionSummary?: ReturnType<typeof getSessionConversationSummary>;
+    conversationQuality?: ConversationQuality;
   }> {
     await this.ensureInitialized();
     const runtimeInfo = await getRuntimeInfo();
+    
+    // Get session conversation summary if available
+    const sessionSummary = getSessionConversationSummary();
+    let conversationQuality: ConversationQuality | undefined;
+    
+    if (sessionSummary?.sessionId) {
+      const conversationStats = getConversationStats(sessionSummary.sessionId);
+      if (conversationStats.conversation) {
+        conversationQuality = analyzeConversationQuality(
+          conversationStats.conversation,
+          undefined, // No specific intent for overall stats
+          conversationStats.flow
+        );
+      }
+    }
     
     return {
       enabled: this.enabled,
@@ -443,7 +597,47 @@ export class UniversalTracingManager {
       project: this.config.project || 'unknown',
       sessionId: this.sessionId,
       samplingRate: this.config.samplingRate,
-      runtime: `${runtimeInfo.runtime} ${runtimeInfo.version}`
+      runtime: `${runtimeInfo.runtime} ${runtimeInfo.version}`,
+      conversationSupport: true,
+      sessionSummary,
+      conversationQuality
+    };
+  }
+
+  /**
+   * Get conversation insights for current session
+   */
+  async getConversationInsights(): Promise<{
+    hasActiveConversation: boolean;
+    conversation?: ConversationInfo;
+    quality?: ConversationQuality;
+    insights?: any;
+    recommendations?: string[];
+  }> {
+    const session = getCurrentSession();
+    if (!session?.sessionId) {
+      return { hasActiveConversation: false };
+    }
+    
+    const conversationStats = getConversationStats(session.sessionId);
+    if (!conversationStats.conversation) {
+      return { hasActiveConversation: false };
+    }
+    
+    const quality = analyzeConversationQuality(
+      conversationStats.conversation,
+      undefined,
+      conversationStats.flow
+    );
+    
+    const insights = generateConversationInsights(conversationStats.conversation, quality);
+    
+    return {
+      hasActiveConversation: true,
+      conversation: conversationStats.conversation,
+      quality,
+      insights,
+      recommendations: insights.recommendedImprovements
     };
   }
 }

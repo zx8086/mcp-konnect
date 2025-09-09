@@ -28,6 +28,14 @@ import * as portalOps from "./tools/portal/operations.js";
 import * as portalManagementOps from "./tools/portal-management/operations.js";
 import { ElicitationOperations } from "./tools/elicitation-tool.js";
 
+// BULLETPROOF ELICITATION ENFORCEMENT IMPORTS
+import { 
+  createBlockedOperationHandler,
+  ELICITATION_MCP_TOOLS,
+  ELICITATION_TOOL_HANDLERS
+} from "./enforcement/mcp-server-integration.js";
+import { KongOperationBlockedError } from "./enforcement/kong-tool-blockers.js";
+
 /**
  * Enhanced MCP server class for Kong Konnect integration with modular architecture
  */
@@ -79,12 +87,54 @@ class KongKonnectMcpServer extends McpServer {
 
   private registerTools() {
     const allTools = getAllTools();
-    console.error(`Registering ${allTools.length} tools across categories:`, 
-      [...new Set(allTools.map(t => t.category))].join(", "));
+    
+    // Add elicitation tools to the registry (replacing any existing elicitation tools)
+    const elicitationTools = ELICITATION_MCP_TOOLS.map(tool => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      category: "elicitation",
+      method: tool.name // Use tool name as method for routing
+    }));
+    
+    // Filter out existing elicitation tools from allTools to prevent duplicates
+    const filteredAllTools = allTools.filter(tool => tool.category !== 'elicitation');
+    const allToolsWithElicitation = [...filteredAllTools, ...elicitationTools];
+    
+    console.error(`BULLETPROOF ELICITATION ENFORCEMENT ACTIVE`);
+    console.error(`Registering ${allToolsWithElicitation.length} tools (${elicitationTools.length} elicitation tools) across categories:`, 
+      [...new Set(allToolsWithElicitation.map(t => t.category))].join(", "));
 
-    allTools.forEach(tool => {
-      // Create the original handler logic
-      const originalHandler = async (args: any, _extra: RequestHandlerExtra) => {
+    // Kong modification operations that MUST be blocked
+    const BLOCKED_KONG_OPERATIONS = new Set([
+      'create_service', 'update_service', 'delete_service',
+      'create_route', 'update_route', 'delete_route', 
+      'create_consumer', 'delete_consumer',
+      'create_plugin', 'update_plugin', 'delete_plugin'
+    ]);
+
+    allToolsWithElicitation.forEach(tool => {
+      // Check if this is a blocked Kong operation
+      const isBlockedKongOperation = BLOCKED_KONG_OPERATIONS.has(tool.method);
+      
+      // Check if this is an elicitation tool
+      const isElicitationTool = tool.category === 'elicitation';
+      
+      let handler: (args: any, extra: RequestHandlerExtra) => Promise<any>;
+      
+      if (isElicitationTool) {
+        // Use elicitation tool handler
+        console.error(`REGISTERING ELICITATION TOOL: ${tool.method}`);
+        handler = ELICITATION_TOOL_HANDLERS[tool.method as keyof typeof ELICITATION_TOOL_HANDLERS];
+        
+      } else if (isBlockedKongOperation) {
+        // Use blocked operation handler with elicitation enforcement
+        console.error(`REGISTERING BLOCKED OPERATION: ${tool.method}`);
+        handler = createBlockedOperationHandler(tool.method, '', [], []);
+        
+      } else {
+        // Use original handler logic for non-blocked operations
+        handler = async (args: any, _extra: RequestHandlerExtra) => {
         const startTime = Date.now();
         let success = true;
         
@@ -357,26 +407,7 @@ class KongKonnectMcpServer extends McpServer {
                 );
                 break;
 
-              // Service CRUD operations
-              case "create_service":
-                result = await configurationOps.createService(
-                  this.api,
-                  args.controlPlaneId,
-                  {
-                    name: args.name,
-                    host: args.host,
-                    port: args.port,
-                    protocol: args.protocol,
-                    path: args.path,
-                    retries: args.retries,
-                    connectTimeout: args.connectTimeout,
-                    writeTimeout: args.writeTimeout,
-                    readTimeout: args.readTimeout,
-                    tags: args.tags,
-                    enabled: args.enabled
-                  }
-                );
-                break;
+              // Service CRUD operations (create_service MOVED TO BLOCKED OPERATIONS)
 
               case "get_service":
                 result = await configurationOps.getService(
@@ -386,54 +417,9 @@ class KongKonnectMcpServer extends McpServer {
                 );
                 break;
 
-              case "update_service":
-                result = await configurationOps.updateService(
-                  this.api,
-                  args.controlPlaneId,
-                  args.serviceId,
-                  {
-                    name: args.name,
-                    host: args.host,
-                    port: args.port,
-                    protocol: args.protocol,
-                    path: args.path,
-                    retries: args.retries,
-                    connectTimeout: args.connectTimeout,
-                    writeTimeout: args.writeTimeout,
-                    readTimeout: args.readTimeout,
-                    tags: args.tags,
-                    enabled: args.enabled
-                  }
-                );
-                break;
+              // update_service and delete_service MOVED TO BLOCKED OPERATIONS
 
-              case "delete_service":
-                result = await configurationOps.deleteService(
-                  this.api,
-                  args.controlPlaneId,
-                  args.serviceId
-                );
-                break;
-
-              // Route CRUD operations
-              case "create_route":
-                result = await configurationOps.createRoute(
-                  this.api,
-                  args.controlPlaneId,
-                  {
-                    name: args.name,
-                    protocols: args.protocols,
-                    methods: args.methods,
-                    hosts: args.hosts,
-                    paths: args.paths,
-                    serviceId: args.serviceId,
-                    stripPath: args.stripPath,
-                    preserveHost: args.preserveHost,
-                    regexPriority: args.regexPriority,
-                    tags: args.tags
-                  }
-                );
-                break;
+              // Route CRUD operations (create_route MOVED TO BLOCKED OPERATIONS)
 
               case "get_route":
                 result = await configurationOps.getRoute(
@@ -443,48 +429,9 @@ class KongKonnectMcpServer extends McpServer {
                 );
                 break;
 
-              case "update_route":
-                result = await configurationOps.updateRoute(
-                  this.api,
-                  args.controlPlaneId,
-                  args.routeId,
-                  {
-                    name: args.name,
-                    protocols: args.protocols,
-                    methods: args.methods,
-                    hosts: args.hosts,
-                    paths: args.paths,
-                    serviceId: args.serviceId,
-                    stripPath: args.stripPath,
-                    preserveHost: args.preserveHost,
-                    regexPriority: args.regexPriority,
-                    tags: args.tags,
-                    enabled: args.enabled
-                  }
-                );
-                break;
+              // update_route and delete_route MOVED TO BLOCKED OPERATIONS
 
-              case "delete_route":
-                result = await configurationOps.deleteRoute(
-                  this.api,
-                  args.controlPlaneId,
-                  args.routeId
-                );
-                break;
-
-              // Consumer CRUD operations
-              case "create_consumer":
-                result = await configurationOps.createConsumer(
-                  this.api,
-                  args.controlPlaneId,
-                  {
-                    username: args.username,
-                    customId: args.customId,
-                    tags: args.tags,
-                    enabled: args.enabled
-                  }
-                );
-                break;
+              // Consumer CRUD operations (create_consumer MOVED TO BLOCKED OPERATIONS)
 
               case "get_consumer":
                 result = await configurationOps.getConsumer(
@@ -508,31 +455,9 @@ class KongKonnectMcpServer extends McpServer {
                 );
                 break;
 
-              case "delete_consumer":
-                result = await configurationOps.deleteConsumer(
-                  this.api,
-                  args.controlPlaneId,
-                  args.consumerId
-                );
-                break;
+              // delete_consumer MOVED TO BLOCKED OPERATIONS
 
-              // Plugin CRUD operations
-              case "create_plugin":
-                result = await configurationOps.createPlugin(
-                  this.api,
-                  args.controlPlaneId,
-                  {
-                    name: args.name,
-                    config: args.config,
-                    protocols: args.protocols,
-                    consumerId: args.consumerId,
-                    serviceId: args.serviceId,
-                    routeId: args.routeId,
-                    tags: args.tags,
-                    enabled: args.enabled
-                  }
-                );
-                break;
+              // Plugin CRUD operations (create_plugin MOVED TO BLOCKED OPERATIONS)
 
               case "get_plugin":
                 result = await configurationOps.getPlugin(
@@ -542,31 +467,7 @@ class KongKonnectMcpServer extends McpServer {
                 );
                 break;
 
-              case "update_plugin":
-                result = await configurationOps.updatePlugin(
-                  this.api,
-                  args.controlPlaneId,
-                  args.pluginId,
-                  {
-                    name: args.name,
-                    config: args.config,
-                    protocols: args.protocols,
-                    consumerId: args.consumerId,
-                    serviceId: args.serviceId,
-                    routeId: args.routeId,
-                    tags: args.tags,
-                    enabled: args.enabled
-                  }
-                );
-                break;
-
-              case "delete_plugin":
-                result = await configurationOps.deletePlugin(
-                  this.api,
-                  args.controlPlaneId,
-                  args.pluginId
-                );
-                break;
+              // update_plugin and delete_plugin MOVED TO BLOCKED OPERATIONS
 
               case "list_plugin_schemas":
                 result = await configurationOps.listPluginSchemas(
@@ -851,35 +752,10 @@ class KongKonnectMcpServer extends McpServer {
               // Credentials Management Tools
 
               // ===========================
-              // Elicitation Tools
+              // Elicitation Tools - HANDLED BY ENFORCEMENT SYSTEM
               // ===========================
-              case "analyze_migration_context":
-                result = await this.elicitationOps.analyzeContext(
-                  args.userMessage,
-                  args.deckFiles,
-                  args.deckConfigs,
-                  args.gitContext
-                );
-                break;
-
-              case "create_elicitation_session":
-                result = await this.elicitationOps.createElicitationSession(
-                  args.analysisResult,
-                  args.context
-                );
-                break;
-
-              case "process_elicitation_response":
-                result = await this.elicitationOps.processElicitationResponse(
-                  args.sessionId,
-                  args.requestId,
-                  args.response
-                );
-                break;
-
-              case "get_session_status":
-                result = await this.elicitationOps.getSessionStatus(args.sessionId);
-                break;
+              // Note: Elicitation tools are now handled by ELICITATION_TOOL_HANDLERS
+              // in the enforcement system to prevent duplicate registrations
 
               default:
                 throw new Error(`Unknown tool method: ${tool.method}`);
@@ -915,7 +791,8 @@ class KongKonnectMcpServer extends McpServer {
             isError: true
           };
         }
-      };
+        };
+      }
 
       // Create dynamic tool tracer for this specific tool
       const toolTracer = this.tracingManager.createToolTracer(tool.method);
@@ -923,7 +800,7 @@ class KongKonnectMcpServer extends McpServer {
       // Create traced handler using dynamic tool tracer
       const tracedHandler = async (args: any, extra: RequestHandlerExtra): Promise<any> => {
         const result = await toolTracer(
-          async () => originalHandler(args, extra),
+          async () => handler(args, extra),
           { 
             category: tool.category || 'unknown',
             toolName: tool.method
@@ -932,11 +809,12 @@ class KongKonnectMcpServer extends McpServer {
         return result;
       };
 
-      // Register the traced tool
+      // Register the traced tool with appropriate parameters
+      const toolParams = tool.inputSchema || tool.parameters?.shape || {};
       this.tool(
         tool.method,
         tool.description,
-        tool.parameters.shape,
+        toolParams,
         tracedHandler
       );
     });
@@ -1014,14 +892,17 @@ async function main() {
       transportMode: "stdio"
     });
     
-    // Wrap server connection in session context (critical for session grouping)
+    // Wrap server connection in session context AND session-level trace (critical for trace grouping)
     await runWithSession(sessionContext, async () => {
-      // All tool calls within this scope inherit session context
-      await server.connect(transport);
-      console.error("Kong Konnect MCP Server running successfully");
-      
-      // Log session info for debugging
-      logSessionInfo("MCP Server Session Established");
+      // Create session-level parent trace that contains all tool calls
+      await server.tracingManager.createSessionTrace(sessionContext, async () => {
+        // All tool calls within this scope inherit session context AND nest under session trace
+        await server.connect(transport);
+        console.error("Kong Konnect MCP Server running successfully");
+        
+        // Log session info for debugging
+        logSessionInfo("MCP Server Session Established");
+      });
     });
     
   } catch (error: any) {

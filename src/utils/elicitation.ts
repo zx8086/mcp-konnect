@@ -160,6 +160,13 @@ export class ElicitationManager {
   }
 
   /**
+   * Get a session by ID
+   */
+  getSession(sessionId: string): ElicitationSession | undefined {
+    return this.sessions.get(sessionId);
+  }
+
+  /**
    * Get all responses for a session
    */
   getSessionResponses(sessionId: string): Map<string, ElicitationResponse> {
