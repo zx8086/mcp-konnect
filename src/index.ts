@@ -26,6 +26,7 @@ import * as certificatesOps from "./tools/certificates/operations.js";
 import * as configurationOps from "./tools/configuration/operations.js";
 import * as portalOps from "./tools/portal/operations.js";
 import * as portalManagementOps from "./tools/portal-management/operations.js";
+import { ElicitationOperations } from "./tools/elicitation-tool.js";
 
 /**
  * Enhanced MCP server class for Kong Konnect integration with modular architecture
@@ -34,6 +35,7 @@ class KongKonnectMcpServer extends McpServer {
   private api: KongApi;
   public tracingManager: UniversalTracingManager;
   private performanceCollector: ToolPerformanceCollector;
+  private elicitationOps: ElicitationOperations;
 
   constructor(options: { apiKey?: string; apiRegion?: string } = {}) {
     super({
@@ -51,6 +53,7 @@ class KongKonnectMcpServer extends McpServer {
     // Initialize tracing and performance monitoring
     this.tracingManager = new UniversalTracingManager();
     this.performanceCollector = new ToolPerformanceCollector();
+    this.elicitationOps = new ElicitationOperations();
 
     // Log session information for tracing
     this.logMCPSessionInfo();
@@ -846,6 +849,37 @@ class KongKonnectMcpServer extends McpServer {
               // Upstream Management Tools
               // Data Plane Tools
               // Credentials Management Tools
+
+              // ===========================
+              // Elicitation Tools
+              // ===========================
+              case "analyze_migration_context":
+                result = await this.elicitationOps.analyzeContext(
+                  args.userMessage,
+                  args.deckFiles,
+                  args.deckConfigs,
+                  args.gitContext
+                );
+                break;
+
+              case "create_elicitation_session":
+                result = await this.elicitationOps.createElicitationSession(
+                  args.analysisResult,
+                  args.context
+                );
+                break;
+
+              case "process_elicitation_response":
+                result = await this.elicitationOps.processElicitationResponse(
+                  args.sessionId,
+                  args.requestId,
+                  args.response
+                );
+                break;
+
+              case "get_session_status":
+                result = await this.elicitationOps.getSessionStatus(args.sessionId);
+                break;
 
               default:
                 throw new Error(`Unknown tool method: ${tool.method}`);

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import * as prompts from "./prompts.js";
 import * as parameters from "./parameters.js";
+import { elicitationTools } from "./tools/elicitation-tool.js";
 
 export type Tool = {
   method: string;
@@ -123,5 +124,10 @@ export const tools = (): Tool[] => [
     description: prompts.deleteServicePrompt(),
     parameters: parameters.deleteServiceParameters(),
     category: "configuration"
-  }
+  },
+
+  // =========================
+  // Elicitation Tools
+  // =========================
+  ...elicitationTools
 ];

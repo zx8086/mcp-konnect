@@ -7,6 +7,7 @@ import { certificatesTools } from "./certificates/tools.js";
 import { configurationTools } from "./configuration/tools.js";
 import { portalTools } from "./portal/tools.js";
 import { portalManagementTools } from "./portal-management/tools.js";
+import { elicitationTools } from "./elicitation-tool.js";
 
 // Common tool interface
 export interface MCPTool {
@@ -39,6 +40,9 @@ export function getAllTools(): MCPTool[] {
     
     // Portal management tools (8 tools) - Portal creation, configuration, API publishing
     ...portalManagementTools(),
+    
+    // Elicitation tools (4 tools) - Smart information gathering for migrations
+    ...elicitationTools,
     
     // TODO: Add remaining tool categories
     // ...upstreamsTools(), - Upstream and target management

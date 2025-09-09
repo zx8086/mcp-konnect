@@ -61,6 +61,105 @@ The business logic is organized into three main operation categories:
 - **Zod Validation**: All tool parameters are validated using Zod schemas before processing
 - **Comprehensive Error Handling**: API errors include troubleshooting tips and context
 
+## 🤖 INTELLIGENT ELICITATION FRAMEWORK
+
+### ⚡ MCP-STYLE INFORMATION GATHERING
+
+**CRITICAL**: When users provide ambiguous or incomplete information for Kong migrations, use the intelligent elicitation system to gather missing context while respecting user autonomy.
+
+#### 🧠 Smart Context Analysis
+
+Before any Kong deployment, perform intelligent analysis:
+
+```yaml
+CONTEXT_ANALYSIS_PROTOCOL:
+  step_1: "Analyze user message for explicit domain/environment/team"
+  step_2: "Extract implicit signals from file paths and configurations"
+  step_3: "Calculate confidence scores (0-1 scale)"
+  step_4: "Determine what information needs elicitation"
+  step_5: "Create progressive disclosure plan"
+
+CONFIDENCE_THRESHOLDS:
+  high_confidence: ">= 0.8 (proceed with detected information)"
+  medium_confidence: "0.5-0.79 (partial elicitation for gaps)"
+  low_confidence: "< 0.5 (comprehensive elicitation required)"
+```
+
+#### 🎯 Progressive Information Gathering
+
+**ELICITATION PRINCIPLES**:
+- **User Autonomy**: Always allow decline/cancel - deployment blocks if mandatory fields missing
+- **Progressive Disclosure**: Only ask for truly needed information
+- **Smart Suggestions**: Provide context-aware recommendations
+- **Session Management**: Track elicitation state across interactions
+- **Zero Fallbacks**: Production deployments require explicit user input for all critical fields
+
+```yaml
+ELICITATION_PATTERNS:
+  domain_detection:
+    explicit_phrases: "for the devops domain", "migrate to api domain"
+    file_path_hints: "/config/production/devops/", "/api-gateway/"
+    service_name_patterns: "auth-service", "payment-api"
+    
+  environment_detection:
+    explicit_mentions: "production", "staging", "development"
+    path_segments: "/prod/", "/staging/", "/dev/"
+    no_fallbacks: "User must explicitly specify environment"
+    
+  team_detection:
+    ownership_phrases: "platform team manages", "owned by devops"
+    git_context: commit authors, team member lists
+    no_fallbacks: "User must explicitly specify team ownership"
+```
+
+#### 🔍 Elicitation Tools Available
+
+The framework provides these MCP tools for intelligent information gathering:
+
+- `analyze_migration_context` - Detect context and confidence scores
+- `create_elicitation_session` - Generate smart prompts for missing info
+- `process_elicitation_response` - Handle user responses with validation
+- `get_session_status` - Track elicitation progress
+
+#### 📋 Elicitation Workflow Example
+
+```yaml
+USER_REQUEST: "Please migrate this Kong configuration"
+
+ANALYSIS_RESULT:
+  domain: null (confidence: 0.0)
+  environment: null (confidence: 0.0, no fallbacks)
+  team: null (confidence: 0.0, no fallbacks)
+  overall_confidence: 0.0
+  elicitation_required: true
+
+ELICITATION_SESSION:
+  request_1: "🏷️ Domain Classification (high priority)"
+  suggestions: ["api", "backend", "platform"] # from service analysis
+  user_autonomy: "decline blocks deployment if mandatory field"
+  
+  request_2: "🌍 Environment Specification (critical)"
+  no_assumptions: "User must explicitly specify environment"
+  validation_options: ["production", "staging", "development"]
+```
+
+#### 🚨 Zero-Fallback Production Policy
+
+When users decline or don't provide mandatory information:
+
+```yaml
+PRODUCTION_DEPLOYMENT_POLICY:
+  no_fallbacks: "Deployment BLOCKS if mandatory fields missing"
+  mandatory_fields: ["domain", "environment", "team"]
+  user_must_provide: "Explicit specification required for production deployments"
+  
+VALIDATION_REQUIREMENTS:
+  minimum_tags: 5 # Ensure rich metadata for all entities
+  mandatory_categories: ["env-*", "domain-*", "team-*"]
+  contextual_analysis: "REQUIRED for all entities"
+  deployment_gate: "BLOCKS until all mandatory fields provided"
+```
+
 ## 🚨 CRITICAL: Tool-First Thinking Protocol
 
 ### ⚡ IMMEDIATE RECOGNITION TRIGGERS
@@ -164,6 +263,48 @@ When adding new tools:
 3. Create operation logic in appropriate `src/operations/` file
 4. Add case handler in `src/index.ts` tool router
 5. Document tool in `src/prompts.ts`
+
+### 🧠 Elicitation Framework Architecture
+
+The elicitation system is built with these components:
+
+#### Core Framework (`src/utils/elicitation.ts`)
+- **ElicitationManager**: Session management and response processing
+- **KongElicitationPatterns**: Pre-built patterns for Kong migrations
+- **ElicitationRequest/Response**: Typed data structures
+
+#### Context Detection (`src/utils/context-detection.ts`)
+- **ContextDetector**: Pattern matching for implicit information
+- **DetectionPattern**: Configurable detection rules
+- **ContextSignal**: Confidence-scored detection results
+
+#### Migration Analysis (`src/operations/migration-analyzer.ts`)
+- **MigrationAnalyzer**: Confidence scoring and gap analysis
+- **MigrationContext/Analysis**: Structured analysis results
+
+#### Tag Elicitation (`src/utils/tag-elicitation.ts`)
+- **TagElicitationEngine**: Entity-specific tagging intelligence
+- **TaggingPlan**: Contextual tag recommendations
+
+#### Elicitation Tools (`src/tools/elicitation-tool.ts`)
+- **ElicitationOperations**: MCP tool implementations
+- **Tool Registration**: Integration with MCP server
+
+#### Framework Integration
+```typescript
+// Example usage in Kong operations
+const contextAnalysis = await elicitationOps.analyzeContext(
+  userMessage, deckFiles, deckConfigs, gitContext
+);
+
+if (contextAnalysis.elicitationRequired) {
+  const session = await elicitationOps.createElicitationSession(
+    contextAnalysis, context
+  );
+  // Present elicitation requests to user
+  // Process responses and generate tag assignments
+}
+```
 
 ## API Client Usage
 
@@ -327,33 +468,35 @@ When working with Kong configurations, **ALL entities MUST be tagged**:
 
 ```yaml
 MANDATORY_KONG_TAGS:
-  required_tags: ["env-{environment}", "domain-{domain-name}", "team-{team}"]
-  contextual_tags_required: ["function-{purpose}", "type-{classification}", "criticality-{level}"]
-  minimum_tag_count: 5
-  maximum_tag_count: 8
+  required_tags: ["env-{environment}", "domain-{domain-name}", "team-{team}"]  # 3 mandatory tags
+  optional_tags: 2  # Entity-specific requirements (function, type, etc.)
+  maximum_tag_count: 5  # Kong's recommended limit for optimal performance
+  tag_structure: "3 mandatory + 2 optional = 5 tags maximum"
   extraction_priority: "ALWAYS extract domain from user context first"
   format_requirement: "lowercase-with-hyphens"
-  validation: "BLOCK deployment if any mandatory tag missing OR total tags < 5"
+  validation: "BLOCK deployment if any mandatory tag missing OR total tags > 5"
   
 CONTEXTUAL_ANALYSIS_REQUIRED:
-  before_any_entity_creation:
+  optional_tag_selection: "Choose 2 most relevant from contextual analysis"
+  available_options:
     - "What function does this entity serve?" → function-{purpose}
     - "What type/classification is this?" → type-{classification} 
     - "How critical/important is this?" → criticality-{level}
     - "What access scope?" → access-{scope}
     - "What protocol/technology?" → protocol-{type}
+    - "What purpose/intent?" → purpose-{intent}
   
   validation_gate:
     if_cannot_answer_contextual_questions: "BLOCK deployment until analysis complete"
-    minimum_contextual_tags: 2
-    recommended_contextual_tags: 3-5
+    required_optional_tags: 2  # Must select exactly 2 from available options
+    total_entity_tags: 5  # 3 mandatory + 2 optional = 5 maximum
 
 DOMAIN_EXTRACTION_PATTERNS:
   user_phrases:
     - "for the devops domain" → domain=devops
     - "migrate to api domain" → domain=api
     - "using finance domain" → domain=finance
-  fallback_action: "STOP and ask user to specify domain"
+  mandatory_action: "BLOCK deployment and ask user to specify domain"
 ```
 
 ### ✅ Kong Agent Usage Examples
@@ -385,17 +528,17 @@ Before ANY Kong entity creation, agents must verify:
 PRE_DEPLOYMENT_CHECKLIST:
   ✅ Domain extracted from user request?
   ✅ Control plane identified with mcp__kong-konnect__list_control_planes?
-  ✅ All entities will include ["env-*", "domain-*", "team-*"] tags?
+  ✅ All entities will include ["env-*", "domain-*", "team-*"] tags (3 mandatory)?
   ✅ CONTEXTUAL ANALYSIS completed for each entity?
-  ✅ Each entity has minimum 5 total tags?
-  ✅ Function and type tags determined for each entity?
+  ✅ Each entity has exactly 5 total tags (3 mandatory + 2 optional)?
+  ✅ Two most relevant optional tags selected for each entity?
   ✅ Using mcp__kong-konnect__* tools directly (not Task tool)?
   ✅ Tag format follows lowercase-with-hyphens?
 
 BLOCKING_CONDITIONS:
-  - Any entity with < 5 total tags
-  - Missing function-{purpose} tag
-  - Missing type-{classification} tag  
+  - Any entity with != 5 total tags (must be exactly 5)
+  - Missing any of 3 mandatory tags: env-*, domain-*, team-*
+  - Missing exactly 2 optional contextual tags
   - Cannot explain entity purpose in contextual terms
   - Deployment MUST be halted until complete tagging analysis
 ```
@@ -406,11 +549,40 @@ All project documentation is organized in the `docs/` directory:
 
 - **`docs/guides/`**: Configuration guides and setup instructions
   - `CONFIGURATION.md`: Environment setup and configuration management
+  - `ELICITATION_EXAMPLES.md`: Comprehensive elicitation examples and test scenarios
 - **`docs/testing/`**: Testing documentation and frameworks
   - `FLIGHT_API_TEST_SUITE.md`: Comprehensive test suite documentation
   - `flight-api-readme.md`: Quick testing guide
 - **`docs/api-specs/`**: OpenAPI specifications for Kong Konnect APIs
 - **`docs/architecture/`**: System architecture and design documents
 - **`docs/implementation/`**: Implementation guides and patterns
+
+### 🤖 Elicitation Framework Documentation
+
+**Complete Documentation**: `docs/guides/ELICITATION_EXAMPLES.md`
+
+The elicitation framework includes comprehensive documentation with:
+
+#### Example Scenarios
+- **High-Confidence Migration**: Minimal elicitation needed (>90% confidence)
+- **Medium-Confidence Migration**: Partial elicitation for gaps (43-79% confidence)  
+- **Low-Confidence Migration**: Full elicitation required (<50% confidence)
+
+#### Testing Scenarios
+- **Service Name Pattern Detection**: Domain inference from service naming
+- **File Path Analysis**: Environment detection from configuration paths
+- **Plugin Configuration Analysis**: Contextual tags from plugin types
+- **Control Plane Name Analysis**: Multi-source information extraction
+
+#### User Experience Patterns
+- **Progressive Disclosure**: Only ask for truly needed information
+- **Smart Suggestions**: Context-aware recommendations based on analysis
+- **User Autonomy**: Decline/cancel options block deployment if mandatory fields missing
+- **Session Management**: Resume interrupted elicitation workflows
+
+#### Validation Examples
+- **Input Validation**: Format checking and normalization
+- **Tag Compliance**: Minimum 5 tags with mandatory categories
+- **Error Recovery**: Graceful handling of incomplete sessions
 
 **Important**: All new guides, implementation guides, architecture docs, and reference materials should be created in the appropriate `docs/` subdirectory to maintain organized project documentation.

@@ -8,8 +8,73 @@ tools: Read, Write, MultiEdit, Bash, Grep, Glob, mcp__kong-konnect__*, WebFetch,
 
 ## ⚡ EVERY Kong Configuration Task MUST Start With These Steps:
 
-### 1️⃣ DOMAIN EXTRACTION (MANDATORY)
-**BEFORE ANYTHING ELSE** - Extract domain name from user request:
+### 1️⃣ INTELLIGENT ELICITATION (MANDATORY)
+**BEFORE ANYTHING ELSE** - Use MCP elicitation to gather missing information with **ZERO-FALLBACK POLICY**:
+
+#### 🔍 Smart Context Analysis First
+**ALWAYS** start with context analysis to determine confidence levels:
+```yaml
+step_1_analyze_context:
+  tool: analyze_migration_context
+  parameters:
+    userMessage: "{user's complete message}"
+    deckFiles: ["{paths to deck files}"] # if available
+    deckConfigs: [{parsed configurations}] # if available
+  
+  captures:
+    - contextDetection: Domain/environment/team detection results
+    - migrationAnalysis: Entity counts, confidence scores, risk assessment
+    - elicitationRequired: Whether user input is needed
+    - recommendations: Next steps based on analysis
+```
+
+#### 🎯 Progressive Information Gathering
+**IF elicitationRequired = true**, create elicitation session:
+```yaml
+step_2_create_elicitation_session:
+  tool: create_elicitation_session
+  parameters:
+    analysisResult: "{from step 1}"
+    context: "{original migration context}"
+  
+  result:
+    - sessionId: For tracking responses
+    - requests: Structured prompts with suggestions
+    - needsUserInput: Whether to pause for user interaction
+```
+
+#### 💬 Elicitation Interaction Pattern
+**Present elicitation requests using MCP patterns**:
+- **Progressive disclosure**: Only ask for truly needed information
+- **Smart suggestions**: Provide intelligent defaults and options
+- **Context preservation**: Remember previous responses
+- **User autonomy**: Allow skip/decline with graceful fallbacks
+
+**Example elicitation presentation:**
+```
+🔍 **Migration Context Analysis Complete**
+
+Found 12 entities to migrate (8 services, 4 routes) with 65% confidence.
+
+**Information needed for production-ready deployment:**
+
+1. 🏷️ **Domain Classification** (high priority)
+   💡 Detected: "api" (medium confidence from service names)
+   ❓ Confirm domain or specify different: devops, platform, backend, etc.
+
+2. 🌍 **Environment Specification** (critical)
+   💡 No environment detected - explicit specification required
+   ❓ Specify environment: production, staging, development, test
+
+3. 👥 **Team Ownership** (required)
+   💡 No team detected - explicit specification required
+   ❓ Specify owning team: platform, devops, api, backend, etc.
+
+**Would you like to provide this information now, or should I proceed with detected/default values?**
+```
+
+### 1️⃣ FALLBACK: DOMAIN EXTRACTION (Legacy Pattern)
+**ONLY if elicitation tools unavailable** - Extract domain name from user request:
 - Look for: "for the {domain} domain", "migrate to {domain}", "using {domain} domain"
 - Examples: "devops domain" → domain=devops, "api domain" → domain=api
 - **IF NO DOMAIN FOUND**: STOP and ask "What domain should this configuration be tagged with?"
@@ -24,21 +89,22 @@ tools: Read, Write, MultiEdit, Bash, Grep, Glob, mcp__kong-konnect__*, WebFetch,
 ```
 
 ### 3️⃣ MANDATORY TAGGING (ZERO TOLERANCE)
-**EVERY ENTITY** must have these 3 tags minimum + CONTEXTUAL ANALYSIS:
+**EVERY ENTITY** must have EXACTLY 5 tags (3 mandatory + 2 optional):
 ```yaml
-REQUIRED_TAGS:
+REQUIRED_TAGS: # 3 mandatory tags
   - "env-{environment}"     # production/staging/development
   - "domain-{domain-name}"  # EXTRACTED from user request  
   - "team-{team-name}"      # platform/devops/api (default: platform)
 
-CONTEXTUAL_TAGS_REQUIRED:
+OPTIONAL_TAG_OPTIONS: # Choose 2 most relevant
   - "function-{purpose}"    # What does this entity DO? (api-gateway/authentication/security)
   - "type-{classification}" # External/internal/middleware classification
   - "criticality-{level}"   # How important? (high/medium/low)
   - "access-{scope}"        # Who can access? (public/private)
   - "protocol-{type}"       # What protocol? (http/grpc/tcp)
+  - "purpose-{intent}"      # Specific purpose (demo/testing/production-api)
 
-MINIMUM_TAG_COUNT: 5-8 tags total (3 mandatory + 2-5 contextual)
+EXACT_TAG_COUNT: 5 tags total (3 mandatory + 2 optional) - Kong's recommended limit
 ```
 
 ### 4️⃣ VALIDATION GATES
@@ -362,9 +428,64 @@ parameters:
   ]  # TOTAL: 5 tags (3 mandatory + 2 contextual)
 ```
 
+## 🎯 MCP ELICITATION-DRIVEN MIGRATION WORKFLOW
+
+### ⚡ Enhanced 6-Step Migration Process (MANDATORY ORDER)
+
+#### 🚨 CRITICAL: MCP Elicitation Integration
+
+Every migration now uses **INTELLIGENT ELICITATION** to gather complete information before deployment. No more guessing or incomplete data.
+
+#### STEP 0: Intelligent Context Analysis (NEW)
+```yaml
+ELICITATION_WORKFLOW:
+  step_0_context_analysis:
+    tool: analyze_migration_context
+    purpose: "Detect implicit information and confidence levels"
+    inputs:
+      - userMessage: Complete user request text
+      - deckFiles: Array of deck file paths
+      - deckConfigs: Parsed YAML configurations
+    
+    outputs:
+      - contextDetection: Smart pattern matching results
+      - migrationAnalysis: Entity counts, confidence, risk assessment
+      - elicitationRequired: Boolean flag for user interaction
+      - recommendations: Tailored next steps
+    
+    decision_gate:
+      if_elicitationRequired: "Proceed to Step 0.1"
+      if_high_confidence: "Skip to Step 1 with extracted values"
+  
+  step_0_1_elicitation_session:
+    condition: "Only if elicitationRequired = true"
+    tool: create_elicitation_session
+    purpose: "Generate structured prompts for missing information"
+    
+    interaction_pattern:
+      - present_analysis_summary: "Migration readiness report"
+      - show_detected_information: "What we found with confidence levels"
+      - request_confirmation: "Progressive disclosure prompts"
+      - capture_responses: "User input with validation"
+      - generate_tag_assignments: "Complete tagging from responses"
+    
+    user_autonomy:
+      - can_decline_individual_requests: true
+      - can_cancel_entire_session: true
+      - can_use_default_suggestions: true
+      - graceful_fallback_handling: true
+
+ELICITATION_BENEFITS:
+  - no_more_guessing: "Eliminate assumption-based deployments"
+  - smart_suggestions: "Contextual defaults from pattern analysis"
+  - progressive_disclosure: "Only ask for truly needed information"
+  - user_friendly: "Clear explanations and reasoning for requests"
+  - production_ready: "Comprehensive tagging from informed responses"
+```
+
 ## 📋 ENHANCED DECK MIGRATION WORKFLOW WITH COMPLETE TAGGING
 
-### ⚡ 5-Step Migration Process (MANDATORY ORDER)
+### ⚡ 6-Step Migration Process (MANDATORY ORDER - Updated with Elicitation)
 
 #### 🚨 CRITICAL: Entity Analysis Step Added
 
@@ -502,18 +623,25 @@ STEP_3_VALIDATION:
 - **Environment Management**: Dev/staging/prod configurations, variable substitution, secret management
 - **Migration Strategies**: Version upgrades, zero-downtime deployments, rollback procedures
 
-### 🔧 Kong Konnect MCP Tools Mastery (66+ Tools Available)
+### 🔧 Kong Konnect MCP Tools Mastery (70+ Tools Available)
 
 #### ⚠️ CRITICAL MCP TOOLS USAGE POLICY
 **ALWAYS USE MCP TOOLS DIRECTLY - NEVER INVOKE EXTERNAL AGENTS**
 
 ```yaml
 tools_usage_hierarchy:
-  primary_choice: "mcp__kong-konnect__*" tools (66+ available)
+  primary_choice: "mcp__kong-konnect__*" tools (66+ available) + elicitation tools (4 tools)
   fallback_only: "When specific MCP tool fails with documented error"
   prohibited: "Invoking Task tool or external agents when MCP tools available"
   
 common_mcp_tools:
+  # Elicitation Tools (Zero-Fallback Intelligence)
+  elicitation_analysis: "analyze_migration_context"
+  elicitation_session: "create_elicitation_session"
+  elicitation_response: "process_elicitation_response"
+  elicitation_status: "get_session_status"
+  
+  # Kong Configuration Tools
   control_plane: "mcp__kong-konnect__list_control_planes"
   service_create: "mcp__kong-konnect__create_service"
   service_update: "mcp__kong-konnect__update_service" 
@@ -1341,8 +1469,9 @@ Before deploying ANY entity, VERIFY:
 - ✅ `env-{environment}` tag present (REQUIRED)
 - ✅ `domain-{domain-name}` tag present (REQUIRED) 
 - ✅ `team-{team-name}` tag present (REQUIRED)
+- ✅ Exactly 2 optional contextual tags selected
 - ✅ All tags follow lowercase-with-hyphens format
-- ✅ Maximum 5 tags per entity limit respected
+- ✅ EXACTLY 5 tags total (not more, not less) - Kong's optimal limit
 
 ### 🛠️ MCP TOOLS USAGE MANDATE
 
