@@ -62,8 +62,8 @@ describe('Flight API Performance Tests', () => {
         expect(response.timestamp).toBeDefined();
       });
 
-      console.log(`✅ Handled ${concurrentRequests} concurrent requests in ${duration.toFixed(2)}ms`);
-      console.log(`📊 Throughput: ${rps.toFixed(2)} requests/second`);
+      console.log(`SUCCESS: Handled ${concurrentRequests} concurrent requests in ${duration.toFixed(2)}ms`);
+      console.log(`INFO: Throughput: ${rps.toFixed(2)} requests/second`);
     });
 
     test('should maintain response times under sustained load', async () => {
@@ -100,7 +100,7 @@ describe('Flight API Performance Tests', () => {
       expect(maxTime).toBeLessThan(maxResponseTime * 2); // Allow some variance
       expect(responseTimes.length).toBe(iterations);
 
-      console.log(`📈 Performance Metrics:`);
+      console.log(`INFO: Performance Metrics:`);
       console.log(`   Average Response Time: ${avgResponseTime.toFixed(2)}ms`);
       console.log(`   Max Response Time: ${maxTime.toFixed(2)}ms`);
       console.log(`   Min Response Time: ${minTime.toFixed(2)}ms`);
@@ -128,7 +128,7 @@ describe('Flight API Performance Tests', () => {
       expect(responses).toHaveLength(burstRequests);
       expect(successfulResponses.length).toBeGreaterThan(0); // Some should succeed
       
-      console.log(`🚀 Burst Test Results:`);
+      console.log(`INFO: Burst Test Results:`);
       console.log(`   Total Requests: ${burstRequests}`);
       console.log(`   Successful: ${successfulResponses.length}`);
       console.log(`   Rate Limited: ${rateLimitedResponses.length}`);
@@ -215,7 +215,7 @@ describe('Flight API Performance Tests', () => {
       const slowestEndpoint = results.reduce((prev, current) => 
         prev.responseTime > current.responseTime ? prev : current
       );
-      console.log(`⚠️  Slowest endpoint: ${slowestEndpoint.endpoint} (${slowestEndpoint.responseTime.toFixed(2)}ms)`);
+      console.log(`WARNING:  Slowest endpoint: ${slowestEndpoint.endpoint} (${slowestEndpoint.responseTime.toFixed(2)}ms)`);
     });
 
     test('should test geographic latency simulation', async () => {
@@ -245,7 +245,7 @@ describe('Flight API Performance Tests', () => {
       }
 
       // Verify latency patterns
-      console.log('🌍 Regional Latency Simulation:');
+      console.log('INFO: Regional Latency Simulation:');
       latencyResults.forEach(result => {
         console.log(`   ${result.region.toUpperCase()} region: ${result.latency.toFixed(2)}ms`);
       });
@@ -269,7 +269,7 @@ describe('Flight API Security Tests', () => {
   afterAll(async () => {
     if (testUtils) {
       await testUtils.cleanup();
-      console.log('🛡️ Security Tests Completed');
+      console.log('SECURITY: Security Tests Completed');
     }
   });
 
@@ -332,7 +332,7 @@ describe('Flight API Security Tests', () => {
 
         expect(response).toBeDefined();
         // In real scenario, these should return 403 Forbidden
-        console.log(`🛡️ Access control for ${endpoint.method} ${endpoint.path} verified`);
+        console.log(`SECURITY: Access control for ${endpoint.method} ${endpoint.path} verified`);
       }
     });
   });
@@ -396,7 +396,7 @@ describe('Flight API Security Tests', () => {
         );
 
         expect(response).toBeDefined();
-        console.log(`🕷️ XSS payload blocked: "${payload.substring(0, 30)}..."`);
+        console.log(`SECURITY: XSS payload blocked: "${payload.substring(0, 30)}..."`);
       }
     });
 
@@ -425,7 +425,7 @@ describe('Flight API Security Tests', () => {
         );
 
         expect(response).toBeDefined();
-        console.log(`✅ Input validation for ${input.field}: "${input.value}" handled`);
+        console.log(`SUCCESS: Input validation for ${input.field}: "${input.value}" handled`);
       }
     });
 
@@ -561,7 +561,7 @@ describe('Flight API Security Tests', () => {
           expect(response.message).not.toContain('stack trace');
         }
 
-        console.log(`🚨 Error sanitization for "${scenario.path}" verified`);
+        console.log(`SECURITY: Error sanitization for "${scenario.path}" verified`);
       }
     });
 
@@ -575,7 +575,7 @@ describe('Flight API Security Tests', () => {
       
       expect(response).toBeDefined();
       // In real scenario, CORS should reject unauthorized origins
-      console.log('🌐 CORS policy enforcement verified');
+      console.log('INFO: CORS policy enforcement verified');
     });
   });
 
@@ -596,7 +596,7 @@ describe('Flight API Security Tests', () => {
       expect(response).toBeDefined();
       
       // In a real API, we would check response.headers for these
-      console.log('📄 Security headers verification completed');
+      console.log('INFO: Security headers verification completed');
       requiredSecurityHeaders.forEach(header => {
         console.log(`   Expected header: ${header}`);
       });

@@ -345,7 +345,7 @@ export function createBlockedOperationHandler(
         
         // If auto-unblocked through bridge, retry the operation
         if (bridgeResult.autoUnblocked) {
-          console.error(`🌉 AUTO-UNBLOCKED: Retrying operation ${originalMethod} with bridged context`);
+          console.error(`[AUTO-UNBLOCKED] Retrying operation ${originalMethod} with bridged context`);
           
           // Retry the operation that was blocked
           try {
@@ -353,7 +353,7 @@ export function createBlockedOperationHandler(
             // Instead, return success with bridge info
             return {
               success: true,
-              message: `✅ Operation auto-unblocked through elicitation bridge`,
+              message: `SUCCESS: Operation auto-unblocked through elicitation bridge`,
               operation: originalMethod,
               bridged: true,
               migrationSessionId: bridgeResult.migrationSessionId,
@@ -361,7 +361,7 @@ export function createBlockedOperationHandler(
               note: "Operation would succeed if retried - context has been provided through migration bridge"
             };
           } catch (retryError) {
-            console.error(`❌ AUTO-UNBLOCK RETRY FAILED:`, retryError);
+            console.error(`ERROR: AUTO-UNBLOCK RETRY FAILED:`, retryError);
           }
         }
 
@@ -380,7 +380,7 @@ export function createBlockedOperationHandler(
             migrationSessionId: bridgeResult.migrationSessionId
           },
           nextSteps: bridgeResult.bridged ? [
-            `✅ BRIDGED: Migration session ${bridgeResult.migrationSessionId} linked to this operation`,
+            `SUCCESS: BRIDGED: Migration session ${bridgeResult.migrationSessionId} linked to this operation`,
             `Use process_elicitation_response with sessionId: ${elicitationRequest.sessionId}`,
             "Context from migration analysis will be applied automatically"
           ] : [
@@ -470,12 +470,12 @@ export const ELICITATION_TOOL_HANDLERS = {
     
     // Check bridge status first
     const bridgeStatus = unifiedElicitationBridge.getBridgedSessionStatus(args.sessionId);
-    console.error(`🌉 BRIDGE STATUS for ${args.sessionId}:`, bridgeStatus);
+    console.error(`[BRIDGE] STATUS for ${args.sessionId}:`, bridgeStatus);
     
     // Handle both the enforcement system format and the migration analysis format
     if (args.responses && !args.requestId) {
       // Enforcement system format (blocking operation response)
-      console.error(`🔒 PROCESSING BLOCKING SYSTEM RESPONSE`);
+      console.error(`[PROCESSING] BLOCKING SYSTEM RESPONSE`);
       
       const bridgeResult = await unifiedElicitationBridge.processBlockingResponse(
         args.sessionId,
@@ -483,12 +483,12 @@ export const ELICITATION_TOOL_HANDLERS = {
       );
       
       if (bridgeResult.success) {
-        console.error(`✅ BLOCKING RESPONSE PROCESSED: Kong operations unblocked for session ${args.sessionId}`);
+        console.error(`SUCCESS: BLOCKING RESPONSE PROCESSED: Kong operations unblocked for session ${args.sessionId}`);
         if (bridgeResult.bridgeUpdated) {
-          console.error(`🌉 BRIDGE UPDATED: Migration session ${bridgeResult.migrationSessionId} updated`);
+          console.error(`[BRIDGE] UPDATED: Migration session ${bridgeResult.migrationSessionId} updated`);
         }
       } else {
-        console.error(`❌ BLOCKING RESPONSE FAILED`);
+        console.error(`ERROR: BLOCKING RESPONSE FAILED`);
       }
       
       return {
@@ -500,7 +500,7 @@ export const ELICITATION_TOOL_HANDLERS = {
       
     } else {
       // Migration analysis format (migration elicitation response)
-      console.error(`📋 PROCESSING MIGRATION SYSTEM RESPONSE`);
+      console.error(`INFO: PROCESSING MIGRATION SYSTEM RESPONSE`);
       
       const result = await elicitationOps.processElicitationResponse(
         args.sessionId,
@@ -514,8 +514,8 @@ export const ELICITATION_TOOL_HANDLERS = {
         args.response
       );
       
-      console.error(`📋 MIGRATION RESPONSE PROCESSED: Session ${args.sessionId}, Complete: ${result.sessionComplete}`);
-      console.error(`🌉 BRIDGE RESULT:`, bridgeResult);
+      console.error(`INFO: MIGRATION RESPONSE PROCESSED: Session ${args.sessionId}, Complete: ${result.sessionComplete}`);
+      console.error(`[BRIDGE] RESULT:`, bridgeResult);
       
       return {
         ...result,

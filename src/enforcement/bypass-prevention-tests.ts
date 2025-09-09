@@ -366,13 +366,13 @@ export class BypassPreventionTests {
 
     const allTestsPassed = Object.values(testResults).every(result => result.passed);
     
-    console.error(`\n📊 TEST RESULTS SUMMARY:`);
-    console.error(`Direct API Bypass Prevention: ${testResults.directAPIBypass.passed ? '✅ PASS' : '❌ FAIL'}`);
-    console.error(`Incomplete Context Bypass Prevention: ${testResults.incompleteContextBypass.passed ? '✅ PASS' : '❌ FAIL'}`);
-    console.error(`Session Manipulation Bypass Prevention: ${testResults.sessionManipulationBypass.passed ? '✅ PASS' : '❌ FAIL'}`);
-    console.error(`Concurrent Access Bypass Prevention: ${testResults.concurrentAccessBypass.passed ? '✅ PASS' : '❌ FAIL'}`);
-    console.error(`Valid Elicitation Flow: ${testResults.validElicitationFlow.passed ? '✅ PASS' : '❌ FAIL'}`);
-    console.error(`\n🔒 OVERALL ENFORCEMENT: ${allTestsPassed ? '✅ BULLETPROOF' : '❌ VULNERABLE'}`);
+    console.error(`\nINFO: TEST RESULTS SUMMARY:`);
+    console.error(`Direct API Bypass Prevention: ${testResults.directAPIBypass.passed ? 'SUCCESS: PASS' : 'ERROR: FAIL'}`);
+    console.error(`Incomplete Context Bypass Prevention: ${testResults.incompleteContextBypass.passed ? 'SUCCESS: PASS' : 'ERROR: FAIL'}`);
+    console.error(`Session Manipulation Bypass Prevention: ${testResults.sessionManipulationBypass.passed ? 'SUCCESS: PASS' : 'ERROR: FAIL'}`);
+    console.error(`Concurrent Access Bypass Prevention: ${testResults.concurrentAccessBypass.passed ? 'SUCCESS: PASS' : 'ERROR: FAIL'}`);
+    console.error(`Valid Elicitation Flow: ${testResults.validElicitationFlow.passed ? 'SUCCESS: PASS' : 'ERROR: FAIL'}`);
+    console.error(`\n[ENFORCEMENT] OVERALL ENFORCEMENT: ${allTestsPassed ? 'SUCCESS: BULLETPROOF' : 'ERROR: VULNERABLE'}`);
 
     return {
       testResults,
@@ -405,12 +405,12 @@ export async function validateElicitationEnforcement(): Promise<boolean> {
   const results = await tester.runAllBypassPreventionTests();
   
   if (!results.allTestsPassed) {
-    console.error("🚨 CRITICAL: Elicitation enforcement has bypasses!");
+    console.error("SECURITY: CRITICAL: Elicitation enforcement has bypasses!");
     console.error("Details:", JSON.stringify(results.testResults, null, 2));
     throw new Error("Elicitation enforcement validation FAILED - system is vulnerable to bypasses");
   }
   
-  console.error("✅ Elicitation enforcement validation PASSED - system is bulletproof");
+  console.error("SUCCESS: Elicitation enforcement validation PASSED - system is bulletproof");
   return true;
 }
 
@@ -421,17 +421,17 @@ export async function validateElicitationEnforcement(): Promise<boolean> {
  */
 export const EnforcementMonitoring = {
   async validateOnStartup() {
-    console.error("🔄 Validating elicitation enforcement on startup...");
+    console.error("INFO: Validating elicitation enforcement on startup...");
     return await validateElicitationEnforcement();
   },
 
   async validatePeriodic() {
-    console.error("🔄 Periodic elicitation enforcement validation...");
+    console.error("INFO: Periodic elicitation enforcement validation...");
     return await validateElicitationEnforcement();
   },
 
   async validateAfterChanges() {
-    console.error("🔄 Validating elicitation enforcement after code changes...");
+    console.error("INFO: Validating elicitation enforcement after code changes...");
     return await validateElicitationEnforcement();
   }
 };

@@ -97,11 +97,11 @@ export async function initializeEnvironment(): Promise<void> {
     }
 
     if (!loaded) {
-      console.warn('No .env file found - using system environment variables only');
+      console.error('No .env file found - using system environment variables only');
     }
 
   } catch (error) {
-    console.warn('dotenv not available - install with: npm install dotenv');
-    console.warn('Using system environment variables only');
+    console.error('dotenv not available - install with: npm install dotenv');
+    console.error('Using system environment variables only');
   }
 }

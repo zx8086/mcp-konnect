@@ -77,7 +77,7 @@ export class MandatoryElicitationGate {
   public async validateMandatoryContext(
     context: KongOperationContext
   ): Promise<MandatoryContext> {
-    console.error(`🔒 ENFORCEMENT GATE: Validating context for ${context.operationName}`);
+    console.error(`[ENFORCEMENT] GATE: Validating context for ${context.operationName}`);
     
     // Step 1: Analyze current context and confidence  
     const migrationContext = {
@@ -94,7 +94,7 @@ export class MandatoryElicitationGate {
     const existingContext = this.activeSessions.get(sessionId);
 
     if (existingContext?.elicitationComplete) {
-      console.error(`✅ ENFORCEMENT GATE: Context already validated for session ${sessionId}`);
+      console.error(`SUCCESS: ENFORCEMENT GATE: Context already validated for session ${sessionId}`);
       return existingContext;
     }
 
@@ -113,7 +113,7 @@ export class MandatoryElicitationGate {
 
     // Step 4: BLOCK OPERATION IF ANY MANDATORY FIELDS MISSING
     if (missingFields.length > 0) {
-      console.error(`🚫 ENFORCEMENT GATE: BLOCKING ${context.operationName} - Missing: ${missingFields.join(', ')}`);
+      console.error(`[BLOCKING] ENFORCEMENT GATE: BLOCKING ${context.operationName} - Missing: ${missingFields.join(', ')}`);
       
       // Create elicitation session for missing context
       const elicitationSession = this.elicitationManager.createSession({
@@ -144,7 +144,7 @@ export class MandatoryElicitationGate {
     // Step 6: Cache validated context for session
     this.activeSessions.set(sessionId, validatedContext);
     
-    console.error(`✅ ENFORCEMENT GATE: Context validated - Domain: ${validatedContext.domain}, Env: ${validatedContext.environment}, Team: ${validatedContext.team}`);
+    console.error(`SUCCESS: ENFORCEMENT GATE: Context validated - Domain: ${validatedContext.domain}, Env: ${validatedContext.environment}, Team: ${validatedContext.team}`);
     
     return validatedContext;
   }
@@ -158,7 +158,7 @@ export class MandatoryElicitationGate {
     sessionId: string,
     responses: Record<string, string>
   ): Promise<MandatoryContext> {
-    console.error(`🔄 ENFORCEMENT GATE: Processing elicitation response for session ${sessionId}`);
+    console.error(`INFO: ENFORCEMENT GATE: Processing elicitation response for session ${sessionId}`);
     
     // SECURITY: Validate that this session was actually created by a blocked operation
     // This prevents bypass attempts with fake session IDs
@@ -196,10 +196,10 @@ export class MandatoryElicitationGate {
       const originalContext = elicitationSessionData.context.originalKongContext;
       const deterministicSessionId = this.generateSessionId(originalContext);
       this.activeSessions.set(deterministicSessionId, validatedContext);
-      console.error(`🔗 ENFORCEMENT GATE: Context stored for both elicitation session ${sessionId} and deterministic session ${deterministicSessionId}`);
+      console.error(`INFO: ENFORCEMENT GATE: Context stored for both elicitation session ${sessionId} and deterministic session ${deterministicSessionId}`);
     }
     
-    console.error(`✅ ENFORCEMENT GATE: Elicitation complete - Context validated for session ${sessionId}`);
+    console.error(`SUCCESS: ENFORCEMENT GATE: Elicitation complete - Context validated for session ${sessionId}`);
     
     return validatedContext;
   }
@@ -228,7 +228,7 @@ export class MandatoryElicitationGate {
    */
   public clearSession(sessionId: string): void {
     this.activeSessions.delete(sessionId);
-    console.error(`🗑️ ENFORCEMENT GATE: Cleared session context for ${sessionId}`);
+    console.error(`INFO: ENFORCEMENT GATE: Cleared session context for ${sessionId}`);
   }
 
   /**
@@ -261,7 +261,7 @@ export async function withMandatoryElicitation<T>(
   const gate = MandatoryElicitationGate.getInstance();
   const validatedContext = await gate.validateMandatoryContext(context);
   
-  console.error(`🔐 MANDATORY ELICITATION: Executing ${operationName} with validated context`);
+  console.error(`[MANDATORY] ELICITATION: Executing ${operationName} with validated context`);
   
   return await operation(validatedContext);
 }

@@ -55,7 +55,7 @@ export class UnifiedElicitationBridge {
     analysisResult: any,
     context: any
   ): void {
-    console.error(`🌉 BRIDGE: Registering migration session ${migrationSessionId}`);
+    console.error(`[BRIDGE] REGISTERING migration session ${migrationSessionId}`);
     
     this.sessionBridge.set(migrationSessionId, {
       migrationSessionId,
@@ -83,24 +83,24 @@ export class UnifiedElicitationBridge {
     contextCaptured: boolean;
     bridgeReady: boolean;
   }> {
-    console.error(`🌉 BRIDGE: Processing migration response for session ${migrationSessionId}`);
+    console.error(`[BRIDGE] PROCESSING migration response for session ${migrationSessionId}`);
     
     const bridgeSession = this.sessionBridge.get(migrationSessionId);
     if (!bridgeSession) {
-      console.error(`❌ BRIDGE: Migration session ${migrationSessionId} not found`);
+      console.error(`ERROR: BRIDGE: Migration session ${migrationSessionId} not found`);
       return { success: false, contextCaptured: false, bridgeReady: false };
     }
 
     // Handle declined/cancelled
     if (userResponse.declined || userResponse.cancelled) {
-      console.error(`⚠️ BRIDGE: User declined/cancelled migration session ${migrationSessionId}`);
+      console.error(`WARNING: BRIDGE: User declined/cancelled migration session ${migrationSessionId}`);
       bridgeSession.isComplete = true;
       return { success: true, contextCaptured: false, bridgeReady: false };
     }
 
     // Extract user context from response
     if (userResponse.data) {
-      console.error(`✅ BRIDGE: Capturing context from migration response:`, userResponse.data);
+      console.error(`SUCCESS: BRIDGE: Capturing context from migration response:`, userResponse.data);
       
       // Handle different response formats
       let extractedContext: any = {};
@@ -121,7 +121,7 @@ export class UnifiedElicitationBridge {
       
       bridgeSession.isComplete = this.isContextComplete(bridgeSession.userContext);
       
-      console.error(`✅ BRIDGE: Context captured:`, {
+      console.error(`SUCCESS: BRIDGE: Context captured:`, {
         domain: bridgeSession.userContext.domain,
         environment: bridgeSession.userContext.environment,
         team: bridgeSession.userContext.team,
@@ -153,12 +153,12 @@ export class UnifiedElicitationBridge {
     autoUnblocked: boolean;
     migrationSessionId?: string;
   }> {
-    console.error(`🌉 BRIDGE: Attempting to bridge Kong blocking session ${blockingSessionId}`);
+    console.error(`[BRIDGE] ATTEMPTING to bridge Kong blocking session ${blockingSessionId}`);
     
     // Look for a completed migration session with the needed context
     for (const [migrationSessionId, bridgeSession] of this.sessionBridge.entries()) {
       if (bridgeSession.isComplete && this.hasRequiredFields(bridgeSession.userContext, missingFields)) {
-        console.error(`✅ BRIDGE: Found compatible migration session ${migrationSessionId}`);
+        console.error(`SUCCESS: BRIDGE: Found compatible migration session ${migrationSessionId}`);
         
         // Establish bidirectional mapping
         this.migrationToBlocking.set(migrationSessionId, blockingSessionId);
@@ -182,7 +182,7 @@ export class UnifiedElicitationBridge {
       }
     }
     
-    console.error(`⚠️ BRIDGE: No compatible migration session found for blocking session ${blockingSessionId}`);
+    console.error(`WARNING: BRIDGE: No compatible migration session found for blocking session ${blockingSessionId}`);
     return { bridged: false, autoUnblocked: false };
   }
 
@@ -196,7 +196,7 @@ export class UnifiedElicitationBridge {
     userContext: any
   ): Promise<boolean> {
     try {
-      console.error(`🔓 BRIDGE: Auto-unblocking session ${blockingSessionId} with context:`, userContext);
+      console.error(`[UNBLOCKING] BRIDGE: Auto-unblocking session ${blockingSessionId} with context:`, userContext);
       
       // Use the elicitation orchestrator to process the bridged response
       const response = {
@@ -208,15 +208,15 @@ export class UnifiedElicitationBridge {
       const result = await elicitationOrchestrator.processElicitationResponse(response);
       
       if (result.success) {
-        console.error(`✅ BRIDGE: Auto-unblocked session ${blockingSessionId} successfully`);
+        console.error(`SUCCESS: BRIDGE: Auto-unblocked session ${blockingSessionId} successfully`);
         return true;
       } else {
-        console.error(`❌ BRIDGE: Failed to auto-unblock session ${blockingSessionId}:`, result.errors);
+        console.error(`ERROR: BRIDGE: Failed to auto-unblock session ${blockingSessionId}:`, result.errors);
         return false;
       }
       
     } catch (error) {
-      console.error(`💥 BRIDGE: Error auto-unblocking session ${blockingSessionId}:`, error);
+      console.error(`[ERROR] BRIDGE: Error auto-unblocking session ${blockingSessionId}:`, error);
       return false;
     }
   }
@@ -235,7 +235,7 @@ export class UnifiedElicitationBridge {
     bridgeUpdated: boolean;
     migrationSessionId?: string;
   }> {
-    console.error(`🌉 BRIDGE: Processing direct blocking response for session ${blockingSessionId}`);
+    console.error(`[BRIDGE] PROCESSING direct blocking response for session ${blockingSessionId}`);
     
     // Process the response normally through the orchestrator
     const result = await elicitationOrchestrator.processElicitationResponse({
@@ -251,7 +251,7 @@ export class UnifiedElicitationBridge {
       if (bridgeSession) {
         bridgeSession.userContext = { ...bridgeSession.userContext, ...(userResponse.responses || userResponse) };
         bridgeSession.isComplete = true;
-        console.error(`✅ BRIDGE: Updated migration session ${migrationSessionId} from blocking response`);
+        console.error(`SUCCESS: BRIDGE: Updated migration session ${migrationSessionId} from blocking response`);
       }
     }
     

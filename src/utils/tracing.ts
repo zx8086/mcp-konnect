@@ -54,7 +54,7 @@ export class UniversalTracingManager {
     // Initialize asynchronously - graceful degradation if it fails
     this.initialize().catch(() => {
       this.enabled = false;
-      console.warn('LangSmith initialization failed during construction - graceful degradation active');
+      console.error('LangSmith initialization failed during construction - graceful degradation active');
     });
   }
 
@@ -78,7 +78,7 @@ export class UniversalTracingManager {
       
       this.initialized = true;
     } catch (error: any) {
-      console.warn('Tracing initialization failed:', error.message);
+      console.error('Tracing initialization failed:', error.message);
       this.enabled = false;
       this.initialized = true;
     }
@@ -92,7 +92,7 @@ export class UniversalTracingManager {
       // Validate configuration
       const validation = validateTracingConfig(this.config);
       if (!validation.isValid) {
-        console.warn('LangSmith tracing configuration invalid:', validation.errors);
+        console.error('LangSmith tracing configuration invalid:', validation.errors);
         return;
       }
 
@@ -117,7 +117,7 @@ export class UniversalTracingManager {
           getCurrentRunTree = traceableImport.getCurrentRunTree;
         }
       } catch (traceableError: any) {
-        console.warn('Failed to import traceable functions:', traceableError.message);
+        console.error('Failed to import traceable functions:', traceableError.message);
       }
       
       // Set up environment variables for LangSmith SDK (both standard and legacy)
@@ -144,8 +144,8 @@ export class UniversalTracingManager {
       console.error(`Dashboard: ${this.config.endpoint?.replace('api.', '')}/p/${this.config.project}`);
       
     } catch (error: any) {
-      console.warn('WARNING: LangSmith initialization failed - graceful degradation active');
-      console.warn('Error:', error.message);
+      console.error('WARNING: LangSmith initialization failed - graceful degradation active');
+      console.error('Error:', error.message);
       this.enabled = false;
     }
   }
@@ -427,7 +427,7 @@ export class UniversalTracingManager {
 
     } catch (tracingError: any) {
       // If tracing fails, still execute the operation
-      console.warn('LangSmith tracing error:', tracingError.message);
+      console.error('LangSmith tracing error:', tracingError.message);
       const result = await operation();
       return { result };
     }
@@ -450,7 +450,7 @@ export class UniversalTracingManager {
         async () => {
           const startTime = Date.now();
           
-          console.error(`🔗 Starting MCP session: ${traceName}`, {
+          console.error(`INFO: Starting MCP session: ${traceName}`, {
             connectionId: sessionContext.connectionId,
             transportMode: sessionContext.transportMode,
             clientInfo: sessionContext.clientInfo,
@@ -461,13 +461,13 @@ export class UniversalTracingManager {
             const result = await operation();
             const executionTime = Date.now() - startTime;
             
-            console.error(`✅ MCP session established: ${traceName}`, {
+            console.error(`SUCCESS: MCP session established: ${traceName}`, {
               executionTime
             });
             
             return result;
           } catch (error) {
-            console.error(`❌ MCP session failed: ${traceName}`, { error });
+            console.error(`ERROR: MCP session failed: ${traceName}`, { error });
             throw error;
           }
         },
@@ -493,7 +493,7 @@ export class UniversalTracingManager {
 
       return await sessionTracer();
     } catch (error: any) {
-      console.warn('Session tracing error:', error.message);
+      console.error('Session tracing error:', error.message);
       return await operation();
     }
   }

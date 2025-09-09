@@ -7,7 +7,7 @@
 import { describe, it, expect } from "bun:test";
 import { MandatoryElicitationGate, ElicitationBlockedError } from "../enforcement/mandatory-elicitation-gate.js";
 
-describe("🔍 Debug Enforcement", () => {
+describe("INFO: Debug Enforcement", () => {
   it("should test gate directly", async () => {
     const gate = MandatoryElicitationGate.getInstance();
     
@@ -21,7 +21,7 @@ describe("🔍 Debug Enforcement", () => {
     let errorMessage = '';
     
     try {
-      console.log("🔧 Testing direct gate validation...");
+      console.log("INFO: Testing direct gate validation...");
       
       await gate.validateMandatoryContext({
         operationName: 'create_service',
@@ -33,18 +33,18 @@ describe("🔍 Debug Enforcement", () => {
         }
       });
       
-      console.log("❌ Gate did NOT block - this is wrong!");
+      console.log("ERROR: Gate did NOT block - this is wrong!");
       
     } catch (error) {
       wasBlocked = true;
       errorMessage = error.message;
-      console.log("✅ Gate blocked correctly:", error.constructor.name, error.message);
+      console.log("SUCCESS: Gate blocked correctly:", error.constructor.name, error.message);
       
       if (error instanceof ElicitationBlockedError) {
-        console.log("✅ Correct error type - ElicitationBlockedError");
+        console.log("SUCCESS: Correct error type - ElicitationBlockedError");
         console.log("Missing fields:", error.missingFields);
       } else {
-        console.log("❌ Wrong error type:", error.constructor.name);
+        console.log("ERROR: Wrong error type:", error.constructor.name);
       }
     }
     

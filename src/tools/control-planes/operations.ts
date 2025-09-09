@@ -455,7 +455,7 @@ export async function createDataPlaneToken(
         configHash: result.config_hash
       },
       message: `Data plane token '${result.name}' created successfully`,
-      security: "⚠️ Store the token securely - it cannot be retrieved again",
+      security: "WARNING: Store the token securely - it cannot be retrieved again",
       relatedTools: [
         "Use list-data-plane-tokens to see all tokens",
         "Use list-data-plane-nodes to monitor node connections"

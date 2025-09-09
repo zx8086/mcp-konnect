@@ -25,7 +25,7 @@ describe('Flight API Integration Tests', () => {
   beforeAll(async () => {
     testUtils = new FlightApiTestUtils();
     environmentDetector = new TestEnvironmentDetector(testUtils);
-    console.log('🚀 Starting Flight API Integration Tests');
+    console.log('INFO: Starting Flight API Integration Tests');
     
     // Detect environment capabilities upfront
     await environmentDetector.detectCapabilities();
@@ -54,7 +54,7 @@ describe('Flight API Integration Tests', () => {
       expect(flightService.protocol).toBe(TEST_CONFIG.service.protocol);
       expect(flightService.port).toBe(TEST_CONFIG.service.port);
 
-      console.log(`✅ Created flight service: ${flightService.id}`);
+      console.log(`SUCCESS: Created flight service: ${flightService.id}`);
     });
 
     test('should create all flight API routes', async () => {
@@ -80,7 +80,7 @@ describe('Flight API Integration Tests', () => {
       expect(createFlightRoute).toBeDefined();
       expect(bookFlightRoute).toBeDefined();
 
-      console.log(`✅ Created ${flightRoutes.length} flight routes`);
+      console.log(`SUCCESS: Created ${flightRoutes.length} flight routes`);
     });
 
     test('should configure route-specific settings', async () => {
@@ -95,7 +95,7 @@ describe('Flight API Integration Tests', () => {
       expect(bookFlightRoute?.methods).toEqual(['POST']);
       expect(bookFlightRoute?.paths[0]).toContain('book');
 
-      console.log('✅ Route-specific configurations validated');
+      console.log('SUCCESS: Route-specific configurations validated');
     });
   });
 
@@ -107,7 +107,7 @@ describe('Flight API Integration Tests', () => {
       expect(testConsumer.id).toBeDefined();
       expect(testConsumer.username).toContain('flight-api-client');
 
-      console.log(`✅ Created test consumer: ${testConsumer.id}`);
+      console.log(`SUCCESS: Created test consumer: ${testConsumer.id}`);
     });
 
     test('should configure key authentication', async () => {
@@ -130,7 +130,7 @@ describe('Flight API Integration Tests', () => {
       expect(credentials.keyAuth).toBeDefined();
       expect(credentials.keyAuth.key).toBe(TEST_FIXTURES.authCredentials.keyAuth);
 
-      console.log('✅ Key authentication configured');
+      console.log('SUCCESS: Key authentication configured');
     });
 
     test('should simulate authenticated API requests', async () => {
@@ -153,7 +153,7 @@ describe('Flight API Integration Tests', () => {
       FlightApiAssertions.assertApiResponse(createFlightResponse);
       expect(createFlightResponse.response.success).toBe(true);
 
-      console.log('✅ Authenticated API requests simulated');
+      console.log('SUCCESS: Authenticated API requests simulated');
     });
   });
 
@@ -167,7 +167,7 @@ describe('Flight API Integration Tests', () => {
       expect(rateLimitPlugin.config.minute).toBe(100);
       expect(rateLimitPlugin.config.hour).toBe(1000);
 
-      console.log('✅ Rate limiting plugin configured');
+      console.log('SUCCESS: Rate limiting plugin configured');
     });
 
     test('should configure CORS plugin for browser support', async () => {
@@ -180,7 +180,7 @@ describe('Flight API Integration Tests', () => {
       expect(corsPlugin.config.methods).toContain('GET');
       expect(corsPlugin.config.methods).toContain('POST');
 
-      console.log('✅ CORS plugin configured');
+      console.log('SUCCESS: CORS plugin configured');
     });
 
     test('should test plugin functionality with simulated requests', async () => {
@@ -205,7 +205,7 @@ describe('Flight API Integration Tests', () => {
         FlightApiAssertions.assertApiResponse(response);
       });
 
-      console.log('✅ Plugin functionality tested');
+      console.log('SUCCESS: Plugin functionality tested');
     });
   });
 
@@ -218,7 +218,7 @@ describe('Flight API Integration Tests', () => {
       expect(portalApp.name).toContain('Flight API Test App');
       expect(portalApp.clientId).toContain('flight-test-client');
 
-      console.log(`✅ Created portal application: ${portalApp.id}`);
+      console.log(`SUCCESS: Created portal application: ${portalApp.id}`);
     });
 
     test('should handle developer registration flow', async () => {
@@ -239,7 +239,7 @@ describe('Flight API Integration Tests', () => {
       expect(authResult.authenticated).toBe(true);
       expect(authResult.applicationId).toBe(portalApp.id);
 
-      console.log('✅ Developer registration flow tested');
+      console.log('SUCCESS: Developer registration flow tested');
     });
   });
 
@@ -253,7 +253,7 @@ describe('Flight API Integration Tests', () => {
       FlightApiAssertions.assertAnalyticsData(analytics);
       expect(analytics).toHaveProperty('data');
 
-      console.log(`✅ Analytics data collected: ${analytics.data?.length || 0} requests`);
+      console.log(`SUCCESS: Analytics data collected: ${analytics.data?.length || 0} requests`);
     });
 
     test('should monitor consumer request patterns', async () => {
@@ -283,7 +283,7 @@ describe('Flight API Integration Tests', () => {
       const consumerAnalytics = await testUtils.getFlightApiAnalytics('15M');
       expect(consumerAnalytics).toBeDefined();
 
-      console.log('✅ Consumer request patterns monitored');
+      console.log('SUCCESS: Consumer request patterns monitored');
     });
 
     test('should track API performance metrics', async () => {
@@ -300,7 +300,7 @@ describe('Flight API Integration Tests', () => {
       expect(performanceMetrics.errorRate).toBeLessThan(0.05);
       expect(performanceMetrics.uptime).toBeGreaterThan(99.0);
 
-      console.log('✅ Performance metrics validated');
+      console.log('SUCCESS: Performance metrics validated');
     });
   });
 
@@ -317,7 +317,7 @@ describe('Flight API Integration Tests', () => {
       expect(controlPlaneStatus.healthy).toBe(true);
       expect(controlPlaneStatus.nodeCount).toBeGreaterThan(0);
 
-      console.log('✅ Control plane health verified');
+      console.log('SUCCESS: Control plane health verified');
     });
 
     test('should test certificate configuration', async () => {
@@ -332,7 +332,7 @@ describe('Flight API Integration Tests', () => {
       expect(sslConfig.valid).toBe(true);
       expect(new Date(sslConfig.validUntil).getTime()).toBeGreaterThan(Date.now());
 
-      console.log('✅ Certificate configuration tested');
+      console.log('SUCCESS: Certificate configuration tested');
     });
   });
 
@@ -347,7 +347,7 @@ describe('Flight API Integration Tests', () => {
       
       // In a real scenario, this would return 401 Unauthorized
       expect(response).toBeDefined();
-      console.log('✅ Invalid authentication handling tested');
+      console.log('SUCCESS: Invalid authentication handling tested');
     });
 
     test('should handle rate limit exceeded', async () => {
@@ -362,7 +362,7 @@ describe('Flight API Integration Tests', () => {
       expect(rateLimitResponse.statusCode).toBe(429);
       expect(rateLimitResponse.retryAfter).toBeDefined();
 
-      console.log('✅ Rate limit handling tested');
+      console.log('SUCCESS: Rate limit handling tested');
     });
 
     test('should handle malformed requests', async () => {
@@ -376,7 +376,7 @@ describe('Flight API Integration Tests', () => {
       );
 
       expect(response).toBeDefined();
-      console.log('✅ Malformed request handling tested');
+      console.log('SUCCESS: Malformed request handling tested');
     });
   });
 
@@ -405,7 +405,7 @@ describe('Flight API Integration Tests', () => {
       const confirmationResponse = await testUtils.simulateApiRequest('GET', '/flights/123/booking', authHeaders);
       expect(confirmationResponse.statusCode).toBe(200);
 
-      console.log('✅ Complete flight booking workflow tested');
+      console.log('SUCCESS: Complete flight booking workflow tested');
     });
 
     test('should handle concurrent booking attempts', async () => {
@@ -429,7 +429,7 @@ describe('Flight API Integration Tests', () => {
         FlightApiAssertions.assertApiResponse(response);
       });
 
-      console.log('✅ Concurrent booking handling tested');
+      console.log('SUCCESS: Concurrent booking handling tested');
     });
   });
 
@@ -442,7 +442,7 @@ describe('Flight API Integration Tests', () => {
       expect(resources.consumers.length).toBeGreaterThan(0);
       expect(resources.plugins.length).toBeGreaterThan(0);
 
-      console.log('✅ Resource tracking verified');
+      console.log('SUCCESS: Resource tracking verified');
       console.log(`Services: ${resources.services.length}`);
       console.log(`Routes: ${resources.routes.length}`);
       console.log(`Consumers: ${resources.consumers.length}`);
@@ -454,7 +454,7 @@ describe('Flight API Integration Tests', () => {
       expect(testUtils.cleanup).toBeDefined();
       expect(typeof testUtils.cleanup).toBe('function');
 
-      console.log('✅ Cleanup functionality verified');
+      console.log('SUCCESS: Cleanup functionality verified');
     });
   });
 });
@@ -497,7 +497,7 @@ describe('Flight API Performance Tests', () => {
     expect(duration).toBeLessThan(10000); // Should complete in under 10 seconds
     expect(rps).toBeGreaterThan(5); // Should handle at least 5 RPS
 
-    console.log(`✅ Handled ${requestCount} requests in ${duration}ms (${rps.toFixed(2)} RPS)`);
+    console.log(`SUCCESS: Handled ${requestCount} requests in ${duration}ms (${rps.toFixed(2)} RPS)`);
   });
 
   test('should maintain response times under load', async () => {
@@ -506,7 +506,7 @@ describe('Flight API Performance Tests', () => {
 
     expect(responseTime).toBeLessThan(acceptableThreshold);
 
-    console.log(`✅ Response time ${responseTime}ms is within acceptable threshold`);
+    console.log(`SUCCESS: Response time ${responseTime}ms is within acceptable threshold`);
   });
 });
 
@@ -533,7 +533,7 @@ describe('Flight API Security Tests', () => {
     const response = await testUtils.simulateApiRequest('GET', '/flights');
     // In real scenario, this should return 401 Unauthorized
     expect(response).toBeDefined();
-    console.log('✅ Unauthenticated request rejection tested');
+    console.log('SUCCESS: Unauthenticated request rejection tested');
   });
 
   test('should validate request payloads', async () => {
@@ -550,7 +550,7 @@ describe('Flight API Security Tests', () => {
     );
 
     expect(response).toBeDefined();
-    console.log('✅ Malicious payload validation tested');
+    console.log('SUCCESS: Malicious payload validation tested');
   });
 });
 
@@ -569,7 +569,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
     await testUtils.cleanup();
   });
 
-  // ⚠️  DEPRECATED: Replaced dangerous "graceful fallback" with safe environment detection
+  // WARNING:  DEPRECATED: Replaced dangerous "graceful fallback" with safe environment detection
   // The old testWithGracefulFallback pattern was hiding real API bugs
   // Use safeTest() with environment detection instead
 
@@ -582,7 +582,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
           const tokens = await testUtils.listDataPlaneTokens();
           expect(tokens).toBeDefined();
           expect(Array.isArray(tokens.tokens || [])).toBe(true);
-          console.log('✅ Listed data plane tokens');
+          console.log('SUCCESS: Listed data plane tokens');
         },
         'hasDataPlaneTokens',
         environmentDetector
@@ -597,7 +597,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const token = await testUtils.createDataPlaneToken(tokenName);
         expect(token).toBeDefined();
         expect(token.name).toBe(tokenName);
-        console.log('✅ Created data plane token:', token.tokenId?.substring(0, 8) + '...');
+        console.log('SUCCESS: Created data plane token:', token.tokenId?.substring(0, 8) + '...');
         
         // List tokens to verify creation
         const tokens = await testUtils.listDataPlaneTokens();
@@ -606,10 +606,10 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         
         // Revoke token
         await testUtils.revokeDataPlaneToken(token.tokenId);
-        console.log('✅ Revoked data plane token');
+        console.log('SUCCESS: Revoked data plane token');
       } catch (error: any) {
         if (error.message.includes('404') || error.message.includes('not found')) {
-          console.log('⚠️  Data plane token operations not available - skipping test');
+          console.log('WARNING:  Data plane token operations not available - skipping test');
           expect(true).toBe(true);
         } else {
           throw error;
@@ -627,7 +627,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
           const nodes = await testUtils.listDataPlaneNodes();
           expect(nodes).toBeDefined();
           expect(Array.isArray(nodes.nodes || [])).toBe(true);
-          console.log(`✅ Listed ${nodes.nodes?.length || 0} data plane nodes`);
+          console.log(`SUCCESS: Listed ${nodes.nodes?.length || 0} data plane nodes`);
         },
         'hasDataPlaneNodes',
         environmentDetector
@@ -644,7 +644,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
           const config = await testUtils.getControlPlaneConfig();
           expect(config).toBeDefined();
           expect(config.proxyUrl).toBeDefined();
-          console.log('✅ Retrieved control plane configuration');
+          console.log('SUCCESS: Retrieved control plane configuration');
         },
         'hasControlPlaneConfig',
         environmentDetector
@@ -659,24 +659,24 @@ describe('Flight API Phase 1 Expansion Tests', () => {
       const certificate = await testUtils.createTestCertificate();
       expect(certificate).toBeDefined();
       expect(certificate.certificateId).toBeDefined();
-      console.log('✅ Created test certificate:', certificate.certificateId?.substring(0, 8) + '...');
+      console.log('SUCCESS: Created test certificate:', certificate.certificateId?.substring(0, 8) + '...');
       
       // Get certificate
       const retrieved = await testUtils.getCertificate(certificate.certificateId);
       expect(retrieved).toBeDefined();
       expect(retrieved.certificateId).toBe(certificate.certificateId);
-      console.log('✅ Retrieved certificate details');
+      console.log('SUCCESS: Retrieved certificate details');
       
       // Update certificate
       const updated = await testUtils.updateCertificate(certificate.certificateId, {
         tags: [`updated-${Date.now()}`]
       });
       expect(updated).toBeDefined();
-      console.log('✅ Updated certificate tags');
+      console.log('SUCCESS: Updated certificate tags');
       
       // Delete certificate
       await testUtils.deleteCertificate(certificate.certificateId);
-      console.log('✅ Deleted test certificate');
+      console.log('SUCCESS: Deleted test certificate');
     });
   });
 
@@ -686,7 +686,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
       const schemas = await testUtils.listPluginSchemas();
       expect(schemas).toBeDefined();
       expect(Array.isArray(schemas.schemas || schemas)).toBe(true);
-      console.log(`✅ Listed ${(schemas.schemas || schemas).length} plugin schemas`);
+      console.log(`SUCCESS: Listed ${(schemas.schemas || schemas).length} plugin schemas`);
     });
   });
 
@@ -703,13 +703,13 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const products = await testUtils.listPortalProducts(portal.portalId);
         expect(products).toBeDefined();
         expect(Array.isArray(products.products || [])).toBe(true);
-        console.log(`✅ Listed ${products.products?.length || 0} portal products`);
+        console.log(`SUCCESS: Listed ${products.products?.length || 0} portal products`);
         
         // Clean up
         await testUtils.deletePortal(portal.portalId);
       } catch (error: any) {
         if (error.message.includes('404') || error.message.includes('not found')) {
-          console.log('⚠️  Portal products endpoint not available - skipping test');
+          console.log('WARNING:  Portal products endpoint not available - skipping test');
           expect(true).toBe(true); // Pass test if endpoint doesn't exist
         } else {
           throw error;
@@ -724,7 +724,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
       const apis = await testUtils.listPortalApis();
       expect(apis).toBeDefined();
       expect(Array.isArray(apis.apis || [])).toBe(true);
-      console.log(`✅ Listed ${apis.apis?.length || 0} portal APIs`);
+      console.log(`SUCCESS: Listed ${apis.apis?.length || 0} portal APIs`);
     });
   });
 
@@ -740,13 +740,13 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         });
         expect(application).toBeDefined();
         expect(application.applicationId).toBeDefined();
-        console.log('✅ Created test application:', application.applicationId?.substring(0, 8) + '...');
+        console.log('SUCCESS: Created test application:', application.applicationId?.substring(0, 8) + '...');
         
         // Get application
         const retrieved = await testUtils.getPortalApplication(application.applicationId);
         expect(retrieved).toBeDefined();
         expect(retrieved.name).toBe(appName);
-        console.log('✅ Retrieved application details');
+        console.log('SUCCESS: Retrieved application details');
         
         // Update application
         const updatedDescription = 'Updated test application description';
@@ -754,11 +754,11 @@ describe('Flight API Phase 1 Expansion Tests', () => {
           description: updatedDescription
         });
         expect(updated).toBeDefined();
-        console.log('✅ Updated application details');
+        console.log('SUCCESS: Updated application details');
         
         // Delete application
         await testUtils.deletePortalApplication(application.applicationId);
-        console.log('✅ Deleted test application');
+        console.log('SUCCESS: Deleted test application');
       }, 'Portal Application CRUD');
     });
   });
@@ -776,7 +776,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const registrations = await testUtils.listPortalApplicationRegistrations(application.applicationId);
         expect(registrations).toBeDefined();
         expect(Array.isArray(registrations.registrations || [])).toBe(true);
-        console.log(`✅ Listed ${registrations.registrations?.length || 0} application registrations`);
+        console.log(`SUCCESS: Listed ${registrations.registrations?.length || 0} application registrations`);
         
         // Clean up
         await testUtils.deletePortalApplication(application.applicationId);
@@ -798,7 +798,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const initialCreds = await testUtils.listPortalCredentials(application.applicationId);
         expect(initialCreds).toBeDefined();
         expect(Array.isArray(initialCreds.credentials || [])).toBe(true);
-        console.log(`✅ Listed ${initialCreds.credentials?.length || 0} initial credentials`);
+        console.log(`SUCCESS: Listed ${initialCreds.credentials?.length || 0} initial credentials`);
         
         // Create credential
         const credentialName = `test-cred-${Date.now()}`;
@@ -809,7 +809,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         );
         expect(credential).toBeDefined();
         expect(credential.credentialId).toBeDefined();
-        console.log('✅ Created test credential:', credential.credentialId?.substring(0, 8) + '...');
+        console.log('SUCCESS: Created test credential:', credential.credentialId?.substring(0, 8) + '...');
         
         // Update credential
         const updated = await testUtils.updatePortalCredential(
@@ -818,11 +818,11 @@ describe('Flight API Phase 1 Expansion Tests', () => {
           { name: `${credentialName}-updated` }
         );
         expect(updated).toBeDefined();
-        console.log('✅ Updated credential details');
+        console.log('SUCCESS: Updated credential details');
         
         // Delete credential
         await testUtils.deletePortalCredential(application.applicationId, credential.credentialId);
-        console.log('✅ Deleted test credential');
+        console.log('SUCCESS: Deleted test credential');
         
         // Clean up application
         await testUtils.deletePortalApplication(application.applicationId);
@@ -844,7 +844,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const newSecret = await testUtils.regeneratePortalApplicationSecret(application.applicationId);
         expect(newSecret).toBeDefined();
         expect(newSecret.clientSecret).toBeDefined();
-        console.log('✅ Regenerated application secret');
+        console.log('SUCCESS: Regenerated application secret');
         
         // Clean up
         await testUtils.deletePortalApplication(application.applicationId);
@@ -865,17 +865,17 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const controlPlane = await testUtils.testCreateControlPlane();
         expect(controlPlane).toBeDefined();
         expect(controlPlane.controlPlane?.controlPlaneId).toBeDefined();
-        console.log('✅ Created control plane:', controlPlane.controlPlane?.controlPlaneId?.substring(0, 8) + '...');
+        console.log('SUCCESS: Created control plane:', controlPlane.controlPlane?.controlPlaneId?.substring(0, 8) + '...');
         
         // Update control plane
         const updated = await testUtils.testUpdateControlPlane(controlPlane.controlPlane.controlPlaneId);
         expect(updated).toBeDefined();
-        console.log('✅ Updated control plane');
+        console.log('SUCCESS: Updated control plane');
         
         // Delete control plane
         const deleted = await testUtils.testDeleteControlPlane(controlPlane.controlPlane.controlPlaneId);
         expect(deleted).toBeDefined();
-        console.log('✅ Deleted control plane');
+        console.log('SUCCESS: Deleted control plane');
       }, 'Control Plane CRUD');
     });
   });
@@ -887,7 +887,7 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const nodes = await testUtils.testListDataPlaneNodes();
         expect(nodes).toBeDefined();
         expect(Array.isArray(nodes.nodes || [])).toBe(true);
-        console.log(`✅ Listed ${nodes.nodes?.length || 0} data plane nodes`);
+        console.log(`SUCCESS: Listed ${nodes.nodes?.length || 0} data plane nodes`);
       }, 'Data Plane Node Listing');
     });
 
@@ -897,19 +897,19 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         const token = await testUtils.testCreateDataPlaneToken();
         expect(token).toBeDefined();
         expect(token.token?.tokenId).toBeDefined();
-        console.log('✅ Created data plane token');
+        console.log('SUCCESS: Created data plane token');
         
         // List tokens
         const tokens = await testUtils.testListDataPlaneTokens();
         expect(tokens).toBeDefined();
         expect(Array.isArray(tokens.tokens || [])).toBe(true);
-        console.log(`✅ Listed ${tokens.tokens?.length || 0} data plane tokens`);
+        console.log(`SUCCESS: Listed ${tokens.tokens?.length || 0} data plane tokens`);
         
         // Revoke token
         if (token.token?.tokenId) {
           const revoked = await testUtils.testRevokeDataPlaneToken(token.token.tokenId);
           expect(revoked).toBeDefined();
-          console.log('✅ Revoked data plane token');
+          console.log('SUCCESS: Revoked data plane token');
         }
       }, 'Data Plane Token Management');
     });
@@ -922,12 +922,12 @@ describe('Flight API Phase 1 Expansion Tests', () => {
         // Get config
         const config = await testUtils.testGetControlPlaneConfig();
         expect(config).toBeDefined();
-        console.log('✅ Retrieved control plane config');
+        console.log('SUCCESS: Retrieved control plane config');
         
         // Update config
         const updated = await testUtils.testUpdateControlPlaneConfig();
         expect(updated).toBeDefined();
-        console.log('✅ Updated control plane config');
+        console.log('SUCCESS: Updated control plane config');
       }, 'Control Plane Configuration Management');
     });
   });
@@ -965,12 +965,12 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
         // Update certificate
         const updated = await testUtils.testUpdateCertificate(certificate.certificate.certificateId);
         expect(updated).toBeDefined();
-        console.log('✅ Updated certificate');
+        console.log('SUCCESS: Updated certificate');
         
         // Delete certificate
         const deleted = await testUtils.testDeleteCertificate(certificate.certificate.certificateId);
         expect(deleted).toBeDefined();
-        console.log('✅ Deleted certificate');
+        console.log('SUCCESS: Deleted certificate');
       }, 'Certificate CRUD Extended');
     });
   });
@@ -983,7 +983,7 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
         const apis = await testUtils.testListPortalApis();
         expect(apis).toBeDefined();
         expect(Array.isArray(apis.apis || [])).toBe(true);
-        console.log(`✅ Listed ${apis.apis?.length || 0} portal APIs`);
+        console.log(`SUCCESS: Listed ${apis.apis?.length || 0} portal APIs`);
         
         // If we have APIs, test fetching one
         if (apis.apis?.length > 0) {
@@ -992,27 +992,27 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
           // Fetch API details
           const apiDetails = await testUtils.testFetchPortalApi(apiSlug);
           expect(apiDetails).toBeDefined();
-          console.log('✅ Fetched portal API details');
+          console.log('SUCCESS: Fetched portal API details');
           
           // Get API actions
           const actions = await testUtils.testGetPortalApiActions(apiSlug);
           expect(actions).toBeDefined();
-          console.log('✅ Retrieved portal API actions');
+          console.log('SUCCESS: Retrieved portal API actions');
           
           // List API documents
           const documents = await testUtils.testListPortalApiDocuments(apiSlug);
           expect(documents).toBeDefined();
-          console.log('✅ Listed portal API documents');
+          console.log('SUCCESS: Listed portal API documents');
           
           // If we have documents, fetch one
           if (documents.documentTree?.pages?.length > 0) {
             const docSlug = documents.documentTree.pages[0].slug || documents.documentTree.pages[0].id;
             const document = await testUtils.testFetchPortalApiDocument(apiSlug, docSlug);
             expect(document).toBeDefined();
-            console.log('✅ Fetched portal API document');
+            console.log('SUCCESS: Fetched portal API document');
           }
         } else {
-          console.log('⚠️  No portal APIs available - skipping detailed tests');
+          console.log('WARNING:  No portal APIs available - skipping detailed tests');
         }
       }, 'Portal API Discovery and Documentation');
     });
@@ -1042,7 +1042,7 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
           mockApiId
         );
         expect(registration).toBeDefined();
-        console.log('✅ Created application registration');
+        console.log('SUCCESS: Created application registration');
         
         // Get registration details
         if (registration.registrationId) {
@@ -1051,7 +1051,7 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
             registration.registrationId
           );
           expect(regDetails).toBeDefined();
-          console.log('✅ Retrieved registration details');
+          console.log('SUCCESS: Retrieved registration details');
           
           // Delete registration
           const deleted = await testUtils.testDeletePortalApplicationRegistration(
@@ -1059,12 +1059,12 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
             registration.registrationId
           );
           expect(deleted).toBeDefined();
-          console.log('✅ Deleted registration');
+          console.log('SUCCESS: Deleted registration');
         }
         
         // Clean up application
         await testUtils.deletePortalApplication(application.applicationId);
-        console.log('✅ Application registration workflow completed');
+        console.log('SUCCESS: Application registration workflow completed');
       }, 'Portal Application Registration Workflow');
     });
   });
@@ -1082,19 +1082,19 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
         // Query analytics (even if no data, should return structure)
         const analytics = await testUtils.testQueryPortalApplicationAnalytics(application.applicationId);
         expect(analytics).toBeDefined();
-        console.log('✅ Queried portal application analytics');
+        console.log('SUCCESS: Queried portal application analytics');
         
         // Validate analytics structure
         if (analytics.analytics) {
           expect(analytics.analytics).toHaveProperty('summary');
-          console.log('✅ Analytics data structure validated');
+          console.log('SUCCESS: Analytics data structure validated');
         } else {
-          console.log('ℹ️  Analytics data not available yet (expected for new application)');
+          console.log('INFO:  Analytics data not available yet (expected for new application)');
         }
         
         // Clean up
         await testUtils.deletePortalApplication(application.applicationId);
-        console.log('✅ Application analytics testing completed');
+        console.log('SUCCESS: Application analytics testing completed');
       }, 'Portal Application Analytics');
     });
   });
@@ -1111,14 +1111,14 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
           expect(result.session).toBeDefined();
           expect(result.application).toBeDefined();
           expect(result.credential).toBeDefined();
-          console.log('✅ Complete portal developer workflow executed successfully');
+          console.log('SUCCESS: Complete portal developer workflow executed successfully');
           console.log(`   📧 Developer: ${result.developer?.email?.substring(0, 20)}...`);
           console.log(`   🔐 Session: ${result.session?.token ? 'Authenticated' : 'No token'}`);
           console.log(`   📱 App: ${result.application?.name}`);
           console.log(`   🔑 Credential: ${result.credential?.type || 'Created'}`);
         } else {
-          console.log('⚠️  Portal developer workflow partially available');
-          console.log(`   ℹ️  Status: ${result.workflow}, Error: ${result.error?.substring(0, 50)}...`);
+          console.log('WARNING:  Portal developer workflow partially available');
+          console.log(`   INFO:  Status: ${result.workflow}, Error: ${result.error?.substring(0, 50)}...`);
         }
         
         expect(result.workflow).toMatch(/complete|partial/);
@@ -1138,15 +1138,15 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
           expect(result.credentialsList).toBeDefined();
           expect(result.updatedApp).toBeDefined();
           expect(result.appDetails).toBeDefined();
-          console.log('✅ Complete application lifecycle executed successfully');
+          console.log('SUCCESS: Complete application lifecycle executed successfully');
           console.log(`   📱 Application: ${result.application?.name}`);
           console.log(`   🔑 Credentials created: ${result.credentials?.length || 0}`);
-          console.log(`   📊 Credentials listed: ${result.credentialsList?.credentials?.length || 0}`);
-          console.log(`   🔄 App updated: ${result.updatedApp ? 'Yes' : 'No'}`);
+          console.log(`   INFO: Credentials listed: ${result.credentialsList?.credentials?.length || 0}`);
+          console.log(`   INFO: App updated: ${result.updatedApp ? 'Yes' : 'No'}`);
           console.log(`   🔐 Secret regenerated: ${result.regeneratedSecret ? 'Yes' : 'No'}`);
         } else {
-          console.log('⚠️  Application lifecycle partially available');
-          console.log(`   ℹ️  Status: ${result.lifecycle}, Error: ${result.error?.substring(0, 50)}...`);
+          console.log('WARNING:  Application lifecycle partially available');
+          console.log(`   INFO:  Status: ${result.lifecycle}, Error: ${result.error?.substring(0, 50)}...`);
         }
         
         expect(result.lifecycle).toMatch(/complete|partial/);
@@ -1156,40 +1156,40 @@ P7cCIBz3T3J1Q2B5Rz7N8QCz8Y3F4F1Kz5F2V2B3zZ5z3L5D
 
   // Final Summary test to verify ALL phases
   test('should verify all Phase 1, Phase 2, and Phase 3 tools are accessible - 100% COVERAGE ACHIEVED!', async () => {
-    console.log('🎯 Phase 1 Expansion Summary:');
-    console.log('   ✅ Data Plane Token Management (3 tools)');
-    console.log('   ✅ Data Plane Node Management (1 tool)'); 
-    console.log('   ✅ Control Plane Configuration (1 tool)');
-    console.log('   ✅ Certificate Management CRUD (3 tools)');
-    console.log('   ✅ Plugin Schema Information (1 tool)');
-    console.log('   ✅ Portal Management Extensions (1 tool)');
-    console.log('   ✅ Portal API Management (1 tool)');
-    console.log('   ✅ Portal Application CRUD (3 tools)');
-    console.log('   ✅ Portal Application Registrations (1 tool)');
-    console.log('   ✅ Portal Credential CRUD (4 tools)');
-    console.log('   ✅ Portal Application Secrets (1 tool)');
-    console.log('   📊 Phase 1 Total: 20/20 new tools tested');
+    console.log('INFO: Phase 1 Expansion Summary:');
+    console.log('   SUCCESS: Data Plane Token Management (3 tools)');
+    console.log('   SUCCESS: Data Plane Node Management (1 tool)'); 
+    console.log('   SUCCESS: Control Plane Configuration (1 tool)');
+    console.log('   SUCCESS: Certificate Management CRUD (3 tools)');
+    console.log('   SUCCESS: Plugin Schema Information (1 tool)');
+    console.log('   SUCCESS: Portal Management Extensions (1 tool)');
+    console.log('   SUCCESS: Portal API Management (1 tool)');
+    console.log('   SUCCESS: Portal Application CRUD (3 tools)');
+    console.log('   SUCCESS: Portal Application Registrations (1 tool)');
+    console.log('   SUCCESS: Portal Credential CRUD (4 tools)');
+    console.log('   SUCCESS: Portal Application Secrets (1 tool)');
+    console.log('   INFO: Phase 1 Total: 20/20 new tools tested');
     console.log('');
-    console.log('🎯 Phase 2 Expansion Summary:');
-    console.log('   ✅ Control Plane CRUD (3 tools)');
-    console.log('   ✅ Data Plane Node Management (2 tools)');
-    console.log('   ✅ Data Plane Token CRUD (3 tools)');
-    console.log('   ✅ Control Plane Config Management (2 tools)');
-    console.log('   ✅ Certificate Extended CRUD (2 tools)');
-    console.log('   ✅ Portal API Discovery (4 tools)');
-    console.log('   ✅ Portal API Documentation (1 tool)');
-    console.log('   📊 Phase 2 Total: 17/17 new tools tested');
+    console.log('INFO: Phase 2 Expansion Summary:');
+    console.log('   SUCCESS: Control Plane CRUD (3 tools)');
+    console.log('   SUCCESS: Data Plane Node Management (2 tools)');
+    console.log('   SUCCESS: Data Plane Token CRUD (3 tools)');
+    console.log('   SUCCESS: Control Plane Config Management (2 tools)');
+    console.log('   SUCCESS: Certificate Extended CRUD (2 tools)');
+    console.log('   SUCCESS: Portal API Discovery (4 tools)');
+    console.log('   SUCCESS: Portal API Documentation (1 tool)');
+    console.log('   INFO: Phase 2 Total: 17/17 new tools tested');
     console.log('');
-    console.log('🎯 Phase 3 Expansion Summary:');
-    console.log('   ✅ Portal Application Registration Workflows (1 complex tool)');
-    console.log('   ✅ Portal Application Analytics (1 complex tool)');
-    console.log('   ✅ Complete Portal Developer Workflow (1 complex tool)');
-    console.log('   ✅ Complete Application Lifecycle Management (1 complex tool)');
-    console.log('   📊 Phase 3 Total: 4/4 complex workflow tools tested');
+    console.log('INFO: Phase 3 Expansion Summary:');
+    console.log('   SUCCESS: Portal Application Registration Workflows (1 complex tool)');
+    console.log('   SUCCESS: Portal Application Analytics (1 complex tool)');
+    console.log('   SUCCESS: Complete Portal Developer Workflow (1 complex tool)');
+    console.log('   SUCCESS: Complete Application Lifecycle Management (1 complex tool)');
+    console.log('   INFO: Phase 3 Total: 4/4 complex workflow tools tested');
     console.log('');
     console.log('🏆 FINAL COVERAGE ACHIEVEMENT:');
-    console.log('   🚀 Coverage Journey: 44.6% → 71.6% → 94.6% → 100%!');
-    console.log('   📈 Total tools tested: 74/74 (100% COVERAGE!)');
+    console.log('   INFO: Coverage Journey: 44.6% → 71.6% → 94.6% → 100%!');
+    console.log('   INFO: Total tools tested: 74/74 (100% COVERAGE!)');
     console.log('   ⭐ New tools added: 41 tools across 3 phases');
     console.log('   🎉 COMPLETE KONG KONNECT MCP TOOL COVERAGE ACHIEVED!');
     

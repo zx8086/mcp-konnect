@@ -8,6 +8,7 @@
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { KongApi } from "../api/kong-api.js";
 import { mcpElicitationManager, KongDeploymentContext } from "../utils/mcp-elicitation.js";
+import { elicitationBridge } from "../utils/elicitation-bridge.js";
 import * as configOps from "./configuration/operations.js";
 
 /**
@@ -26,7 +27,7 @@ export async function createServiceWithElicitation(
       team: extractFromTags(args.tags, 'team')
     };
 
-    // Step 2: Use MCP elicitation to gather missing context
+    // Step 2: Use hybrid elicitation (bridge + native MCP)
     const mcpContext = (extra as any).context;
     const completeContext = await mcpElicitationManager.gatherKongContext(
       providedContext,
@@ -34,10 +35,20 @@ export async function createServiceWithElicitation(
     );
 
     if (!completeContext) {
+      const bridgeStatus = elicitationBridge.getBridgeStatus();
+      
       return {
         error: "DEPLOYMENT_CANCELLED",
         message: "Service creation cancelled - required deployment context not provided",
-        reason: "User declined to provide mandatory information (domain, environment, team)"
+        reason: "User declined to provide mandatory information (domain, environment, team)",
+        debugging: {
+          providedContext,
+          bridgeStatus,
+          mcpAvailable: !!mcpContext?.elicit,
+          suggestion: bridgeStatus.validSessions > 0 
+            ? "Completed elicitation session found but context extraction failed"
+            : "No elicitation sessions completed. Run elicitation tools first."
+        }
       };
     }
 
@@ -61,12 +72,21 @@ export async function createServiceWithElicitation(
 
     const result = await configOps.createService(api, args.controlPlaneId, serviceData);
 
+    // Determine context source before clearing
+    const usedBridge = elicitationBridge.hasValidCompletedSession();
+    
+    // Clear the session from bridge after successful use
+    if (usedBridge) {
+      elicitationBridge.clearLatestSession();
+    }
+
     return {
       ...result,
       deploymentContext: completeContext,
       appliedTags: tags,
       message: `Service '${args.name}' created successfully with complete deployment context`,
       contextGathering: {
+        source: usedBridge ? 'elicitation-bridge' : 'native-mcp',
         elicitationUsed: Object.keys(providedContext).filter(k => !providedContext[k as keyof KongDeploymentContext]).length > 0,
         finalContext: completeContext
       }

@@ -651,7 +651,7 @@ export async function createCredential(
         expiresAt: result.expires_at
       },
       message: `${result.type} credential created successfully`,
-      security: "⚠️ Store the secret securely - it will not be shown again",
+      security: "WARNING: Store the secret securely - it will not be shown again",
       relatedTools: [
         "Use list-credentials to see all credentials",
         "Use update-credential to modify settings"
@@ -745,7 +745,7 @@ export async function regenerateApplicationSecret(
         expiresAt: result.expires_at
       },
       message: "Client secret regenerated successfully",
-      security: "⚠️ Update your applications immediately with the new secret",
+      security: "WARNING: Update your applications immediately with the new secret",
       relatedTools: [
         "Use get-application to see updated application details"
       ]

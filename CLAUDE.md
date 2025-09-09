@@ -2,6 +2,64 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 CRITICAL: JSON-RPC COMPLIANCE RULES
+
+**MANDATORY PROTOCOL COMPLIANCE** - This MCP server MUST be strictly JSON-RPC compliant:
+
+### ⚠️ ABSOLUTE PROHIBITIONS ⚠️
+
+1. **NO CONSOLE.LOG TO STDOUT** - EVER
+   - `console.log()` writes to stdout and BREAKS JSON-RPC protocol
+   - stdout is RESERVED for JSON-RPC messages only
+   - Use `console.error()` for debugging (writes to stderr)
+
+2. **NO EMOJIS IN OUTPUT** - EVER
+   - Emojis in console output violate JSON compliance
+   - Replace ALL emojis with text equivalents: `🔒` → `[LOCKED]`, `✅` → `[SUCCESS]`
+   - Claude Desktop cannot parse non-JSON content
+
+3. **NO NON-JSON CONTENT TO STDOUT**
+   - Debug messages, status updates, info logs = `console.error()` only
+   - Progress indicators, warnings = `console.error()` only
+   - Any user-visible debugging = `console.error()` only
+
+### ✅ REQUIRED PATTERNS ✅
+
+```typescript
+// ❌ WRONG - Breaks JSON-RPC
+console.log("INFO: Starting operation...");
+console.warn("⚠️ Warning message");
+console.log("🚀 Success!");
+
+// ✅ CORRECT - JSON-RPC compliant
+console.error("INFO: Starting operation...");
+console.error("WARNING: Warning message");
+console.error("SUCCESS: Operation complete");
+```
+
+### 🧪 ERROR SYMPTOMS TO PREVENT
+
+These errors indicate JSON-RPC violations:
+```
+Unexpected token 'I', "INFO: No c..." is not valid JSON
+Unexpected token 'S', "SUCCESS: Op..." is not valid JSON  
+Unexpected token '🚀', "🚀 Starting..." is not valid JSON
+```
+
+### 📋 COMPLIANCE CHECKLIST
+
+Before any commit:
+- [ ] No `console.log()` statements anywhere
+- [ ] No `console.warn()` statements anywhere  
+- [ ] All debugging uses `console.error()` 
+- [ ] No emojis in console output
+- [ ] No non-JSON content sent to stdout
+- [ ] MCP server starts without parse errors
+
+**VIOLATION IMPACT**: JSON-RPC violations prevent Claude Desktop from using the MCP server entirely.
+
+---
+
 ## ✅ RECENT PRODUCTION VALIDATION
 
 **Commit 6089b9d - Direct MCP Tool Kong Deployment Success**:

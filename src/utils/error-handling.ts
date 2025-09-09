@@ -185,7 +185,7 @@ export function formatError(error: unknown, traceContext?: TraceContext): string
     // Add trace context if available
     const trace = traceContext || error.context.trace;
     if (trace) {
-      formatted += '\n\n🔍 Trace Information:';
+      formatted += '\n\nINFO: Trace Information:';
       if (trace.runId) {
         formatted += `\nTrace ID: ${trace.runId}`;
       }

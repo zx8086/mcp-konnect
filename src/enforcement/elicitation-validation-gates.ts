@@ -65,9 +65,9 @@ export class ElicitationRequestFormatter {
       blockedOperation: error.operation,
       missingFields: error.missingFields,
       questions,
-      progressIndicator: `🚫 KONG OPERATION BLOCKED: ${error.operation.toUpperCase()}`,
+      progressIndicator: `[BLOCKED] KONG OPERATION BLOCKED: ${error.operation.toUpperCase()}`,
       canDecline: true,
-      declineConsequence: `⚠️ DEPLOYMENT BLOCKED: Cannot proceed with ${error.operation} without mandatory context`
+      declineConsequence: `WARNING: DEPLOYMENT BLOCKED: Cannot proceed with ${error.operation} without mandatory context`
     };
   }
 
@@ -79,19 +79,19 @@ export class ElicitationRequestFormatter {
   private static createQuestionForField(field: string, operation: string): ElicitationQuestion {
     const fieldQuestions = {
       domain: {
-        question: "🏷️ Which domain/area does this Kong configuration belong to?",
+        question: "INFO: Which domain/area does this Kong configuration belong to?",
         suggestions: ["api", "backend", "platform", "devops", "finance", "user-management"],
         helpText: "Domain helps categorize and organize your Kong entities. Examples: 'api' for API gateway services, 'backend' for internal services, 'platform' for infrastructure services.",
         examples: ["api", "backend", "platform", "devops"]
       },
       environment: {
-        question: "🌍 Which environment is this deployment for?", 
+        question: "INFO: Which environment is this deployment for?", 
         suggestions: ["development", "staging", "production", "testing"],
         helpText: "Environment specification is critical for proper deployment targeting. No default values are used for production safety.",
         examples: ["development", "staging", "production"]
       },
       team: {
-        question: "👥 Which team owns and manages this configuration?",
+        question: "[TEAM] Which team owns and manages this configuration?",
         suggestions: ["platform", "backend", "frontend", "devops", "infrastructure"],
         helpText: "Team ownership ensures proper access control and maintenance responsibility. This affects who can modify these Kong entities.",
         examples: ["platform-team", "backend-team", "devops-team"]
@@ -131,36 +131,36 @@ export class ElicitationRequestFormatter {
     const lines = [
       `${request.progressIndicator}`,
       ``,
-      `📋 **MANDATORY CONTEXT REQUIRED**`,
+      `INFO: **MANDATORY CONTEXT REQUIRED**`,
       `Operation: \`${request.blockedOperation}\``,
       `Session: \`${request.sessionId}\``,
       ``,
-      `🔒 **ZERO-FALLBACK POLICY**: Production deployments require explicit specification of all mandatory fields.`,
+      `[LOCKED] **ZERO-FALLBACK POLICY**: Production deployments require explicit specification of all mandatory fields.`,
       ``,
-      `📝 **REQUIRED INFORMATION**:`,
+      `INFO: **REQUIRED INFORMATION**:`,
       ``
     ];
 
     // Add questions
     request.questions.forEach((question, index) => {
       lines.push(`**${index + 1}. ${question.question}**`);
-      lines.push(`   💡 ${question.helpText}`);
+      lines.push(`   TIP: ${question.helpText}`);
       
       if (question.suggestions && question.suggestions.length > 0) {
-        lines.push(`   📌 Suggestions: ${question.suggestions.map(s => `\`${s}\``).join(', ')}`);
+        lines.push(`   [PIN] Suggestions: ${question.suggestions.map(s => `\`${s}\``).join(', ')}`);
       }
       
-      lines.push(`   ✏️ Examples: ${question.examples.map(e => `\`${e}\``).join(', ')}`);
+      lines.push(`   [EDIT] Examples: ${question.examples.map(e => `\`${e}\``).join(', ')}`);
       lines.push(``);
     });
 
     // Add decline information
     if (request.canDecline) {
-      lines.push(`⚠️ **DECLINE CONSEQUENCE**: ${request.declineConsequence}`);
+      lines.push(`WARNING: **DECLINE CONSEQUENCE**: ${request.declineConsequence}`);
       lines.push(``);
     }
 
-    lines.push(`🎯 **NEXT STEPS**:`);
+    lines.push(`INFO: **NEXT STEPS**:`);
     lines.push(`- Provide responses for all ${request.missingFields.length} required fields`);
     lines.push(`- Use \`mcp__kong-konnect__process_elicitation_response\` tool to continue`);
     lines.push(`- Or decline to block deployment and maintain production safety`);
@@ -254,11 +254,11 @@ export class ElicitationFlowOrchestrator {
    * Processes a blocked Kong operation and returns elicitation request
    */
   async handleBlockedOperation(error: KongOperationBlockedError): Promise<ElicitationRequest> {
-    console.error(`🔒 ELICITATION FLOW: Handling blocked operation ${error.operation}`);
+    console.error(`[LOCKED] ELICITATION FLOW: Handling blocked operation ${error.operation}`);
     
     const request = ElicitationRequestFormatter.formatBlockedOperation(error);
     
-    console.error(`📋 ELICITATION REQUEST CREATED:`, {
+    console.error(`INFO: ELICITATION REQUEST CREATED:`, {
       sessionId: request.sessionId,
       operation: request.blockedOperation,
       missingFields: request.missingFields
@@ -278,13 +278,13 @@ export class ElicitationFlowOrchestrator {
     errors?: string[];
     contextUpdated?: boolean;
   }> {
-    console.error(`🔄 ELICITATION FLOW: Processing response for session ${response.sessionId}`);
+    console.error(`INFO: ELICITATION FLOW: Processing response for session ${response.sessionId}`);
 
     // Validate response format and content
     const validation = ElicitationResponseValidator.validateResponse(response);
     
     if (!validation.valid) {
-      console.error(`❌ ELICITATION VALIDATION FAILED:`, validation.errors);
+      console.error(`ERROR: ELICITATION VALIDATION FAILED:`, validation.errors);
       return {
         success: false,
         message: `Elicitation response validation failed`,
@@ -299,7 +299,7 @@ export class ElicitationFlowOrchestrator {
         validation.normalizedResponses
       );
 
-      console.error(`✅ ELICITATION COMPLETED:`, {
+      console.error(`SUCCESS: ELICITATION COMPLETED:`, {
         sessionId: response.sessionId,
         domain: mandatoryContext.domain,
         environment: mandatoryContext.environment,
@@ -309,12 +309,12 @@ export class ElicitationFlowOrchestrator {
 
       return {
         success: true,
-        message: `✅ Elicitation completed successfully. Kong operations now unblocked for session ${response.sessionId}`,
+        message: `SUCCESS: Elicitation completed successfully. Kong operations now unblocked for session ${response.sessionId}`,
         contextUpdated: true
       };
 
     } catch (error) {
-      console.error(`💥 ELICITATION PROCESSING ERROR:`, error);
+      console.error(`[ERROR] ELICITATION PROCESSING ERROR:`, error);
       return {
         success: false,
         message: `Failed to process elicitation response: ${error instanceof Error ? error.message : 'Unknown error'}`,

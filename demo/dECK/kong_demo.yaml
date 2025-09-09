@@ -2,10 +2,19 @@ _format_version: "3.0"
 _konnect:
   control_plane_name: Foundation
 consumers:
-- keyauth_credentials:
-  - key: demo_key
-  username: demo_user
+  - username: demo_user
 plugins:
+- config:
+    echo_downstream: false
+    generator: uuid#counter
+    header_name: Kong-Request-ID
+  enabled: true
+  name: correlation-id
+  protocols:
+  - grpc
+  - grpcs
+  - http
+  - https
 - config:
     anonymous: null
     hide_credentials: false
@@ -27,8 +36,6 @@ plugins:
   - grpcs
   - http
   - https
-  - ws
-  - wss
 - config:
     day: null
     error_code: 429
@@ -95,6 +102,46 @@ services:
     path_handling: v0
     paths:
     - /
+    plugins:
+    - config:
+        add:
+          headers:
+          - X-Service-Runtime:bun
+          if_status: []
+          json: []
+          json_types: []
+        allow:
+          json: null
+        append:
+          headers: []
+          if_status: []
+          json: []
+          json_types: []
+        dots_in_keys: true
+        remove:
+          headers: []
+          if_status: []
+          json: []
+        rename:
+          headers: []
+          if_status: []
+        replace:
+          body: null
+          headers: []
+          if_status: []
+          json: []
+          json_types: []
+        transform:
+          functions: []
+          if_status: []
+          json: []
+      enabled: true
+      name: response-transformer-advanced
+      protocols:
+      - grpc
+      - grpcs
+      - http
+      - https
     preserve_host: false
     protocols:
     - http

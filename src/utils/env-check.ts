@@ -8,19 +8,19 @@
 import { getEnvVar, getEnvVarWithDefault, getRuntimeInfo, initializeEnvironment } from './env.js';
 
 async function main() {
-  console.log('🔍 Environment Variable Diagnostic Tool\n');
+  console.error('INFO: Environment Variable Diagnostic Tool\n');
   
   // Initialize environment
-  console.log('1. Initializing environment...');
+  console.error('1. Initializing environment...');
   await initializeEnvironment();
   
   // Show runtime information
-  console.log('\n2. Runtime Information:');
+  console.error('\n2. Runtime Information:');
   const runtimeInfo = getRuntimeInfo();
   console.table(runtimeInfo);
   
   // Test environment variables
-  console.log('\n3. Environment Variable Tests:');
+  console.error('\n3. Environment Variable Tests:');
   
   const testVars = [
     'LANGSMITH_TRACING',
@@ -43,34 +43,34 @@ async function main() {
       'Bun.env': bunValue || '(undefined)',
       'process.env': processValue || '(undefined)',
       'getEnvVar()': universalValue || '(undefined)',
-      'Status': universalValue ? '✅' : '❌'
+      'Status': universalValue ? 'SUCCESS:' : 'ERROR:'
     };
   }
   
   console.table(results);
   
   // Test .env file detection
-  console.log('\n4. .env File Detection:');
+  console.error('\n4. .env File Detection:');
   try {
     const fs = await import('fs/promises');
     const envExists = await fs.access('.env').then(() => true).catch(() => false);
     const envContent = envExists ? await fs.readFile('.env', 'utf-8') : null;
     
-    console.log(`📄 .env file exists: ${envExists ? '✅' : '❌'}`);
+    console.error(`INFO: .env file exists: ${envExists ? 'SUCCESS:' : 'ERROR:'}`);
     if (envExists && envContent) {
       const lines = envContent.split('\n').filter(line => line.trim() && !line.startsWith('#'));
-      console.log(`📝 Environment variables in .env: ${lines.length}`);
+      console.error(`INFO: Environment variables in .env: ${lines.length}`);
       lines.forEach(line => {
         const [key] = line.split('=');
-        console.log(`  - ${key}`);
+        console.error(`  - ${key}`);
       });
     }
   } catch (error) {
-    console.log(`❌ Error checking .env file: ${error}`);
+    console.error(`ERROR: Error checking .env file: ${error}`);
   }
   
   // Performance comparison
-  console.log('\n5. Performance Comparison:');
+  console.error('\n5. Performance Comparison:');
   const iterations = 10000;
   
   if (typeof Bun !== 'undefined') {
@@ -92,33 +92,33 @@ async function main() {
     }
     const universalTime = (Bun.nanoseconds() - startUniversal) / 1_000_000;
     
-    console.log(`Bun.env (${iterations} calls): ${bunTime.toFixed(2)}ms`);
-    console.log(`process.env (${iterations} calls): ${processTime.toFixed(2)}ms`);
-    console.log(`getEnvVar() (${iterations} calls): ${universalTime.toFixed(2)}ms`);
-    console.log(`Speed improvement: ${(processTime / bunTime).toFixed(1)}x faster with Bun.env`);
+    console.error(`Bun.env (${iterations} calls): ${bunTime.toFixed(2)}ms`);
+    console.error(`process.env (${iterations} calls): ${processTime.toFixed(2)}ms`);
+    console.error(`getEnvVar() (${iterations} calls): ${universalTime.toFixed(2)}ms`);
+    console.error(`Speed improvement: ${(processTime / bunTime).toFixed(1)}x faster with Bun.env`);
   }
   
   // Recommendations
-  console.log('\n6. Recommendations:');
+  console.error('\n6. Recommendations:');
   const hasLangSmithTracing = getEnvVar('LANGSMITH_TRACING');
   const hasLangSmithApiKey = getEnvVar('LANGSMITH_API_KEY');
   const hasKonnectToken = getEnvVar('KONNECT_ACCESS_TOKEN');
   
   if (!hasLangSmithTracing) {
-    console.log('⚠️  LANGSMITH_TRACING not found - add to .env file');
+    console.error('WARNING:  LANGSMITH_TRACING not found - add to .env file');
   }
   if (!hasLangSmithApiKey) {
-    console.log('⚠️  LANGSMITH_API_KEY not found - add to .env file');
+    console.error('WARNING:  LANGSMITH_API_KEY not found - add to .env file');
   }
   if (!hasKonnectToken) {
-    console.log('⚠️  KONNECT_ACCESS_TOKEN not found - add to .env file');
+    console.error('WARNING:  KONNECT_ACCESS_TOKEN not found - add to .env file');
   }
   
   if (hasLangSmithTracing && hasLangSmithApiKey && hasKonnectToken) {
-    console.log('✅ All critical environment variables found!');
+    console.error('SUCCESS: All critical environment variables found!');
   }
   
-  console.log('\n✨ Environment diagnostic complete!');
+  console.error('\nINFO: Environment diagnostic complete!');
 }
 
 if (import.meta.main) {

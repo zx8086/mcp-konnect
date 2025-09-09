@@ -11,9 +11,9 @@ import { describe, it, expect } from "bun:test";
 import { createBlockedOperationHandler, ELICITATION_TOOL_HANDLERS } from "../enforcement/mcp-server-integration.js";
 import { MandatoryElicitationGate } from "../enforcement/mandatory-elicitation-gate.js";
 
-describe("🔄 End-to-End Elicitation Workflow", () => {
+describe("INFO: End-to-End Elicitation Workflow", () => {
   it("should complete full elicitation workflow from blocked operation to successful operation", async () => {
-    console.log("🔄 Testing complete elicitation workflow...");
+    console.log("INFO: Testing complete elicitation workflow...");
     
     // Step 1: Attempt Kong operation without context - should be blocked
     console.log("\n📍 STEP 1: Attempting Kong operation without context...");
@@ -25,12 +25,12 @@ describe("🔄 End-to-End Elicitation Workflow", () => {
       host: "api.internal.com"
     }, {} as any);
     
-    console.log("✅ Operation blocked as expected");
+    console.log("SUCCESS: Operation blocked as expected");
     expect(blockedResult).toHaveProperty('error', 'KONG_OPERATION_BLOCKED');
     expect(blockedResult).toHaveProperty('sessionId');
     
     const sessionId = blockedResult.sessionId;
-    console.log("🎯 Session ID:", sessionId);
+    console.log("INFO: Session ID:", sessionId);
     
     // Step 2: Process elicitation response with required context
     console.log("\n📍 STEP 2: Processing elicitation response with required context...");
@@ -44,7 +44,7 @@ describe("🔄 End-to-End Elicitation Workflow", () => {
       }
     }, {} as any);
     
-    console.log("✅ Elicitation response processed");
+    console.log("SUCCESS: Elicitation response processed");
     console.log("Response result:", elicitationResponse);
     expect(elicitationResponse).toHaveProperty('success', true);
     
@@ -58,7 +58,7 @@ describe("🔄 End-to-End Elicitation Workflow", () => {
     for (const [key, context] of activeSessions) {
       if (context.elicitationComplete && context.domain === 'api') {
         foundValidatedContext = true;
-        console.log("✅ Found validated context:", context);
+        console.log("SUCCESS: Found validated context:", context);
         break;
       }
     }
@@ -84,13 +84,13 @@ describe("🔄 End-to-End Elicitation Workflow", () => {
       
       // The operation should not be blocked anymore
       expect(successResult?.error).not.toBe('KONG_OPERATION_BLOCKED');
-      console.log("✅ Operation no longer blocked by elicitation");
+      console.log("SUCCESS: Operation no longer blocked by elicitation");
       
     } catch (error) {
       // Any error here should not be a KongOperationBlockedError
       console.log("Operation threw:", error.constructor.name, error.message);
       expect(error.constructor.name).not.toBe('KongOperationBlockedError');
-      console.log("✅ Operation no longer blocked by elicitation (threw different error)");
+      console.log("SUCCESS: Operation no longer blocked by elicitation (threw different error)");
     }
     
     console.log("\n🎉 END-TO-END ELICITATION WORKFLOW COMPLETE");

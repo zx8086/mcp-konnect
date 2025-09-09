@@ -30,16 +30,16 @@ describe("Flight API Portal Management Tests", () => {
     api = new KongApi();
     testUtils = new FlightApiTestUtils();
     
-    console.log("🚀 Starting Flight API Portal Tests");
+    console.log("INFO: Starting Flight API Portal Tests");
     
     // Create flight service for portal publishing
     const service = await testUtils.createFlightService();
     createdServiceId = service.id;
-    console.log(`✅ Flight service created: ${service.id}`);
+    console.log(`SUCCESS: Flight service created: ${service.id}`);
   });
 
   afterAll(async () => {
-    console.log("🧹 Cleaning up portal test resources...");
+    console.log("INFO: Cleaning up portal test resources...");
     
     try {
       // Clean up in reverse order
@@ -57,7 +57,7 @@ describe("Flight API Portal Management Tests", () => {
       if (createdPortalId && !PROTECTED_PORTALS.includes(createdPortalId) && !usingExistingPortal) {
         try {
           await api.deletePortal(createdPortalId);
-          console.log(`✅ Cleaned up test-created portal: ${createdPortalId}`);
+          console.log(`SUCCESS: Cleaned up test-created portal: ${createdPortalId}`);
         } catch (error) {
           console.warn(`Failed to cleanup portal: ${error}`);
         }
@@ -77,7 +77,7 @@ describe("Flight API Portal Management Tests", () => {
       console.error("Cleanup error:", error);
     }
     
-    console.log("✅ Portal test cleanup completed");
+    console.log("SUCCESS: Portal test cleanup completed");
   });
 
   describe("Portal Creation and Management", () => {
@@ -94,8 +94,8 @@ describe("Flight API Portal Management Tests", () => {
       expect(result.default_domain).toBeTruthy();
       expect(result.default_domain).toContain("4c4ef30d215e.eu.portal.konghq.com");
 
-      console.log(`✅ Using existing activated portal: ${result.id}`);
-      console.log(`🌐 Portal URL: https://${result.default_domain}`);
+      console.log(`SUCCESS: Using existing activated portal: ${result.id}`);
+      console.log(`INFO: Portal URL: https://${result.default_domain}`);
     });
 
     it("should list all portals and include the Flight API portal", async () => {
@@ -110,7 +110,7 @@ describe("Flight API Portal Management Tests", () => {
       expect(flightPortal).toBeDefined();
       expect(flightPortal.name).toContain("flight-api-portal");
       
-      console.log(`✅ Portal found in list: ${flightPortal.name}`);
+      console.log(`SUCCESS: Portal found in list: ${flightPortal.name}`);
     });
 
     it("should get portal details with complete configuration", async () => {
@@ -125,8 +125,8 @@ describe("Flight API Portal Management Tests", () => {
       expect(result.application_count).toBeDefined();
       expect(result.published_product_count).toBeDefined();
       
-      console.log(`✅ Portal details retrieved for ${result.name}`);
-      console.log(`📊 Portal stats - Developers: ${result.developer_count}, Apps: ${result.application_count}, Products: ${result.published_product_count}`);
+      console.log(`SUCCESS: Portal details retrieved for ${result.name}`);
+      console.log(`INFO: Portal stats - Developers: ${result.developer_count}, Apps: ${result.application_count}, Products: ${result.published_product_count}`);
     });
 
     it("should update portal configuration", async () => {
@@ -148,7 +148,7 @@ describe("Flight API Portal Management Tests", () => {
       expect(result.is_public).toBe(true);
       expect(result.labels.updated).toBe("true");
       
-      console.log(`✅ Portal updated successfully`);
+      console.log(`SUCCESS: Portal updated successfully`);
     });
   });
 
@@ -161,7 +161,7 @@ describe("Flight API Portal Management Tests", () => {
       expect(Array.isArray(result.data)).toBe(true);
       expect(result.data.length).toBe(0);
       
-      console.log(`✅ Initial portal products count: ${result.data.length}`);
+      console.log(`SUCCESS: Initial portal products count: ${result.data.length}`);
     });
 
     it("should simulate API product publishing workflow", async () => {
@@ -177,11 +177,11 @@ describe("Flight API Portal Management Tests", () => {
         // This would normally succeed if we had actual API products
         await api.publishPortalProduct(createdPortalId, publishData);
         
-        console.log(`✅ API product publishing workflow tested`);
+        console.log(`SUCCESS: API product publishing workflow tested`);
       } catch (error: any) {
         // Expected to fail since we don't have real API products
         expect(error.message).toBeTruthy();
-        console.log(`✅ API publishing error handling verified: ${error.message}`);
+        console.log(`SUCCESS: API publishing error handling verified: ${error.message}`);
       }
     });
   });
@@ -209,11 +209,11 @@ describe("Flight API Portal Management Tests", () => {
         expect(result.client_id).toBe(applicationData.client_id);
         expect(result.client_secret).toBeTruthy();
 
-        console.log(`✅ Created Flight API application: ${result.id}`);
+        console.log(`SUCCESS: Created Flight API application: ${result.id}`);
         console.log(`🔑 Client credentials generated successfully`);
       } catch (error: any) {
         // May fail if portal applications aren't properly configured
-        console.log(`📝 Application creation test: ${error.message}`);
+        console.log(`INFO: Application creation test: ${error.message}`);
         expect(error).toBeDefined();
       }
     });
@@ -225,7 +225,7 @@ describe("Flight API Portal Management Tests", () => {
         
         // Test portal connectivity
         const isConnected = await portalClient.testConnection();
-        console.log(`🌐 Portal connectivity test: ${isConnected ? 'CONNECTED' : 'FAILED'}`);
+        console.log(`INFO: Portal connectivity test: ${isConnected ? 'CONNECTED' : 'FAILED'}`);
         
         if (isConnected) {
           const result = await portalClient.listApplications(10, 1);
@@ -234,7 +234,7 @@ describe("Flight API Portal Management Tests", () => {
           expect(result.data).toBeDefined();
           expect(Array.isArray(result.data)).toBe(true);
           
-          console.log(`✅ Portal applications listed: ${result.data.length} found`);
+          console.log(`SUCCESS: Portal applications listed: ${result.data.length} found`);
           
           // If we have applications, verify structure
           if (result.data.length > 0) {
@@ -244,10 +244,10 @@ describe("Flight API Portal Management Tests", () => {
             console.log(`📱 Sample application: ${app.name}`);
           }
         } else {
-          console.log(`⚠️  Portal client could not connect - may require portal domain setup`);
+          console.log(`WARNING:  Portal client could not connect - may require portal domain setup`);
         }
       } catch (error: any) {
-        console.log(`📝 Application listing test: ${error.message}`);
+        console.log(`INFO: Application listing test: ${error.message}`);
         expect(error).toBeDefined();
       }
     });
@@ -264,7 +264,7 @@ describe("Flight API Portal Management Tests", () => {
       expect(typeof portalDetails.application_count).toBe("number");
       expect(typeof portalDetails.published_product_count).toBe("number");
       
-      console.log(`📊 Portal Metrics:
+      console.log(`INFO: Portal Metrics:
         - Developers: ${portalDetails.developer_count}
         - Applications: ${portalDetails.application_count}
         - Published Products: ${portalDetails.published_product_count}
@@ -279,8 +279,8 @@ describe("Flight API Portal Management Tests", () => {
       expect(portalDetails.default_domain).toMatch(/\.portal\.konghq\.com$/);
       
       const portalUrl = `https://${portalDetails.default_domain}`;
-      console.log(`🌐 Portal Access URL: ${portalUrl}`);
-      console.log(`🔧 Custom Domain: ${portalDetails.custom_domain || 'Not configured'}`);
+      console.log(`INFO: Portal Access URL: ${portalUrl}`);
+      console.log(`INFO: Custom Domain: ${portalDetails.custom_domain || 'Not configured'}`);
     });
   });
 
@@ -309,7 +309,7 @@ describe("Flight API Portal Management Tests", () => {
       expect(portalDetails.labels.api).toBe("flight");
       expect(portalDetails.labels.updated).toBe("true");
       
-      console.log(`🏷️  Portal Labels:`, JSON.stringify(portalDetails.labels, null, 2));
+      console.log(`INFO:  Portal Labels:`, JSON.stringify(portalDetails.labels, null, 2));
     });
   });
 
@@ -331,28 +331,28 @@ describe("Flight API Portal Management Tests", () => {
       // All checks should pass for a properly configured portal
       Object.entries(readinessChecks).forEach(([check, passed]) => {
         expect(passed).toBe(true);
-        console.log(`✅ Portal readiness check - ${check}: ${passed}`);
+        console.log(`SUCCESS: Portal readiness check - ${check}: ${passed}`);
       });
       
-      console.log(`🎯 Flight API Portal is ready for developer onboarding!`);
+      console.log(`INFO: Flight API Portal is ready for developer onboarding!`);
     });
 
     it("should demonstrate portal management capabilities", async () => {
       // Test the full range of portal management operations
       const operations = [
-        'Portal Creation ✅',
-        'Portal Configuration ✅', 
-        'Portal Updates ✅',
-        'Product Publishing API ✅',
-        'Application Management API ✅',
-        'Analytics & Monitoring ✅',
-        'Security Configuration ✅'
+        'Portal Creation SUCCESS:',
+        'Portal Configuration SUCCESS:', 
+        'Portal Updates SUCCESS:',
+        'Product Publishing API SUCCESS:',
+        'Application Management API SUCCESS:',
+        'Analytics & Monitoring SUCCESS:',
+        'Security Configuration SUCCESS:'
       ];
       
-      console.log(`🎯 Portal Management Capabilities Demonstrated:`);
+      console.log(`INFO: Portal Management Capabilities Demonstrated:`);
       operations.forEach(op => console.log(`   ${op}`));
       
-      console.log(`\n🚀 Ready for Flight API Developer Portal deployment!`);
+      console.log(`\nINFO: Ready for Flight API Developer Portal deployment!`);
       expect(operations.length).toBe(7);
     });
   });
@@ -361,13 +361,13 @@ describe("Flight API Portal Management Tests", () => {
 /**
  * Portal Test Results Summary:
  * 
- * ✅ Portal Creation & Management
- * ✅ Portal Configuration Updates  
- * ✅ API Publishing Workflow
- * ✅ Application Management
- * ✅ Analytics & Monitoring
- * ✅ Security Configuration
- * ✅ Integration Readiness
+ * SUCCESS: Portal Creation & Management
+ * SUCCESS: Portal Configuration Updates  
+ * SUCCESS: API Publishing Workflow
+ * SUCCESS: Application Management
+ * SUCCESS: Analytics & Monitoring
+ * SUCCESS: Security Configuration
+ * SUCCESS: Integration Readiness
  * 
  * The Flight API Portal is fully configured and ready for:
  * - Developer self-service registration

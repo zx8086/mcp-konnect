@@ -234,7 +234,7 @@ export async function deletePortal(
     return {
       success: true,
       message: `Portal ${portalId} deleted successfully`,
-      warning: "⚠️ All portal data, developers, applications, and published products have been permanently removed",
+      warning: "WARNING: All portal data, developers, applications, and published products have been permanently removed",
       relatedTools: [
         "Use list-portals to see remaining portals",
         "Use create-portal to create a new portal"

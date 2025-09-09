@@ -116,7 +116,7 @@ export class TagElicitationEngine {
       return {
         sessionId: '',
         requests: [],
-        summary: '✅ All entities have sufficient tagging information'
+        summary: 'SUCCESS: All entities have sufficient tagging information'
       };
     }
 
@@ -489,7 +489,7 @@ export class TagElicitationEngine {
     const entity = plan.entity;
     const entityDisplay = `${entity.type}: ${entity.name || 'unnamed'}`;
     
-    let message = `🏷️ **Contextual Tags Required for ${entityDisplay}**\n\n`;
+    let message = `**Contextual Tags Required for ${entityDisplay}**\n\n`;
     message += `This ${entity.type} needs additional classification tags for operational intelligence.\n\n`;
     
     if (entity.name) {
@@ -564,7 +564,7 @@ export class TagElicitationEngine {
   }
 
   private generateTaggingElicitationSummary(plans: TaggingPlan[], context: TaggingContext): string {
-    let summary = `🏷️ **Contextual Tagging Required**\n\n`;
+    let summary = `**Contextual Tagging Required**\n\n`;
     summary += `${plans.length} entities need additional classification tags:\n\n`;
     
     plans.forEach((plan, index) => {

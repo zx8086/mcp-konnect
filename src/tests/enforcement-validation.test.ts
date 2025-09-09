@@ -50,7 +50,7 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
         );
       } catch (error) {
         wasBlocked = true;
-        console.log("🔍 Caught error:", error.constructor.name, error.message);
+        console.log("INFO: Caught error:", error.constructor.name, error.message);
         
         if (error instanceof KongOperationBlockedError) {
           elicitationSession = error.elicitationSession;
@@ -122,7 +122,7 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
     });
   });
 
-  describe("✅ Valid Elicitation Flow", () => {
+  describe("SUCCESS: Valid Elicitation Flow", () => {
     it("should allow operations after successful elicitation", async () => {
       const testContext = {
         userMessage: "Deploy with elicitation",
@@ -197,7 +197,7 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
     });
   });
 
-  describe("🏷️ Mandatory Tagging", () => {
+  describe("INFO: Mandatory Tagging", () => {
     it("should generate exactly 5 tags for all entities", async () => {
       // Complete elicitation first
       const sessionId = "tag-test-session";
@@ -227,7 +227,7 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
     });
   });
 
-  describe("⚠️ Error Handling", () => {
+  describe("WARNING: Error Handling", () => {
     it("should handle incomplete elicitation responses", async () => {
       const incompleteResponse = {
         sessionId: "incomplete-test",
@@ -257,7 +257,7 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
     });
   });
 
-  describe("📊 Session Management", () => {
+  describe("INFO: Session Management", () => {
     it("should track multiple concurrent sessions", async () => {
       const sessions = ["session-1", "session-2", "session-3"];
       
@@ -284,13 +284,13 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
   });
 });
 
-describe("🚀 Integration Validation", () => {
+describe("INFO: Integration Validation", () => {
   it("should validate complete enforcement system", async () => {
-    console.log("🔄 Running complete enforcement validation...");
+    console.log("INFO: Running complete enforcement validation...");
     
     const isValid = await validateElicitationEnforcement();
     expect(isValid).toBe(true);
     
-    console.log("✅ Complete enforcement system validation PASSED");
+    console.log("SUCCESS: Complete enforcement system validation PASSED");
   });
 });

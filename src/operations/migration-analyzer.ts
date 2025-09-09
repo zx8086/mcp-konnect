@@ -506,7 +506,7 @@ export class MigrationAnalyzer {
   }
 
   private generateElicitationSummary(requests: ElicitationRequest[], analysis: MigrationAnalysis): string {
-    let summary = `📊 **Migration Analysis Summary**\n\n`;
+    let summary = `INFO: **Migration Analysis Summary**\n\n`;
     summary += `• **Entities to migrate**: ${analysis.entityCounts.total} total (${analysis.entityCounts.services} services, ${analysis.entityCounts.routes} routes)\n`;
     summary += `• **Overall confidence**: ${Math.round(analysis.confidence.overall * 100)}%\n`;
     summary += `• **Risk level**: ${analysis.riskAssessment}\n`;
@@ -515,8 +515,8 @@ export class MigrationAnalyzer {
     if (requests.length > 0) {
       summary += `**Please provide the following information:**\n`;
       requests.forEach((req, index) => {
-        const type = req.id.includes('domain') ? '🏷️ Domain' : 
-                     req.id.includes('environment') ? '🌍 Environment' : 
+        const type = req.id.includes('domain') ? 'INFO: Domain' : 
+                     req.id.includes('environment') ? 'INFO: Environment' : 
                      req.id.includes('team') ? '👥 Team' : '❓ Information';
         summary += `${index + 1}. ${type}\n`;
       });

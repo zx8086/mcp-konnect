@@ -90,7 +90,7 @@ Update developer portal settings, configuration, and metadata. Allows modificati
 
   "delete-portal": `## Delete Developer Portal
 
-⚠️ **DESTRUCTIVE OPERATION** ⚠️
+WARNING: **DESTRUCTIVE OPERATION** WARNING:
 
 Permanently delete a developer portal and all associated data including developers, applications, and published products. This action cannot be undone.
 
@@ -102,7 +102,7 @@ Permanently delete a developer portal and all associated data including develope
 **Parameters:**
 - \`portalId\` (required): ID of the portal to delete
 
-**⚠️ Warning:** This will permanently remove:
+**WARNING: Warning:** This will permanently remove:
 - All portal configuration
 - All registered developers
 - All applications and credentials

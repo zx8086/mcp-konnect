@@ -81,7 +81,7 @@ describe('Flight API Unit Tests', () => {
       createCertificate: mock(() => Promise.resolve({ id: 'test-cert-123' }))
     };
 
-    console.log('🔧 Mock Kong API initialized');
+    console.log('INFO: Mock Kong API initialized');
   });
 
   describe('Service Operations', () => {

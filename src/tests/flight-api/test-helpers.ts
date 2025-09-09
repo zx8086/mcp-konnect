@@ -406,7 +406,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
    * Clean up all created test resources
    */
   async cleanup(): Promise<void> {
-    console.log("🧹 Cleaning up test resources...");
+    console.log("INFO: Cleaning up test resources...");
 
     // Clean up in reverse dependency order
     
@@ -489,7 +489,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
       credentials: []
     };
 
-    console.log("✅ Cleanup completed");
+    console.log("SUCCESS: Cleanup completed");
   }
 
   /**

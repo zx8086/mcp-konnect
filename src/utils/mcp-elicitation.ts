@@ -6,6 +6,7 @@
  */
 
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import { elicitationBridge } from "./elicitation-bridge.js";
 
 export interface KongDeploymentContext {
   domain?: string;
@@ -32,6 +33,9 @@ export class MCPElicitationManager {
 
   /**
    * Gather required Kong deployment context using progressive disclosure
+   * 
+   * CLAUDE DESKTOP COMPATIBILITY: First checks for completed elicitation sessions
+   * before falling back to native MCP elicitation (Claude Code)
    */
   async gatherKongContext(
     provided: Partial<KongDeploymentContext>,
@@ -42,6 +46,22 @@ export class MCPElicitationManager {
     if (missing.length === 0) {
       return provided as KongDeploymentContext;
     }
+
+    // CRITICAL: Check elicitation bridge for completed sessions first (Claude Desktop)
+    if (elicitationBridge.hasValidCompletedSession()) {
+      const bridgeContext = elicitationBridge.getLatestCompletedContext();
+      if (bridgeContext) {
+        const completeContext = { ...provided, ...bridgeContext };
+        console.error('SUCCESS: Using context from completed elicitation session:', completeContext);
+        
+        // Cache the result for future use
+        this.cacheContext('kong-deployment', completeContext, 3600); // 1 hour TTL
+        return completeContext;
+      }
+    }
+
+    // Fallback to native MCP elicitation (Claude Code)
+    console.error('INFO: No completed sessions found, attempting native MCP elicitation...');
 
     // Phase 1: Essential information (mandatory fields)
     const essentialResult = await this.elicitEssentialContext(missing, mcpContext);
@@ -98,7 +118,7 @@ export class MCPElicitationManager {
   ): Promise<Partial<KongDeploymentContext> | null> {
     if (!mcpContext || !mcpContext.elicit) {
       // Fallback for environments without MCP elicitation
-      console.warn('MCP elicitation not available, context required but cannot be gathered');
+      console.error('MCP elicitation not available, context required but cannot be gathered');
       return null;
     }
 
@@ -106,7 +126,7 @@ export class MCPElicitationManager {
     
     try {
       const result = await mcpContext.elicit({
-        message: `🚨 Kong Deployment Context Required
+        message: `SECURITY: Kong Deployment Context Required
 
 Missing essential information for production-grade deployment:
 ${missingFields.map(field => `• ${this.getFieldDescription(field)}`).join('\n')}
@@ -119,10 +139,10 @@ Please provide this information to proceed with deployment.`,
       if (result.action === 'accept') {
         return this.validateAndNormalizeContext(result.data);
       } else if (result.action === 'decline') {
-        console.warn('User declined to provide essential context');
+        console.error('User declined to provide essential context');
         return null;
       } else {
-        console.warn('Elicitation cancelled by user');
+        console.error('Elicitation cancelled by user');
         return null;
       }
     } catch (error) {
@@ -158,7 +178,7 @@ Please provide this information to proceed with deployment.`,
 
     try {
       const result = await mcpContext.elicit({
-        message: `📋 Optional Deployment Context
+        message: `INFO: Optional Deployment Context
 
 You're deploying to: ${baseContext.environment} environment, ${baseContext.domain} domain, ${baseContext.team} team
 
@@ -172,7 +192,7 @@ Would you like to provide additional context? (You can skip this step)`,
       }
     } catch (error) {
       // Additional context is optional, so failures are not critical
-      console.log('Additional context elicitation skipped or failed:', error.message);
+      console.error('Additional context elicitation skipped or failed:', error.message);
     }
 
     return null;

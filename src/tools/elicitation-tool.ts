@@ -3,6 +3,7 @@ import { elicitationManager, kongElicitationPatterns } from "../utils/elicitatio
 import { MigrationAnalyzer } from "../operations/migration-analyzer.js";
 import { TagElicitationEngine } from "../utils/tag-elicitation.js";
 import { contextDetector } from "../utils/context-detection.js";
+import { elicitationBridge } from "../utils/elicitation-bridge.js";
 
 /**
  * MCP Tool for Kong Migration Elicitation
@@ -111,12 +112,39 @@ export class ElicitationOperations {
     summary: string;
     needsUserInput: boolean;
   }> {
-    // Handle case where analysisResult is null or undefined
-    if (!analysisResult || !analysisResult.elicitationRequired) {
+    // Parse analysisResult if it's a string
+    if (typeof analysisResult === 'string') {
+      try {
+        analysisResult = JSON.parse(analysisResult);
+      } catch (error) {
+        console.error('Failed to parse analysisResult JSON:', error);
+        return {
+          sessionId: '',
+          requests: [],
+          summary: 'ERROR: Invalid analysis result format',
+          needsUserInput: false
+        };
+      }
+    }
+
+    // Handle case where analysisResult is null/undefined or elicitation is not required
+    if (!analysisResult) {
       return {
         sessionId: '',
         requests: [],
-        summary: '✅ All required information is available',
+        summary: 'ERROR: No analysis result provided',
+        needsUserInput: false
+      };
+    }
+
+    // CRITICAL FIX: Check migrationAnalysis.elicitationRequired if top-level not available
+    const elicitationRequired = analysisResult.elicitationRequired ?? analysisResult.migrationAnalysis?.elicitationRequired;
+    
+    if (!elicitationRequired) {
+      return {
+        sessionId: '',
+        requests: [],
+        summary: 'SUCCESS: All required information is available',
         needsUserInput: false
       };
     }
@@ -183,6 +211,12 @@ export class ElicitationOperations {
         message = `Request cancelled. Migration workflow stopped.`;
       } else if (processedResponse.data !== undefined) {
         message = `Response recorded: ${JSON.stringify(processedResponse.data)}`;
+      }
+
+      // CRITICAL: Store session in bridge when complete for Claude Desktop compatibility
+      if (isSessionComplete) {
+        elicitationBridge.setCompletedSession(sessionId);
+        message += ` SUCCESS: Elicitation complete - session ready for enhanced operations.`;
       }
 
       // Get next pending request if session not complete
@@ -280,7 +314,7 @@ export class ElicitationOperations {
       return {
         success: false,
         tagAssignments: {},
-        summary: `❌ Cannot generate tag assignments - missing required fields: ${missingFields.join(', ')}`,
+        summary: `ERROR: Cannot generate tag assignments - missing required fields: ${missingFields.join(', ')}`,
         validationResults: { 
           valid: false, 
           errors: [`Missing mandatory fields: ${missingFields.join(', ')}`] 
@@ -325,7 +359,7 @@ export class ElicitationOperations {
 
   // Private helper methods
   private generateAnalysisSummary(contextDetection: any, migrationAnalysis: any): string {
-    let summary = `🔍 **Migration Context Analysis**\n\n`;
+    let summary = `**Migration Context Analysis**\n\n`;
     
     // Context detection summary
     summary += `**Context Detection Results:**\n`;
@@ -345,14 +379,14 @@ export class ElicitationOperations {
     summary += `• Risk level: ${migrationAnalysis.riskAssessment}\n`;
 
     if (migrationAnalysis.elicitationRequired) {
-      summary += `\n⚠️ **Information needed:**\n`;
+      summary += `\nWARNING: **Information needed:**\n`;
       Object.entries(migrationAnalysis.missingInfo).forEach(([key, missing]) => {
         if (missing) {
           summary += `• ${key.charAt(0).toUpperCase() + key.slice(1)} specification required\n`;
         }
       });
     } else {
-      summary += `\n✅ All required information available`;
+      summary += `\nSUCCESS: All required information available`;
     }
 
     return summary;
@@ -432,7 +466,7 @@ export class ElicitationOperations {
     tagAssignments: Record<string, string[]>,
     validationResults: any
   ): string {
-    let summary = `🏷️ **Tag Assignment Summary**\n\n`;
+    let summary = `**Tag Assignment Summary**\n\n`;
     
     const entityCount = Object.keys(tagAssignments).length;
     const totalTags = Object.values(tagAssignments).flat().length;
@@ -443,9 +477,9 @@ export class ElicitationOperations {
     summary += `• **Average tags per entity**: ${avgTagsPerEntity}\n`;
 
     if (validationResults.valid) {
-      summary += `\n✅ **Validation**: All tag assignments meet requirements`;
+      summary += `\nSUCCESS: **Validation**: All tag assignments meet requirements`;
     } else {
-      summary += `\n❌ **Validation errors**: ${validationResults.errors.length}`;
+      summary += `\nERROR: **Validation errors**: ${validationResults.errors.length}`;
       validationResults.errors.slice(0, 3).forEach((error: string) => {
         summary += `\n  • ${error}`;
       });

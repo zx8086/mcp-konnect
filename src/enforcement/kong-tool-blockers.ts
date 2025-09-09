@@ -25,7 +25,7 @@ export class KongOperationBlockedError extends ElicitationBlockedError {
     public operation: string,
     missingFields: string[],
     elicitationSession: any,
-    message: string = `🚫 KONG OPERATION BLOCKED: ${operation} requires mandatory context: ${missingFields.join(', ')}`
+    message: string = `[BLOCKED] KONG OPERATION BLOCKED: ${operation} requires mandatory context: ${missingFields.join(', ')}`
   ) {
     super(missingFields, elicitationSession, message);
     this.name = 'KongOperationBlockedError';
@@ -68,7 +68,7 @@ function generateMandatoryTags(
 
   const allTags = [...mandatoryTags, ...optionalTags];
   
-  console.error(`🏷️ MANDATORY TAGS GENERATED: ${allTags.join(', ')}`);
+  console.error(`INFO: MANDATORY TAGS GENERATED: ${allTags.join(', ')}`);
   
   return allTags;
 }
@@ -97,7 +97,7 @@ export const BlockedServiceOperations = {
         requestContext
       },
       async (validatedContext: MandatoryContext) => {
-        console.error(`🔒 CREATING SERVICE: ${name} with validated context`);
+        console.error(`[CREATING] SERVICE: ${name} with validated context`);
         
         const api = await getValidatedKongApi(validatedContext);
         const tags = generateMandatoryTags(validatedContext, 'service', additionalParams.purpose);

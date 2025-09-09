@@ -17,116 +17,116 @@ interface HealthCheckResult {
 
 async function runConfigurationHealthCheck(): Promise<HealthCheckResult> {
   try {
-    console.log('🔍 Kong Konnect MCP Server Configuration Health Check');
-    console.log('='.repeat(60));
+    console.error('INFO: Kong Konnect MCP Server Configuration Health Check');
+    console.error('='.repeat(60));
 
     // Show runtime information
     const runtimeInfo = getRuntimeInfo();
-    console.log(`\n📊 Runtime Information:`);
-    console.log(`   Runtime: ${runtimeInfo.runtime} ${runtimeInfo.version}`);
-    console.log(`   Env Source: ${runtimeInfo.envSource}`);
-    console.log(`   Auto .env Loading: ${runtimeInfo.autoEnvLoading ? 'YES' : 'NO'}`);
+    console.error(`\nINFO: Runtime Information:`);
+    console.error(`   Runtime: ${runtimeInfo.runtime} ${runtimeInfo.version}`);
+    console.error(`   Env Source: ${runtimeInfo.envSource}`);
+    console.error(`   Auto .env Loading: ${runtimeInfo.autoEnvLoading ? 'YES' : 'NO'}`);
 
     // Load configuration
-    console.log('\n⚙️  Loading Configuration...');
+    console.error('\nINFO:  Loading Configuration...');
     const config = await configManager.load();
-    console.log('✅ Configuration loaded successfully');
+    console.error('SUCCESS: Configuration loaded successfully');
 
     // Run health assessment  
-    console.log('\n🏥 Running Health Assessment...');
+    console.error('\nINFO: Running Health Assessment...');
     const health = await configManager.getHealth();
     
     // Display health summary
-    console.log('\n📋 Health Summary:');
-    console.log(`   Status: ${getStatusEmoji(health.status)} ${health.status.toUpperCase()}`);
-    console.log(`   Security Score: ${health.metrics.securityScore}%`);
-    console.log(`   Environment Consistency: ${health.metrics.environmentConsistency}%`);
-    console.log(`   Configuration Complexity: ${health.metrics.configurationComplexity}/100`);
-    console.log(`   Validation Performance: ${health.metrics.validationPerformance}ms`);
+    console.error('\nINFO: Health Summary:');
+    console.error(`   Status: ${getStatusEmoji(health.status)} ${health.status.toUpperCase()}`);
+    console.error(`   Security Score: ${health.metrics.securityScore}%`);
+    console.error(`   Environment Consistency: ${health.metrics.environmentConsistency}%`);
+    console.error(`   Configuration Complexity: ${health.metrics.configurationComplexity}/100`);
+    console.error(`   Validation Performance: ${health.metrics.validationPerformance}ms`);
 
     // Display issues
     if (health.issues.critical.length > 0) {
-      console.log('\n🚨 CRITICAL ISSUES:');
+      console.error('\nCRITICAL: CRITICAL ISSUES:');
       health.issues.critical.forEach((issue, index) => {
-        console.log(`   ${index + 1}. ${issue.path}: ${issue.message}`);
-        console.log(`      💡 ${issue.remediation}`);
+        console.error(`   ${index + 1}. ${issue.path}: ${issue.message}`);
+        console.error(`      TIP: ${issue.remediation}`);
       });
     }
 
     if (health.issues.warnings.length > 0) {
-      console.log('\n⚠️  WARNINGS:');
+      console.error('\nWARNING:  WARNINGS:');
       health.issues.warnings.forEach((issue, index) => {
-        console.log(`   ${index + 1}. ${issue.path}: ${issue.message}`);
+        console.error(`   ${index + 1}. ${issue.path}: ${issue.message}`);
       });
     }
 
     if (health.issues.info.length > 0) {
-      console.log('\nℹ️  INFO:');
+      console.error('\nINFO:  INFO:');
       health.issues.info.forEach((issue, index) => {
-        console.log(`   ${index + 1}. ${issue.path}: ${issue.message}`);
+        console.error(`   ${index + 1}. ${issue.path}: ${issue.message}`);
       });
     }
 
     // Display recommendations
     if (health.recommendations.length > 0) {
-      console.log('\n💡 RECOMMENDATIONS:');
+      console.error('\nTIP: RECOMMENDATIONS:');
       health.recommendations.forEach((rec, index) => {
-        console.log(`   ${index + 1}. ${rec}`);
+        console.error(`   ${index + 1}. ${rec}`);
       });
     }
 
     // Configuration summary
-    console.log('\n⚙️  Configuration Summary:');
-    console.log(`   Environment: ${config.application.environment}`);
-    console.log(`   Log Level: ${config.application.logLevel}`);
-    console.log(`   Kong Region: ${config.kong.region}`);
-    console.log(`   Kong Token Set: ${config.kong.accessToken ? 'YES' : 'NO'}`);
-    console.log(`   Tracing Enabled: ${config.tracing.enabled ? 'YES' : 'NO'}`);
-    console.log(`   Monitoring Enabled: ${config.monitoring.enabled ? 'YES' : 'NO'}`);
+    console.error('\nINFO:  Configuration Summary:');
+    console.error(`   Environment: ${config.application.environment}`);
+    console.error(`   Log Level: ${config.application.logLevel}`);
+    console.error(`   Kong Region: ${config.kong.region}`);
+    console.error(`   Kong Token Set: ${config.kong.accessToken ? 'YES' : 'NO'}`);
+    console.error(`   Tracing Enabled: ${config.tracing.enabled ? 'YES' : 'NO'}`);
+    console.error(`   Monitoring Enabled: ${config.monitoring.enabled ? 'YES' : 'NO'}`);
 
     // Health trends if available
     const trends = configManager.getHealthTrends();
     if (trends.trend !== 'stable') {
-      console.log('\n📈 Health Trends:');
-      console.log(`   Trend: ${getTrendEmoji(trends.trend)} ${trends.trend.toUpperCase()}`);
-      console.log(`   Analysis: ${trends.analysis}`);
+      console.error('\nINFO: Health Trends:');
+      console.error(`   Trend: ${getTrendEmoji(trends.trend)} ${trends.trend.toUpperCase()}`);
+      console.error(`   Analysis: ${trends.analysis}`);
     }
 
     // Final status
-    console.log('\n' + '='.repeat(60));
+    console.error('\n' + '='.repeat(60));
     if (health.status === 'critical') {
-      console.log('❌ CONFIGURATION HEALTH CHECK FAILED');
-      console.log('   Fix critical issues before running the MCP server');
+      console.error('ERROR: CONFIGURATION HEALTH CHECK FAILED');
+      console.error('   Fix critical issues before running the MCP server');
       return { success: false, config, health };
     } else if (health.status === 'unhealthy') {
-      console.log('⚠️  CONFIGURATION HEALTH CHECK - ISSUES DETECTED');
-      console.log('   Server can run but consider addressing warnings');
+      console.error('WARNING:  CONFIGURATION HEALTH CHECK - ISSUES DETECTED');
+      console.error('   Server can run but consider addressing warnings');
       return { success: true, config, health };
     } else {
-      console.log('✅ CONFIGURATION HEALTH CHECK PASSED');
-      console.log('   Server ready to start');
+      console.error('SUCCESS: CONFIGURATION HEALTH CHECK PASSED');
+      console.error('   Server ready to start');
       return { success: true, config, health };
     }
 
   } catch (error: any) {
-    console.log('\n' + '='.repeat(60));
-    console.log('❌ CONFIGURATION HEALTH CHECK FAILED');
-    console.log(`   Error: ${error.message}`);
+    console.error('\n' + '='.repeat(60));
+    console.error('ERROR: CONFIGURATION HEALTH CHECK FAILED');
+    console.error(`   Error: ${error.message}`);
 
     if (error.name === 'ZodError') {
-      console.log('\n🔍 Validation Errors:');
+      console.error('\nINFO: Validation Errors:');
       error.issues?.forEach((issue: any, index: number) => {
-        console.log(`   ${index + 1}. ${issue.path.join('.')}: ${issue.message}`);
+        console.error(`   ${index + 1}. ${issue.path.join('.')}: ${issue.message}`);
       });
 
-      console.log('\n💡 Common Solutions:');
+      console.error('\nTIP: Common Solutions:');
       if (error.issues?.some((i: any) => i.path.includes('accessToken'))) {
-        console.log('   - Set KONNECT_ACCESS_TOKEN in your .env file');
-        console.log('   - Get your token from: https://cloud.konghq.com/');
+        console.error('   - Set KONNECT_ACCESS_TOKEN in your .env file');
+        console.error('   - Get your token from: https://cloud.konghq.com/');
       }
       if (error.issues?.some((i: any) => i.path.includes('apiKey'))) {
-        console.log('   - Set LANGSMITH_API_KEY in your .env file');
-        console.log('   - Or set LANGSMITH_TRACING=false to disable tracing');
+        console.error('   - Set LANGSMITH_API_KEY in your .env file');
+        console.error('   - Or set LANGSMITH_TRACING=false to disable tracing');
       }
     }
 
@@ -136,33 +136,33 @@ async function runConfigurationHealthCheck(): Promise<HealthCheckResult> {
 
 function getStatusEmoji(status: string): string {
   switch (status) {
-    case 'healthy': return '🟢';
-    case 'degraded': return '🟡';
-    case 'unhealthy': return '🟠';
-    case 'critical': return '🔴';
-    default: return '⚪';
+    case 'healthy': return 'HEALTHY';
+    case 'degraded': return 'DEGRADED';
+    case 'unhealthy': return 'UNHEALTHY';
+    case 'critical': return 'CRITICAL';
+    default: return 'UNKNOWN';
   }
 }
 
 function getTrendEmoji(trend: string): string {
   switch (trend) {
-    case 'improving': return '📈';
-    case 'degrading': return '📉';
-    case 'stable': return '📊';
-    default: return '📊';
+    case 'improving': return 'IMPROVING';
+    case 'degrading': return 'DEGRADING';
+    case 'stable': return 'STABLE';
+    default: return 'UNKNOWN';
   }
 }
 
 // Production deployment safety check
 async function runProductionSafetyCheck(): Promise<boolean> {
-  console.log('\n🚀 Production Deployment Safety Check');
-  console.log('-'.repeat(40));
+  console.error('\nINFO: Production Deployment Safety Check');
+  console.error('-'.repeat(40));
 
   try {
     const config = await configManager.load();
     
     if (config.application.environment !== 'production') {
-      console.log('ℹ️  Not running in production mode - safety check skipped');
+      console.error('INFO:  Not running in production mode - safety check skipped');
       return true;
     }
 
@@ -193,18 +193,18 @@ async function runProductionSafetyCheck(): Promise<boolean> {
     }
 
     if (safetyIssues.length > 0) {
-      console.log('🚨 PRODUCTION DEPLOYMENT BLOCKED');
-      console.log('   Safety Issues:');
-      safetyIssues.forEach(issue => console.log(`   - ${issue}`));
-      console.log('\n   Fix these issues before deploying to production');
+      console.error('CRITICAL: PRODUCTION DEPLOYMENT BLOCKED');
+      console.error('   Safety Issues:');
+      safetyIssues.forEach(issue => console.error(`   - ${issue}`));
+      console.error('\n   Fix these issues before deploying to production');
       return false;
     }
 
-    console.log('✅ Production safety check passed');
+    console.error('SUCCESS: Production safety check passed');
     return true;
 
   } catch (error: any) {
-    console.log(`❌ Production safety check failed: ${error.message}`);
+    console.error(`ERROR: Production safety check failed: ${error.message}`);
     return false;
   }
 }
@@ -213,17 +213,17 @@ async function runProductionSafetyCheck(): Promise<boolean> {
 async function exportConfigSchema(): Promise<void> {
   try {
     const schema = configManager.exportJsonSchema('./config-schema.json');
-    console.log('\n📄 JSON Schema exported to: ./config-schema.json');
+    console.error('\nINFO: JSON Schema exported to: ./config-schema.json');
     
     // Also log a simplified version
-    console.log('\n📋 Configuration Schema Summary:');
-    console.log('   - application: Core app settings (name, version, environment, logLevel)');
-    console.log('   - kong: Kong Konnect API configuration (token, region, timeouts)');
-    console.log('   - tracing: LangSmith tracing settings (enabled, apiKey, project)');
-    console.log('   - monitoring: Performance monitoring configuration');
-    console.log('   - runtime: Bun/Node.js runtime settings');
+    console.error('\nINFO: Configuration Schema Summary:');
+    console.error('   - application: Core app settings (name, version, environment, logLevel)');
+    console.error('   - kong: Kong Konnect API configuration (token, region, timeouts)');
+    console.error('   - tracing: LangSmith tracing settings (enabled, apiKey, project)');
+    console.error('   - monitoring: Performance monitoring configuration');
+    console.error('   - runtime: Bun/Node.js runtime settings');
   } catch (error: any) {
-    console.log(`❌ Failed to export schema: ${error.message}`);
+    console.error(`ERROR: Failed to export schema: ${error.message}`);
   }
 }
 

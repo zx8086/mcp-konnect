@@ -355,15 +355,15 @@ export class KongElicitationPatterns {
 
   // Helper methods for building contextual messages
   private buildDomainMessage(context: any): string {
-    let message = "🏷️ **Domain Classification Required**\n\n";
+    let message = "INFO: **Domain Classification Required**\n\n";
     message += "What domain should this Kong configuration be tagged with?\n";
     
     if (context.detectedDomains?.length) {
-      message += `\n💡 Detected possible domains: ${context.detectedDomains.join(', ')}`;
+      message += `\nTIP: Detected possible domains: ${context.detectedDomains.join(', ')}`;
     }
     
     if (context.serviceNames?.length) {
-      message += `\n📋 Found services: ${context.serviceNames.slice(0, 3).join(', ')}${context.serviceNames.length > 3 ? '...' : ''}`;
+      message += `\nINFO: Found services: ${context.serviceNames.slice(0, 3).join(', ')}${context.serviceNames.length > 3 ? '...' : ''}`;
     }
     
     message += "\n\n**Examples:** devops, api, platform, finance, marketing";
@@ -373,11 +373,11 @@ export class KongElicitationPatterns {
   }
 
   private buildEnvironmentMessage(context: any): string {
-    let message = "🌍 **Environment Specification Required**\n\n";
+    let message = "INFO: **Environment Specification Required**\n\n";
     message += "Which environment is this Kong configuration for?\n";
     
     if (context.detectedEnv) {
-      message += `\n💡 Detected environment: ${context.detectedEnv}`;
+      message += `\nTIP: Detected environment: ${context.detectedEnv}`;
     }
     
     if (context.filepath) {
@@ -392,7 +392,7 @@ export class KongElicitationPatterns {
     message += "Which team owns this Kong configuration?\n";
     
     if (context.domain) {
-      message += `\n🏷️ Domain: ${context.domain}`;
+      message += `\nINFO: Domain: ${context.domain}`;
     }
     
     message += "\n\n**Examples:** platform, devops, api, backend, frontend";
@@ -402,7 +402,7 @@ export class KongElicitationPatterns {
   }
 
   private buildContextualTagsMessage(entityType: string, context: any): string {
-    let message = `🔍 **${entityType.charAt(0).toUpperCase() + entityType.slice(1)} Classification Required**\n\n`;
+    let message = `INFO: **${entityType.charAt(0).toUpperCase() + entityType.slice(1)} Classification Required**\n\n`;
     message += `Help classify this ${entityType} for better operational intelligence:\n`;
     
     if (context.entityName) {
