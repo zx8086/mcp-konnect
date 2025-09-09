@@ -111,7 +111,8 @@ export class ElicitationOperations {
     summary: string;
     needsUserInput: boolean;
   }> {
-    if (!analysisResult.elicitationRequired) {
+    // Handle case where analysisResult is null or undefined
+    if (!analysisResult || !analysisResult.elicitationRequired) {
       return {
         sessionId: '',
         requests: [],
@@ -120,8 +121,22 @@ export class ElicitationOperations {
       };
     }
 
+    // Safely extract migration analysis with fallback
+    let migrationAnalysis;
+    if (analysisResult.migrationAnalysis) {
+      migrationAnalysis = analysisResult.migrationAnalysis;
+    } else {
+      // Create a fallback migration analysis
+      migrationAnalysis = {
+        elicitationRequired: true,
+        missingInfo: { domain: true, environment: true, team: true },
+        entityCounts: { total: 1, services: 1, routes: 1, consumers: 0, plugins: 0 },
+        confidence: { overall: 0, breakdown: { domain: 0, environment: 0, team: 0 } }
+      };
+    }
+
     const elicitationSession = await this.migrationAnalyzer.createElicitationSession(
-      analysisResult.migrationAnalysis,
+      migrationAnalysis,
       context
     );
 

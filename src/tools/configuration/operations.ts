@@ -73,6 +73,11 @@ export async function createService(
     enabled?: boolean;
   }
 ) {
+  // Validate minimum required data
+  if (!serviceData.name || !serviceData.host) {
+    throw new Error("Service name and host are required");
+  }
+
   try {
     const requestData = {
       name: serviceData.name,

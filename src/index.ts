@@ -27,14 +27,7 @@ import * as configurationOps from "./tools/configuration/operations.js";
 import * as portalOps from "./tools/portal/operations.js";
 import * as portalManagementOps from "./tools/portal-management/operations.js";
 import { ElicitationOperations } from "./tools/elicitation-tool.js";
-
-// BULLETPROOF ELICITATION ENFORCEMENT IMPORTS
-import { 
-  createBlockedOperationHandler,
-  ELICITATION_MCP_TOOLS,
-  ELICITATION_TOOL_HANDLERS
-} from "./enforcement/mcp-server-integration.js";
-import { KongOperationBlockedError } from "./enforcement/kong-tool-blockers.js";
+import { enhancedKongTools } from "./tools/enhanced-kong-tools.js";
 
 /**
  * Enhanced MCP server class for Kong Konnect integration with modular architecture
@@ -88,49 +81,38 @@ class KongKonnectMcpServer extends McpServer {
   private registerTools() {
     const allTools = getAllTools();
     
-    // Add elicitation tools to the registry (replacing any existing elicitation tools)
-    const elicitationTools = ELICITATION_MCP_TOOLS.map(tool => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema,
-      category: "elicitation",
-      method: tool.name // Use tool name as method for routing
-    }));
-    
-    // Filter out existing elicitation tools from allTools to prevent duplicates
-    const filteredAllTools = allTools.filter(tool => tool.category !== 'elicitation');
-    const allToolsWithElicitation = [...filteredAllTools, ...elicitationTools];
-    
-    console.error(`BULLETPROOF ELICITATION ENFORCEMENT ACTIVE`);
-    console.error(`Registering ${allToolsWithElicitation.length} tools (${elicitationTools.length} elicitation tools) across categories:`, 
-      [...new Set(allToolsWithElicitation.map(t => t.category))].join(", "));
+    console.error(`NATIVE MCP ELICITATION ACTIVE`);
+    console.error(`Registering ${allTools.length} tools across categories:`, 
+      [...new Set(allTools.map(t => t.category))].join(", "));
 
-    // Kong modification operations that MUST be blocked
-    const BLOCKED_KONG_OPERATIONS = new Set([
-      'create_service', 'update_service', 'delete_service',
-      'create_route', 'update_route', 'delete_route', 
-      'create_consumer', 'delete_consumer',
-      'create_plugin', 'update_plugin', 'delete_plugin'
+    // Kong modification operations using enhanced MCP elicitation
+    const ENHANCED_KONG_OPERATIONS = new Set([
+      'create_service', 'create_route', 'create_consumer', 'create_plugin'
     ]);
 
-    allToolsWithElicitation.forEach(tool => {
-      // Check if this is a blocked Kong operation
-      const isBlockedKongOperation = BLOCKED_KONG_OPERATIONS.has(tool.method);
-      
-      // Check if this is an elicitation tool
-      const isElicitationTool = tool.category === 'elicitation';
+    allTools.forEach(tool => {
+      // Check if this is an enhanced Kong operation
+      const isEnhancedKongOperation = ENHANCED_KONG_OPERATIONS.has(tool.method);
       
       let handler: (args: any, extra: RequestHandlerExtra) => Promise<any>;
       
-      if (isElicitationTool) {
-        // Use elicitation tool handler
-        console.error(`REGISTERING ELICITATION TOOL: ${tool.method}`);
-        handler = ELICITATION_TOOL_HANDLERS[tool.method as keyof typeof ELICITATION_TOOL_HANDLERS];
-        
-      } else if (isBlockedKongOperation) {
-        // Use blocked operation handler with elicitation enforcement
-        console.error(`REGISTERING BLOCKED OPERATION: ${tool.method}`);
-        handler = createBlockedOperationHandler(tool.method, '', [], []);
+      if (isEnhancedKongOperation) {
+        // Use enhanced operation handler with native MCP elicitation
+        console.error(`REGISTERING ENHANCED OPERATION: ${tool.method}`);
+        handler = async (args: any, extra: RequestHandlerExtra) => {
+          switch (tool.method) {
+            case 'create_service':
+              return await enhancedKongTools.createServiceWithElicitation(this.api, args, extra);
+            case 'create_route':
+              return await enhancedKongTools.createRouteWithElicitation(this.api, args, extra);
+            case 'create_consumer':
+              return await enhancedKongTools.createConsumerWithElicitation(this.api, args, extra);
+            case 'create_plugin':
+              return await enhancedKongTools.createPluginWithElicitation(this.api, args, extra);
+            default:
+              throw new Error(`Enhanced operation ${tool.method} not implemented`);
+          }
+        };
         
       } else {
         // Use original handler logic for non-blocked operations

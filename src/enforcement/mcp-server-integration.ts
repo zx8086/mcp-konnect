@@ -423,11 +423,29 @@ export const ELICITATION_TOOL_HANDLERS = {
   async create_elicitation_session(args: any, _extra: RequestHandlerExtra) {
     console.error(`CREATING ELICITATION SESSION`);
     
-    // The analysisResult comes from analyze_migration_context and has the full structure
-    // But createElicitationSession expects just the migrationAnalysis part
-    const analysisResult = args.analysisResult.migrationAnalysis ? 
-      args.analysisResult : // Already has the right structure
-      { migrationAnalysis: args.analysisResult, elicitationRequired: args.analysisResult.elicitationRequired };
+    // Fix the analysisResult structure - handle both formats safely
+    let analysisResult;
+    if (args.analysisResult && args.analysisResult.migrationAnalysis) {
+      // Already has the right structure
+      analysisResult = args.analysisResult;
+    } else if (args.analysisResult) {
+      // Wrap in expected structure
+      analysisResult = { 
+        migrationAnalysis: args.analysisResult, 
+        elicitationRequired: args.analysisResult.elicitationRequired || true 
+      };
+    } else {
+      // Fallback structure
+      analysisResult = {
+        migrationAnalysis: {
+          elicitationRequired: true,
+          missingInfo: { domain: true, environment: true, team: true },
+          entityCounts: { total: 0, services: 0, routes: 0, consumers: 0, plugins: 0 },
+          confidence: { overall: 0, breakdown: { domain: 0, environment: 0, team: 0 } }
+        },
+        elicitationRequired: true
+      };
+    }
     
     const result = await elicitationOps.createElicitationSession(
       analysisResult,
