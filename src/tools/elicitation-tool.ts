@@ -105,12 +105,15 @@ export class ElicitationOperations {
 
   /**
    * Create elicitation session based on analysis
+   * Now compatible with both Claude Code and Claude Desktop
    */
   async createElicitationSession(analysisResult: any, context: any): Promise<{
     sessionId: string;
     requests: any[];
     summary: string;
     needsUserInput: boolean;
+    claudeDesktopPrompt?: string;
+    directInstructions?: string;
   }> {
     // Parse analysisResult if it's a string
     if (typeof analysisResult === 'string') {
@@ -168,6 +171,10 @@ export class ElicitationOperations {
       context
     );
 
+    // Generate Claude Desktop friendly prompt
+    const claudeDesktopPrompt = this.generateClaudeDesktopPrompt(elicitationSession.requests, migrationAnalysis);
+    const directInstructions = this.generateDirectInstructions(elicitationSession.requests);
+
     return {
       sessionId: elicitationSession.sessionId,
       requests: elicitationSession.requests.map(req => ({
@@ -178,7 +185,9 @@ export class ElicitationOperations {
         schema: this.serializeSchema(req.schema)
       })),
       summary: elicitationSession.summary,
-      needsUserInput: true
+      needsUserInput: true,
+      claudeDesktopPrompt,
+      directInstructions
     };
   }
 
@@ -486,6 +495,66 @@ export class ElicitationOperations {
     }
 
     return summary;
+  }
+
+  /**
+   * Generate Claude Desktop friendly prompt
+   */
+  private generateClaudeDesktopPrompt(requests: any[], migrationAnalysis: any): string {
+    const entityCount = migrationAnalysis.entityCounts?.total || 0;
+    
+    let prompt = `## 🚨 Missing Information for Kong Deployment\n\n`;
+    prompt += `I need to deploy **${entityCount} entities** to Kong Konnect, but I'm missing some required information for proper tagging and organization.\n\n`;
+    
+    prompt += `**Required Information:**\n\n`;
+    
+    requests.forEach((req, index) => {
+      const fieldName = this.extractFieldFromRequest(req);
+      const suggestions = req.suggestions || [];
+      
+      prompt += `**${index + 1}. ${fieldName.toUpperCase()}**\n`;
+      prompt += `${req.message.replace(/[🏷️🌍👥]/g, '').trim()}\n`;
+      
+      if (suggestions.length > 0) {
+        prompt += `💡 **Suggestions:** ${suggestions.join(', ')}\n`;
+      }
+      prompt += `\n`;
+    });
+
+    prompt += `**How to Provide Information:**\n`;
+    prompt += `Please respond with: \`domain=your_domain, environment=your_environment, team=your_team\`\n\n`;
+    prompt += `**Example:** \`domain=api, environment=production, team=platform\`\n\n`;
+    prompt += `Once you provide this information, I'll deploy the configuration with proper tags like:\n`;
+    prompt += `- \`env-production\`\n`;
+    prompt += `- \`domain-api\`\n`;
+    prompt += `- \`team-platform\`\n`;
+    prompt += `- Plus 2 contextual tags per entity\n`;
+
+    return prompt;
+  }
+
+  /**
+   * Generate direct instructions for Claude Desktop
+   */
+  private generateDirectInstructions(requests: any[]): string {
+    const fields = requests.map(req => this.extractFieldFromRequest(req));
+    return `To proceed, please provide: ${fields.map(f => `${f}=your_${f}`).join(', ')}`;
+  }
+
+  /**
+   * Extract field name from request
+   */
+  private extractFieldFromRequest(request: any): string {
+    if (request.id?.includes('domain') || request.message?.toLowerCase().includes('domain')) {
+      return 'domain';
+    }
+    if (request.id?.includes('environment') || request.message?.toLowerCase().includes('environment')) {
+      return 'environment';
+    }
+    if (request.id?.includes('team') || request.message?.toLowerCase().includes('team')) {
+      return 'team';
+    }
+    return request.id || 'unknown';
   }
 }
 

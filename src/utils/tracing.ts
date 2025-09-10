@@ -249,9 +249,9 @@ export class UniversalTracingManager {
       // Increment tool call counter for session tracking
       incrementToolCallCount();
 
-      // Create enhanced traceable function
+      // Create enhanced traceable function with proper input capture
       const toolTracer = traceable(
-        async () => {
+        async (toolInput: any) => {  // ✅ NOW CAPTURES INPUT ARGUMENTS
           const startTime = Date.now();
           const currentRun = getCurrentRunTree ? getCurrentRunTree() : null;
 
@@ -266,6 +266,7 @@ export class UniversalTracingManager {
             clientName: session?.clientInfo?.name,
             hasParentTrace: !!currentRun,
             parentTraceId: currentRun?.id,
+            inputReceived: !!toolInput, // Log that we received input
           });
 
           try {
@@ -411,7 +412,23 @@ export class UniversalTracingManager {
         }
       );
 
-      const result = await toolTracer();
+      // Pass the actual tool arguments as input to capture them in the trace
+      const toolInput = {
+        toolName,
+        arguments: metadata.parameters || {}, // This contains the actual tool arguments
+        metadata: {
+          category: metadata.category,
+          session: {
+            sessionId: session?.sessionId,
+            conversationId: conversation?.conversationId,
+            clientName: session?.clientInfo?.name
+          },
+          timestamp: metadata.timestamp,
+          region: metadata.region
+        }
+      };
+      
+      const result = await toolTracer(toolInput);
       
       return { 
         result, 

@@ -750,6 +750,21 @@ class KongKonnectMcpServer extends McpServer {
                   args.analysisResult,
                   args.context
                 );
+                
+                // Enhance result for Claude Desktop compatibility
+                if (result.needsUserInput && result.claudeDesktopPrompt) {
+                  result.content = [
+                    {
+                      type: "text",
+                      text: result.claudeDesktopPrompt
+                    }
+                  ];
+                  
+                  // Add structured guidance for Claude Desktop
+                  if (result.directInstructions) {
+                    result.guidance = result.directInstructions;
+                  }
+                }
                 break;
 
               case "process_elicitation_response":

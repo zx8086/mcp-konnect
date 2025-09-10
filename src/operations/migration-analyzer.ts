@@ -86,6 +86,47 @@ export class MigrationAnalyzer {
   }
 
   /**
+   * Parse direct information from user message (Claude Desktop style)
+   */
+  private parseDirectInformation(userMessage: string): Partial<MigrationAnalysis> {
+    const result: Partial<MigrationAnalysis> = {};
+    
+    // Parse domain=value, environment=value, team=value patterns
+    const domainMatch = userMessage.match(/\bdomain\s*=\s*([^,\s]+)/i);
+    const environmentMatch = userMessage.match(/\b(?:environment|env)\s*=\s*([^,\s]+)/i);
+    const teamMatch = userMessage.match(/\bteam\s*=\s*([^,\s]+)/i);
+    
+    if (domainMatch) {
+      result.domain = {
+        value: domainMatch[1].toLowerCase().trim(),
+        confidence: 1.0,
+        source: 'explicit',
+        sources: ['user-message-direct']
+      };
+    }
+    
+    if (environmentMatch) {
+      result.environment = {
+        value: environmentMatch[1].toLowerCase().trim(),
+        confidence: 1.0,
+        source: 'explicit',
+        sources: ['user-message-direct']
+      };
+    }
+    
+    if (teamMatch) {
+      result.team = {
+        value: teamMatch[1].toLowerCase().trim(),
+        confidence: 1.0,
+        source: 'explicit',
+        sources: ['user-message-direct']
+      };
+    }
+    
+    return result;
+  }
+
+  /**
    * Analyze migration context and determine elicitation requirements
    */
   async analyzeMigration(context: MigrationContext): Promise<MigrationAnalysis> {
@@ -102,10 +143,18 @@ export class MigrationAnalyzer {
       recommendations: []
     };
 
-    // Extract information from various sources
-    analysis.domain = this.extractDomainInfo(context);
-    analysis.environment = this.extractEnvironmentInfo(context);
-    analysis.team = this.extractTeamInfo(context);
+    // First, check for direct information provision (Claude Desktop style)
+    if (context.userMessage) {
+      const directInfo = this.parseDirectInformation(context.userMessage);
+      if (directInfo.domain) analysis.domain = directInfo.domain;
+      if (directInfo.environment) analysis.environment = directInfo.environment;
+      if (directInfo.team) analysis.team = directInfo.team;
+    }
+
+    // Then extract information from various sources (if not already provided directly)
+    if (!analysis.domain) analysis.domain = this.extractDomainInfo(context);
+    if (!analysis.environment) analysis.environment = this.extractEnvironmentInfo(context);
+    if (!analysis.team) analysis.team = this.extractTeamInfo(context);
     analysis.controlPlane = this.extractControlPlaneInfo(context);
 
     // Count entities

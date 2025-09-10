@@ -38,7 +38,13 @@
     "config:schema": "bun run src/utils/config-health.ts --export-schema",
     "config:validate": "bun run src/utils/config-health.ts",
     "health-check": "echo 'Add health check script here'",
-    "pre-commit": "bun run lint && bun run test"
+    "pre-commit": "bun run lint && bun run test",
+    "deck:ping": "source .env && cd demo/dECK && deck gateway ping --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
+    "deck:sync": "source .env && cd demo/dECK && deck gateway sync kong_demo.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
+    "deck:diff": "source .env && cd demo/dECK && deck gateway diff kong_demo.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
+    "deck:dump": "source .env && cd demo/dECK && deck gateway dump --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\" --output-file kong_demo.yaml",
+    "deck:reset": "source .env && cd demo/dECK && deck gateway sync kong_reset.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
+    "deck:validate": "source .env && cd demo/dECK && deck gateway validate kong_demo.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\""
   },
   "keywords": [
     "mcp",

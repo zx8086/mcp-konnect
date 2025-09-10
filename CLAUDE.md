@@ -137,9 +137,9 @@ The business logic is organized into three main operation categories:
 
 ## 🤖 INTELLIGENT ELICITATION FRAMEWORK - ✅ PRODUCTION PROVEN
 
-### ⚡ MCP-STYLE INFORMATION GATHERING - ✅ BATTLE TESTED
+### ⚡ DUAL-ENVIRONMENT INFORMATION GATHERING - ✅ CLAUDE CODE + CLAUDE DESKTOP
 
-**CRITICAL**: When users provide ambiguous or incomplete information for Kong migrations, use the intelligent elicitation system to gather missing context while respecting user autonomy.
+**CRITICAL**: The elicitation framework now supports both Claude Code and Claude Desktop environments seamlessly. When users provide ambiguous or incomplete information for Kong migrations, the system intelligently adapts to the environment and gathers missing context while respecting user autonomy.
 
 **RECENT SUCCESS** (Commit 6089b9d): Successfully deployed Kong deck configuration using intelligent elicitation:
 - Domain: shared_services (normalized from "shared_Services")
@@ -147,6 +147,22 @@ The business logic is organized into three main operation categories:
 - Team: global_platform_engineering (normalized from "tean=global_platfrom_engineering")
 - **Result**: 5 entities deployed with complete mandatory tagging
 - **Performance**: 100% success rate with direct MCP tools
+
+#### 🎯 Environment-Aware Elicitation
+
+**AUTOMATIC ENVIRONMENT DETECTION**: The framework automatically detects whether it's running in Claude Code or Claude Desktop and adapts accordingly:
+
+**Claude Code Environment:**
+- Uses interactive MCP elicitation sessions
+- Step-by-step Q&A workflow with `mcp__kong-konnect__process_elicitation_response`
+- Real-time session state management
+- Full elicitation bridge integration
+
+**Claude Desktop Environment:**  
+- Detects direct information provision patterns (`domain=api, environment=production, team=platform`)
+- Returns structured prompts when information is missing
+- Provides clear instructions for information provision
+- Graceful fallback to manual input mode
 
 #### 🧠 Smart Context Analysis
 
@@ -202,8 +218,9 @@ The framework provides these MCP tools for intelligent information gathering:
 - `mcp__kong-konnect__process_elicitation_response` - Handle user responses with validation ✅ AVAILABLE
 - `mcp__kong-konnect__get_session_status` - Track elicitation progress ✅ AVAILABLE
 
-#### 📋 Elicitation Workflow Example
+#### 📋 Dual Environment Usage Examples
 
+**Claude Code Interactive Workflow:**
 ```yaml
 USER_REQUEST: "Please migrate this Kong configuration"
 
@@ -222,6 +239,22 @@ ELICITATION_SESSION:
   request_2: "🌍 Environment Specification (critical)"
   no_assumptions: "User must explicitly specify environment"
   validation_options: ["production", "staging", "development"]
+```
+
+**Claude Desktop Direct Provision:**
+```yaml
+USER_REQUEST: "deploy deck config with domain=api, environment=production, team=platform"
+
+DIRECT_DETECTION:
+  domain: "api" (confidence: 1.0, source: "user-message-direct")
+  environment: "production" (confidence: 1.0, source: "user-message-direct") 
+  team: "platform" (confidence: 1.0, source: "user-message-direct")
+  elicitation_required: false
+
+DEPLOYMENT_RESULT:
+  status: "SUCCESS - All required information provided"
+  entities_tagged: 5
+  tags_applied: ["env-production", "domain-api", "team-platform", "+2 contextual"]
 ```
 
 #### 🚨 Zero-Fallback Production Policy
