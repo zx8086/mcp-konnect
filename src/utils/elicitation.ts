@@ -266,9 +266,9 @@ export class KongElicitationPatterns {
     return this.manager.addRequest(
       sessionId,
       this.buildDomainMessage(context),
-      z.string().min(3).max(20).regex(
-        /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/,
-        "Domain must be lowercase with hyphens, 3-20 characters"
+      z.string().min(3).max(40).regex(
+        /^[a-z0-9]([a-z0-9_-]*[a-z0-9])?$/,
+        "Domain must be lowercase with underscores/hyphens, 3-40 characters"
       ),
       {
         required: true,
@@ -293,7 +293,7 @@ export class KongElicitationPatterns {
     return this.manager.addRequest(
       sessionId,
       this.buildEnvironmentMessage(context),
-      z.enum(['development', 'staging', 'production', 'test']),
+      z.string().min(1),
       {
         required: true,
         suggestions,
@@ -317,9 +317,9 @@ export class KongElicitationPatterns {
     return this.manager.addRequest(
       sessionId,
       this.buildTeamMessage(context),
-      z.string().min(2).max(15).regex(
-        /^[a-z0-9-]+$/,
-        "Team must be lowercase with hyphens, 2-15 characters"
+      z.string().min(2).max(40).regex(
+        /^[a-z0-9_-]+$/,
+        "Team must be lowercase with underscores/hyphens, 2-40 characters"
       ),
       {
         required: true,
@@ -367,7 +367,7 @@ export class KongElicitationPatterns {
     }
     
     message += "\n\n**Examples:** devops, api, platform, finance, marketing";
-    message += "\n**Format:** lowercase-with-hyphens, 3-20 characters";
+    message += "\n**Format:** lowercase-with-underscores-for-spaces, 3-40 characters";
     
     return message;
   }
@@ -396,7 +396,7 @@ export class KongElicitationPatterns {
     }
     
     message += "\n\n**Examples:** platform, devops, api, backend, frontend";
-    message += "\n**Format:** lowercase-with-hyphens, 2-15 characters";
+    message += "\n**Format:** lowercase-with-underscores-for-spaces, 2-40 characters";
     
     return message;
   }

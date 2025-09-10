@@ -241,6 +241,8 @@ OUTPUT:
 export const createServicePrompt = () => `
 Create a new service in a Kong control plane.
 
+TAGGING REQUIREMENT: Services require deployment context tags (domain, environment, team). If missing, use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.
+
 INPUT:
   - controlPlaneId: String - ID of the control plane
   - name: String - Service name (must be unique within control plane)

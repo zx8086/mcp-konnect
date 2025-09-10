@@ -18,6 +18,8 @@ import {
 } from "./utils/session-manager.js";
 import { getEnvVar, getEnvVarWithDefault, initializeEnvironment, getRuntimeInfo } from "./utils/env.js";
 import { loadConfiguration } from "./config/index.js";
+import { mcpLogger } from "./utils/mcp-logger.js";
+import { mcpPaginator } from "./utils/pagination.js";
 
 // Import operations
 import * as analyticsOps from "./tools/analytics/operations.js";
@@ -42,7 +44,12 @@ class KongKonnectMcpServer extends McpServer {
     super({
       name: "kong-konnect-mcp",
       version: "2.0.0",
-      description: "Comprehensive Kong Konnect API Gateway management with analytics, configuration, certificates, and more"
+      description: "Comprehensive Kong Konnect API Gateway management with analytics, configuration, certificates, and more",
+      capabilities: {
+        tools: {},
+        elicitation: {},
+        logging: {}
+      }
     });
 
     // Initialize the API client with universal environment access
@@ -55,6 +62,8 @@ class KongKonnectMcpServer extends McpServer {
     this.tracingManager = new UniversalTracingManager();
     this.performanceCollector = new ToolPerformanceCollector();
     this.elicitationOps = new ElicitationOperations();
+    
+    // MCP logging will be initialized after server setup
 
     // Log session information for tracing
     this.logMCPSessionInfo();
@@ -62,44 +71,143 @@ class KongKonnectMcpServer extends McpServer {
     // Validate tool registry
     const validation = validateToolRegistry();
     if (!validation.isValid) {
-      console.error("Tool registry validation failed:", validation.errors);
+      mcpLogger.critical("server", "Tool registry validation failed", { 
+        errors: validation.errors 
+      });
       throw new Error(`Invalid tool registry: ${validation.errors.join(", ")}`);
     }
 
     // Log tracing status to stderr (never stdout for MCP servers!)
     // Note: getStats() is async, so we'll log this after server startup
     this.tracingManager.getStats().then(stats => {
-      console.error(`Tracing: ${stats.enabled ? 'ENABLED' : 'DISABLED'} | Project: ${stats.project} | Session: ${stats.sessionId}`);
+      mcpLogger.info("tracing", "Tracing status", {
+        enabled: stats.enabled,
+        project: stats.project,
+        sessionId: stats.sessionId
+      });
     }).catch(() => {
-      console.error(`Tracing: INITIALIZING...`);
+      mcpLogger.debug("tracing", "Tracing initializing");
     });
 
     // Register all tools
     this.registerTools();
+    
+    // Override default tools/list handler to provide pagination
+    // TEMPORARILY DISABLED: this.registerPaginatedToolsList();
+    
+    // Initialize MCP-compliant logging after server setup
+    // TEMPORARILY DISABLED: mcpLogger.initialize(this);
+  }
+
+  /**
+   * Register paginated tools/list handler per MCP specification
+   */
+  private registerPaginatedToolsList() {
+    this.setRequestHandler({ method: "tools/list" }, async (request) => {
+      const allTools = getAllTools();
+      
+      try {
+        // Extract pagination parameters (only cursor is in official MCP schema)
+        const cursor = request.params?.cursor;
+        
+        // Use fixed page size since pageSize isn't in MCP schema
+        // Category filtering via custom tools/categories endpoint instead
+        
+        mcpLogger.debug("tools", "Tools list requested", {
+          cursor: cursor ? "[CURSOR]" : undefined,
+          totalTools: allTools.length
+        });
+
+        // Apply pagination (use default page size since not in MCP schema)
+        const paginatedResult = mcpPaginator.paginateTools(allTools, { cursor });
+
+        // Transform tools to official MCP Tool schema format
+        const mcpTools = paginatedResult.items.map(tool => ({
+          name: tool.method,
+          description: tool.description,
+          inputSchema: {
+            type: "object" as const,
+            properties: tool.parameters.shape || {},
+            required: []
+          }
+        }));
+
+        // Prepare response according to MCP spec
+        const response: any = {
+          tools: mcpTools
+        };
+
+        // Add nextCursor if more results exist
+        if (paginatedResult.nextCursor) {
+          response.nextCursor = paginatedResult.nextCursor;
+        }
+
+        mcpLogger.debug("tools", "Tools list response", {
+          returnedTools: mcpTools.length,
+          hasNextPage: !!paginatedResult.nextCursor,
+          categories: [...new Set(paginatedResult.items.map(t => t.category))]
+        });
+
+        return response;
+        
+      } catch (error: any) {
+        mcpLogger.error("tools", "Tools list pagination error", {
+          error: error.message,
+          cursor: request.params?.cursor ? "[INVALID]" : undefined
+        });
+        
+        // Return error per MCP spec for invalid cursor
+        throw {
+          code: -32602,
+          message: "Invalid params",
+          data: { error: error.message }
+        };
+      }
+    });
+    
+    // Register tools/categories helper method for client navigation
+    this.setRequestHandler({ method: "tools/categories" }, async (request) => {
+      const allTools = getAllTools();
+      const categories = mcpPaginator.getToolCategories(allTools);
+      
+      mcpLogger.debug("tools", "Tool categories requested", {
+        categoriesCount: categories.length,
+        categories
+      });
+      
+      return {
+        categories: categories.map(category => ({
+          name: category,
+          toolCount: allTools.filter(tool => tool.category === category).length
+        }))
+      };
+    });
   }
 
   private registerTools() {
     const allTools = getAllTools();
     
-    console.error(`NATIVE MCP ELICITATION ACTIVE`);
-    console.error(`Registering ${allTools.length} tools across categories:`, 
-      [...new Set(allTools.map(t => t.category))].join(", "));
+    mcpLogger.notice("server", "Native MCP elicitation active");
+    mcpLogger.info("server", "Registering tools", {
+      toolCount: allTools.length,
+      categories: [...new Set(allTools.map(t => t.category))]
+    });
 
-    // Kong modification operations using enhanced MCP elicitation
+    // Kong modification operations using enhanced MCP elicitation - DISABLED FOR CLAUDE DESKTOP
     const ENHANCED_KONG_OPERATIONS = new Set([
-      'create_service', 'create_route', 'create_consumer', 'create_plugin'
+      // 'create_service', 'create_route', 'create_consumer', 'create_plugin'
     ]);
 
     allTools.forEach(tool => {
       // Check if this is an enhanced Kong operation
       const isEnhancedKongOperation = ENHANCED_KONG_OPERATIONS.has(tool.method);
       
-      let handler: (args: any, extra: RequestHandlerExtra) => Promise<any>;
+      let handler: (args: any, extra: RequestHandlerExtra<any, any>) => Promise<any>;
       
       if (isEnhancedKongOperation) {
         // Use enhanced operation handler with native MCP elicitation
-        console.error(`REGISTERING ENHANCED OPERATION: ${tool.method}`);
-        handler = async (args: any, extra: RequestHandlerExtra) => {
+        mcpLogger.debug("server", "Registering enhanced operation", { method: tool.method });
+        handler = async (args: any, extra: RequestHandlerExtra<any, any>) => {
           switch (tool.method) {
             case 'create_service':
               return await enhancedKongTools.createServiceWithElicitation(this.api, args, extra);
@@ -116,7 +224,7 @@ class KongKonnectMcpServer extends McpServer {
         
       } else {
         // Use original handler logic for non-blocked operations
-        handler = async (args: any, _extra: RequestHandlerExtra) => {
+        handler = async (args: any, extra: RequestHandlerExtra<any, any>) => {
         const startTime = Date.now();
         let success = true;
         
@@ -389,7 +497,27 @@ class KongKonnectMcpServer extends McpServer {
                 );
                 break;
 
-              // Service CRUD operations (create_service MOVED TO BLOCKED OPERATIONS)
+              // Service CRUD operations
+              case "create_service":
+                result = await configurationOps.createService(
+                  this.api,
+                  args.controlPlaneId,
+                  {
+                    name: args.name,
+                    host: args.host,
+                    port: args.port,
+                    protocol: args.protocol,
+                    path: args.path,
+                    retries: args.retries,
+                    connectTimeout: args.connectTimeout,
+                    writeTimeout: args.writeTimeout,
+                    readTimeout: args.readTimeout,
+                    tags: args.tags,
+                    enabled: args.enabled
+                  },
+                  extra
+                );
+                break;
 
               case "get_service":
                 result = await configurationOps.getService(
@@ -401,7 +529,26 @@ class KongKonnectMcpServer extends McpServer {
 
               // update_service and delete_service MOVED TO BLOCKED OPERATIONS
 
-              // Route CRUD operations (create_route MOVED TO BLOCKED OPERATIONS)
+              // Route CRUD operations
+              case "create_route":
+                result = await configurationOps.createRoute(
+                  this.api,
+                  args.controlPlaneId,
+                  {
+                    name: args.name,
+                    protocols: args.protocols,
+                    methods: args.methods,
+                    hosts: args.hosts,
+                    paths: args.paths,
+                    serviceId: args.serviceId,
+                    stripPath: args.stripPath,
+                    preserveHost: args.preserveHost,
+                    regexPriority: args.regexPriority,
+                    tags: args.tags
+                  },
+                  extra
+                );
+                break;
 
               case "get_route":
                 result = await configurationOps.getRoute(
@@ -413,7 +560,20 @@ class KongKonnectMcpServer extends McpServer {
 
               // update_route and delete_route MOVED TO BLOCKED OPERATIONS
 
-              // Consumer CRUD operations (create_consumer MOVED TO BLOCKED OPERATIONS)
+              // Consumer CRUD operations
+              case "create_consumer":
+                result = await configurationOps.createConsumer(
+                  this.api,
+                  args.controlPlaneId,
+                  {
+                    username: args.username,
+                    customId: args.customId,
+                    tags: args.tags,
+                    enabled: args.enabled
+                  },
+                  extra
+                );
+                break;
 
               case "get_consumer":
                 result = await configurationOps.getConsumer(
@@ -439,7 +599,24 @@ class KongKonnectMcpServer extends McpServer {
 
               // delete_consumer MOVED TO BLOCKED OPERATIONS
 
-              // Plugin CRUD operations (create_plugin MOVED TO BLOCKED OPERATIONS)
+              // Plugin CRUD operations
+              case "create_plugin":
+                result = await configurationOps.createPlugin(
+                  this.api,
+                  args.controlPlaneId,
+                  {
+                    name: args.name,
+                    config: args.config,
+                    protocols: args.protocols,
+                    consumerId: args.consumerId,
+                    serviceId: args.serviceId,
+                    routeId: args.routeId,
+                    tags: args.tags,
+                    enabled: args.enabled
+                  },
+                  extra
+                );
+                break;
 
               case "get_plugin":
                 result = await configurationOps.getPlugin(
@@ -695,35 +872,35 @@ class KongKonnectMcpServer extends McpServer {
               // Portal Management Tools
               // ===========================
               case "list_portals":
-                result = await portalManagementOps.listPortals(api, args.pageSize, args.pageNumber);
+                result = await portalManagementOps.listPortals(this.api, args.pageSize, args.pageNumber);
                 break;
 
               case "create_portal":
-                result = await portalManagementOps.createPortal(api, args);
+                result = await portalManagementOps.createPortal(this.api, args);
                 break;
 
               case "get_portal":
-                result = await portalManagementOps.getPortal(api, args.portalId);
+                result = await portalManagementOps.getPortal(this.api, args.portalId);
                 break;
 
               case "update_portal":
-                result = await portalManagementOps.updatePortal(api, args.portalId, args);
+                result = await portalManagementOps.updatePortal(this.api, args.portalId, args);
                 break;
 
               case "delete_portal":
-                result = await portalManagementOps.deletePortal(api, args.portalId);
+                result = await portalManagementOps.deletePortal(this.api, args.portalId);
                 break;
 
               case "list_portal_products":
-                result = await portalManagementOps.listPortalProducts(api, args.portalId, args.pageSize, args.pageNumber);
+                result = await portalManagementOps.listPortalProducts(this.api, args.portalId, args.pageSize, args.pageNumber);
                 break;
 
               case "publish_portal_product":
-                result = await portalManagementOps.publishPortalProduct(api, args.portalId, args);
+                result = await portalManagementOps.publishPortalProduct(this.api, args.portalId, args);
                 break;
 
               case "unpublish_portal_product":
-                result = await portalManagementOps.unpublishPortalProduct(api, args.portalId, args.productId);
+                result = await portalManagementOps.unpublishPortalProduct(this.api, args.portalId, args.productId);
                 break;
 
               // ===========================
@@ -822,7 +999,7 @@ class KongKonnectMcpServer extends McpServer {
       const toolTracer = this.tracingManager.createToolTracer(tool.method);
 
       // Create traced handler using dynamic tool tracer
-      const tracedHandler = async (args: any, extra: RequestHandlerExtra): Promise<any> => {
+      const tracedHandler = async (args: any, extra: RequestHandlerExtra<any, any>): Promise<any> => {
         const result = await toolTracer(
           async () => handler(args, extra),
           { 
@@ -830,6 +1007,7 @@ class KongKonnectMcpServer extends McpServer {
             toolName: tool.method
           }
         );
+        
         return result;
       };
 
@@ -883,12 +1061,16 @@ class KongKonnectMcpServer extends McpServer {
 async function main() {
   try {
     // Load and validate configuration with health checks
-    console.error('Loading configuration...');
+    mcpLogger.info("config", "Loading configuration");
     const config = await loadConfiguration();
     
     // Show runtime information
     const runtimeInfo = getRuntimeInfo();
-    console.error(`Runtime: ${runtimeInfo.runtime} ${runtimeInfo.version} (env source: ${runtimeInfo.envSource})`);
+    mcpLogger.info("runtime", "Runtime information", {
+      runtime: runtimeInfo.runtime,
+      version: runtimeInfo.version,
+      envSource: runtimeInfo.envSource
+    });
     
     // Initialize server with validated configuration
     const server = new KongKonnectMcpServer({
@@ -897,11 +1079,14 @@ async function main() {
     });
     const transport = new StdioServerTransport();
     
-    console.error("Kong Konnect MCP Server starting...");
-    console.error("Available regions:", Object.values(API_REGIONS));
-    console.error("Using region:", config.kong.region);
-    console.error(`Environment: ${config.application.environment} | Log Level: ${config.application.logLevel}`);
-    console.error(`Tracing: ${config.tracing.enabled ? 'ENABLED' : 'DISABLED'} | Monitoring: ${config.monitoring.enabled ? 'ENABLED' : 'DISABLED'}`);
+    mcpLogger.startup("server", {
+      availableRegions: Object.values(API_REGIONS),
+      region: config.kong.region,
+      environment: config.application.environment,
+      logLevel: config.application.logLevel,
+      tracing: config.tracing.enabled,
+      monitoring: config.monitoring.enabled
+    });
     
     // Create session context for connection (implementing AsyncLocalStorage pattern from guide)
     const connectionId = `conn-${Date.now()}`;
@@ -922,7 +1107,11 @@ async function main() {
       await server.tracingManager.createSessionTrace(sessionContext, async () => {
         // All tool calls within this scope inherit session context AND nest under session trace
         await server.connect(transport);
-        console.error("Kong Konnect MCP Server running successfully");
+        mcpLogger.ready("server", {
+          sessionId,
+          connectionId,
+          clientName: clientInfo.name
+        });
         
         // Log session info for debugging
         logSessionInfo("MCP Server Session Established");
@@ -930,36 +1119,38 @@ async function main() {
     });
     
   } catch (error: any) {
-    console.error("ERROR: Failed to start Kong Konnect MCP Server:");
-    console.error(`   Error: ${error.message}`);
+    mcpLogger.critical("server", "Failed to start server", {
+      error: error.message,
+      stack: error.stack
+    });
     
     // Provide helpful error context
     if (error.message.includes('KONNECT_ACCESS_TOKEN')) {
-      console.error('\nTo fix this:');
-      console.error('   1. Get your Kong Konnect access token from: https://cloud.konghq.com/');
-      console.error('   2. Set it in your .env file: KONNECT_ACCESS_TOKEN=your-token-here');
-      console.error('   3. Run: bun run config:health to validate your configuration');
+      mcpLogger.error("config", "Kong access token missing", {
+        fix: "Set KONNECT_ACCESS_TOKEN in .env file",
+        url: "https://cloud.konghq.com/"
+      });
     }
     
     if (error.message.includes('LANGSMITH_API_KEY')) {
-      console.error('\nTo fix this:');
-      console.error('   1. Set LANGSMITH_API_KEY in your .env file');
-      console.error('   2. Or disable tracing: LANGSMITH_TRACING=false');
+      mcpLogger.error("config", "LangSmith API key missing", {
+        fix: "Set LANGSMITH_API_KEY in .env or disable with LANGSMITH_TRACING=false"
+      });
     }
     
-    console.error('\nRun configuration health check: bun run config:health');
+    mcpLogger.info("help", "Run configuration health check: bun run config:health");
     process.exit(1);
   }
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {
-  console.error("Kong Konnect MCP Server shutting down...");
+  mcpLogger.notice("server", "Shutting down (SIGINT)");
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.error("Kong Konnect MCP Server terminating...");
+  mcpLogger.notice("server", "Terminating (SIGTERM)");
   process.exit(0);
 });
 

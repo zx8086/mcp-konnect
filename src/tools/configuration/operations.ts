@@ -1,4 +1,10 @@
 import { KongApi } from "../../api/kong-api.js";
+import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import { z } from "zod";
+import { 
+  extractDeploymentContext, 
+  generateTags 
+} from "../../utils/simple-elicitation.js";
 
 /**
  * List services for a specific control plane
@@ -54,7 +60,7 @@ export async function listServices(
 }
 
 /**
- * Create a new service in a control plane
+ * Create a new service in a control plane with simple elicitation
  */
 export async function createService(
   api: KongApi,
@@ -71,11 +77,78 @@ export async function createService(
     readTimeout?: number;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
+  extra?: RequestHandlerExtra<any, any>
 ) {
   // Validate minimum required data
   if (!serviceData.name || !serviceData.host) {
     throw new Error("Service name and host are required");
+  }
+
+  // Check if deployment context is missing from tags
+  const contextCheck = extractDeploymentContext(serviceData.tags);
+  
+  if (contextCheck.missing.length > 0) {
+    if (extra?.sendRequest) {
+      // Follow MCP elicitation specification exactly
+      try {
+        const elicitationResponse = await extra.sendRequest(
+          {
+            method: "elicitation/create",
+            params: {
+              message: `Please provide deployment context for service "${serviceData.name}":`,
+              requestedSchema: {
+                type: "object",
+                properties: {
+                  domain: {
+                    type: "string",
+                    title: "Domain",
+                    description: "What domain does this service belong to?"
+                  },
+                  environment: {
+                    type: "string",
+                    title: "Environment", 
+                    description: "What environment is this for?"
+                  },
+                  team: {
+                    type: "string",
+                    title: "Team",
+                    description: "Which team owns this service?"
+                  }
+                },
+                required: ["domain", "environment", "team"]
+              }
+            }
+          },
+          // Response schema as per specification
+          z.object({
+            action: z.enum(["accept", "decline", "cancel"]),
+            content: z.object({
+              domain: z.string(),
+              environment: z.string(),
+              team: z.string()
+            }).optional()
+          })
+        );
+
+        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+          // Generate complete tag structure with user-provided context
+          const completeTags = generateTags(elicitationResponse.content, 'service', serviceData.name);
+          serviceData.tags = completeTags;
+        } else if (elicitationResponse.action === "decline") {
+          throw new Error(`Service creation declined by user. Please provide deployment tags manually.`);
+        } else {
+          // Cancelled
+          throw new Error(`Service creation cancelled by user. Please provide deployment tags manually.`);
+        }
+      } catch (error) {
+        // Elicitation failed - fall back to error with instructions  
+        throw new Error(`Service creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      }
+    } else {
+      // No elicitation support - throw error with instructions
+      throw new Error(`Service creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+    }
   }
 
   try {
@@ -336,8 +409,75 @@ export async function createRoute(
     preserveHost?: boolean;
     regexPriority?: number;
     tags?: string[];
-  }
+  },
+  extra?: RequestHandlerExtra<any, any>
 ) {
+  // Check if deployment context is missing from tags
+  const contextCheck = extractDeploymentContext(routeData.tags);
+  
+  if (contextCheck.missing.length > 0) {
+    if (extra?.sendRequest) {
+      // Follow MCP elicitation specification exactly
+      try {
+        const elicitationResponse = await extra.sendRequest(
+          {
+            method: "elicitation/create",
+            params: {
+              message: `Please provide deployment context for route "${routeData.name || 'unnamed'}":`,
+              requestedSchema: {
+                type: "object",
+                properties: {
+                  domain: {
+                    type: "string",
+                    title: "Domain",
+                    description: "What domain does this route belong to?"
+                  },
+                  environment: {
+                    type: "string",
+                    title: "Environment", 
+                    description: "What environment is this for?"
+                  },
+                  team: {
+                    type: "string",
+                    title: "Team",
+                    description: "Which team owns this route?"
+                  }
+                },
+                required: ["domain", "environment", "team"]
+              }
+            }
+          },
+          // Response schema as per specification
+          z.object({
+            action: z.enum(["accept", "decline", "cancel"]),
+            content: z.object({
+              domain: z.string(),
+              environment: z.string(),
+              team: z.string()
+            }).optional()
+          })
+        );
+
+        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+          // Generate complete tag structure with user-provided context
+          const completeTags = generateTags(elicitationResponse.content, 'route', routeData.name);
+          routeData.tags = completeTags;
+        } else if (elicitationResponse.action === "decline") {
+          throw new Error(`Route creation declined by user. Please provide deployment tags manually.`);
+        } else {
+          // Cancelled
+          throw new Error(`Route creation cancelled by user. Please provide deployment tags manually.`);
+        }
+      } catch (error) {
+        // Elicitation failed - fall back to error with instructions  
+        throw new Error(`Route creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      }
+    } else {
+      // No elicitation support - throw error with instructions
+      throw new Error(`Route creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+    }
+  }
+
   try {
     const requestData: any = {
       protocols: routeData.protocols || ["http", "https"],
@@ -574,8 +714,74 @@ export async function createConsumer(
     customId?: string;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
+  extra?: RequestHandlerExtra<any, any>
 ) {
+  // Check if deployment context is missing from tags
+  const contextCheck = extractDeploymentContext(consumerData.tags);
+  
+  if (contextCheck.missing.length > 0) {
+    if (extra?.sendRequest) {
+      // Follow MCP elicitation specification exactly
+      try {
+        const elicitationResponse = await extra.sendRequest(
+          {
+            method: "elicitation/create",
+            params: {
+              message: `Please provide deployment context for consumer "${consumerData.username || consumerData.customId || 'unnamed'}":`,
+              requestedSchema: {
+                type: "object",
+                properties: {
+                  domain: {
+                    type: "string",
+                    title: "Domain",
+                    description: "What domain does this consumer belong to?"
+                  },
+                  environment: {
+                    type: "string",
+                    title: "Environment", 
+                    description: "What environment is this for?"
+                  },
+                  team: {
+                    type: "string",
+                    title: "Team",
+                    description: "Which team owns this consumer?"
+                  }
+                },
+                required: ["domain", "environment", "team"]
+              }
+            }
+          },
+          // Response schema as per specification
+          z.object({
+            action: z.enum(["accept", "decline", "cancel"]),
+            content: z.object({
+              domain: z.string(),
+              environment: z.string(),
+              team: z.string()
+            }).optional()
+          })
+        );
+
+        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+          // Generate complete tag structure with user-provided context
+          const completeTags = generateTags(elicitationResponse.content, 'consumer', consumerData.username || consumerData.customId);
+          consumerData.tags = completeTags;
+        } else if (elicitationResponse.action === "decline") {
+          throw new Error(`Consumer creation declined by user. Please provide deployment tags manually.`);
+        } else {
+          // Cancelled
+          throw new Error(`Consumer creation cancelled by user. Please provide deployment tags manually.`);
+        }
+      } catch (error) {
+        // Elicitation failed - fall back to error with instructions  
+        throw new Error(`Consumer creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      }
+    } else {
+      // No elicitation support - throw error with instructions
+      throw new Error(`Consumer creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+    }
+  }
   try {
     const requestData: any = {};
 
@@ -779,8 +985,74 @@ export async function createPlugin(
     routeId?: string;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
+  extra?: RequestHandlerExtra<any, any>
 ) {
+  // Check if deployment context is missing from tags
+  const contextCheck = extractDeploymentContext(pluginData.tags);
+  
+  if (contextCheck.missing.length > 0) {
+    if (extra?.sendRequest) {
+      // Follow MCP elicitation specification exactly
+      try {
+        const elicitationResponse = await extra.sendRequest(
+          {
+            method: "elicitation/create",
+            params: {
+              message: `Please provide deployment context for plugin "${pluginData.name}":`,
+              requestedSchema: {
+                type: "object",
+                properties: {
+                  domain: {
+                    type: "string",
+                    title: "Domain",
+                    description: "What domain does this plugin belong to?"
+                  },
+                  environment: {
+                    type: "string",
+                    title: "Environment", 
+                    description: "What environment is this for?"
+                  },
+                  team: {
+                    type: "string",
+                    title: "Team",
+                    description: "Which team owns this plugin?"
+                  }
+                },
+                required: ["domain", "environment", "team"]
+              }
+            }
+          },
+          // Response schema as per specification
+          z.object({
+            action: z.enum(["accept", "decline", "cancel"]),
+            content: z.object({
+              domain: z.string(),
+              environment: z.string(),
+              team: z.string()
+            }).optional()
+          })
+        );
+
+        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+          // Generate complete tag structure with user-provided context
+          const completeTags = generateTags(elicitationResponse.content, 'plugin', pluginData.name);
+          pluginData.tags = completeTags;
+        } else if (elicitationResponse.action === "decline") {
+          throw new Error(`Plugin creation declined by user. Please provide deployment tags manually.`);
+        } else {
+          // Cancelled
+          throw new Error(`Plugin creation cancelled by user. Please provide deployment tags manually.`);
+        }
+      } catch (error) {
+        // Elicitation failed - fall back to error with instructions  
+        throw new Error(`Plugin creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      }
+    } else {
+      // No elicitation support - throw error with instructions
+      throw new Error(`Plugin creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+    }
+  }
   try {
     const requestData: any = {
       name: pluginData.name,
