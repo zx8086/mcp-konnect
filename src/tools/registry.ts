@@ -46,7 +46,7 @@ export function getAllTools(): MCPTool[] {
     
     // TODO: Add remaining tool categories
     // ...upstreamsTools(), - Upstream and target management
-    // ...dataPlanesTools(), - Data plane node management
+    // Data plane tools integrated in control_planes category above
     // ...credentialsTools(), - Consumer credentials and SNI management
   ];
 }

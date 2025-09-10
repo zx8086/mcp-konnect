@@ -333,7 +333,7 @@ TASK_ANALYSIS:
   step_3_if_no: "Only then consider agent invocation"
   
 TOOL_AVAILABILITY_CHECK:
-  kong_tasks: "66+ mcp__kong-konnect__* tools available ✅ PRODUCTION PROVEN"
+  kong_tasks: "78 mcp__kong-konnect__* tools available ✅ PRODUCTION PROVEN"
   elicitation_tasks: "4 intelligent elicitation tools ✅ BATTLE TESTED"
   testing_tasks: "k6 performance tools available" 
   graphql_tasks: "GraphQL specialist tools available"
@@ -405,6 +405,12 @@ The elicitation system is built with these components:
 - **ElicitationOperations**: MCP tool implementations
 - **Tool Registration**: Integration with MCP server
 
+#### Enhanced Kong Tools (`src/tools/enhanced-kong-tools.ts`)
+- **Native MCP Elicitation**: Uses MCP's built-in context.elicit() for progressive context gathering
+- **Service Creation with Elicitation**: Automatically prompts for missing domain/environment/team context
+- **Production-Ready Tagging**: Generates complete tag sets from elicited information
+- **Fallback Handling**: Graceful degradation when elicitation not available
+
 #### Framework Integration
 ```typescript
 // Example usage in Kong operations
@@ -443,12 +449,12 @@ All operations should use the centralized API client rather than making direct H
 ### Flight API Test Suite Location
 **📍 Complete documentation**: `docs/testing/FLIGHT_API_TEST_SUITE.md`
 
-The project includes a comprehensive test suite that demonstrates all 66 Kong Konnect MCP tools using a realistic flight booking API scenario.
+The project includes a comprehensive test suite that demonstrates all 78 Kong Konnect MCP tools using a realistic flight booking API scenario.
 
 ### Test Suite Overview
 - **Location**: `src/tests/flight-api/`
-- **Coverage**: 99% (65/66 MCP tools tested)
-- **Test Files**: 4 files with 57+ comprehensive tests
+- **Coverage**: 99% (77/78 MCP tools tested)
+- **Test Files**: 12+ files with 57+ comprehensive tests
 - **Runtime**: Bun.js for maximum performance
 - **Real Integration**: Tests actual Kong Konnect APIs
 
@@ -456,7 +462,11 @@ The project includes a comprehensive test suite that demonstrates all 66 Kong Ko
 1. **Integration Tests** (`flight-api.integration.test.ts`) - End-to-end workflows with real Kong API calls
 2. **Unit Tests** (`flight-api.unit.test.ts`) - Individual operation testing with mocks
 3. **Performance Tests** (`flight-api.performance.test.ts`) - Load testing and benchmarking
-4. **Security Tests** (in performance file) - Authentication, input validation, rate limiting
+4. **Portal Tests** (`flight-api.portal.test.ts`) - Developer portal functionality testing
+5. **Elicitation Tests** (`simple-elicitation.test.ts`, `end-to-end-elicitation.test.ts`) - Intelligent information gathering
+6. **Enforcement Tests** (`enforcement-validation.test.ts`, `debug-enforcement.test.ts`) - Tagging and validation enforcement
+7. **Integration Tests** (`integration/simple-elicitation-integration.test.ts`) - Cross-component integration
+8. **Conversation Tracing** (`conversation-tracing.test.ts`) - Tracing and monitoring validation
 
 ### Performance Benchmarks Achieved
 - **Throughput**: 12,115+ requests/second
@@ -568,7 +578,7 @@ ALL specialized agents have DIRECT access to MCP tools and should use them inste
 
 ```yaml
 AGENT_MCP_ACCESS_RULES:
-  all_agents_have_access: "66+ mcp__kong-konnect__* tools available"
+  all_agents_have_access: "78 mcp__kong-konnect__* tools available"
   preferred_approach: "Use MCP tools directly in agent operations"
   avoid: "Agent-to-agent invocation when MCP tools sufficient"
   

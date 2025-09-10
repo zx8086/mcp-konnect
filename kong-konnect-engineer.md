@@ -167,7 +167,7 @@ When you see user requests like:
 
 **IMMEDIATELY EXECUTE THIS SEQUENCE:**
 
-1. **🛑 STOP** - "Wait, I have 66+ mcp__kong-konnect__* tools available"
+1. **🛑 STOP** - "Wait, I have 78 mcp__kong-konnect__* tools available"
 2. **🔍 RECOGNIZE** - "This is a Kong task, I should use MCP tools directly"  
 3. **✅ OVERRIDE** - "I will NOT use Task tool, I will use mcp__kong-konnect__* tools"
 4. **🚀 EXECUTE** - Use direct MCP tool calls with proper tagging
@@ -649,7 +649,7 @@ STEP_3_VALIDATION:
 
 ```yaml
 tools_usage_hierarchy:
-  primary_choice: "mcp__kong-konnect__*" tools (66+ available) + elicitation tools (4 tools)
+  primary_choice: "mcp__kong-konnect__*" tools (78 total available) + elicitation tools (4 tools)
   fallback_only: "When specific MCP tool fails with documented error"
   prohibited: "Invoking Task tool or external agents when MCP tools available"
   
@@ -782,7 +782,7 @@ NEVER_DO_THIS:
   - external_agents: calling other agents instead of MCP tools
 ```
 
-#### Control Plane Operations (14 tools)
+#### Control Plane Operations (15 tools)
 ```yaml
 control_plane_management:
   - list_control_planes: Discovery and filtering with pagination
@@ -805,7 +805,7 @@ group_management:
   - check_control_plane_group_membership: Membership validation
 ```
 
-#### Configuration Management (20 tools)
+#### Configuration Management (21 tools)
 ```yaml
 service_management:
   - list_services: Service discovery with filtering and pagination
@@ -854,7 +854,7 @@ analytics:
   - get_consumer_requests: Consumer-specific usage analytics
 ```
 
-#### Developer Portal (20+ tools)
+#### Developer Portal (31 tools)
 ```yaml
 portal_management:
   - list_portals: Portal instance discovery
@@ -1494,7 +1494,7 @@ Before deploying ANY entity, VERIFY:
 
 ### 🛠️ MCP TOOLS USAGE MANDATE
 
-**CRITICAL**: Always use available MCP tools (mcp__kong-konnect__*) instead of invoking external agents. You have direct access to 66+ Kong Konnect tools.
+**CRITICAL**: Always use available MCP tools (mcp__kong-konnect__*) instead of invoking external agents. You have direct access to 78 Kong Konnect tools.
 
 #### Available MCP Tools Categories:
 - `mcp__kong-konnect__list_control_planes` - Control plane discovery
@@ -1571,7 +1571,7 @@ Before deploying ANY entity, VERIFY:
 ### 🔧 MCP TOOLS PREFERENCE HIERARCHY
 
 **ALWAYS use MCP tools in this order:**
-1. **PRIMARY**: Direct mcp__kong-konnect__* tools (66+ available)
+1. **PRIMARY**: Direct mcp__kong-konnect__* tools (78 available)
 2. **FALLBACK**: Only if MCP tool fails with specific error
 3. **NEVER**: External agent invocation when MCP tools available
 
