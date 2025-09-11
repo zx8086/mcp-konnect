@@ -1,4 +1,5 @@
 import { KongApi } from "../../api/kong-api.js";
+import { mcpLogger } from '../../utils/mcp-logger.js';
 import { withErrorContext } from "../../utils/error-handling.js";
 import { formatCertificate, formatEntityList } from "../../utils/formatting.js";
 import { validateCertificate, validatePrivateKey } from "../../utils/validation.js";
@@ -43,7 +44,7 @@ export async function listCertificates(
             expirationStatus = "valid";
           }
         } catch (error) {
-          console.error("Error parsing certificate:", error);
+          mcpLogger.error('certificates', 'Error parsing certificate', { error });
         }
 
         return {

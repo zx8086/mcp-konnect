@@ -5,6 +5,7 @@
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
+import { mcpLogger } from './mcp-logger.js';
 
 export interface SessionContext {
   sessionId: string;           // Unique session identifier
@@ -48,7 +49,7 @@ export function runWithSession<T>(context: SessionContext, fn: () => T | Promise
 export function getCurrentSession(): SessionContext | undefined {
   const session = sessionStorage.getStore();
   if (!session) {
-    console.error("No session context available in AsyncLocalStorage");
+    mcpLogger.debug('session', 'No session context available in AsyncLocalStorage');
   }
   return session;
 }
@@ -132,7 +133,7 @@ export function detectClient(transportMode: "stdio" | "sse"): SessionContext["cl
 export function logSessionInfo(prefix = "Session Info") {
   const session = getCurrentSession();
   if (session) {
-    console.error(`${prefix}:`, {
+    mcpLogger.debug('session', prefix, {
       sessionId: `${session.sessionId?.substring(0, 10)}...`,
       connectionId: `${session.connectionId?.substring(0, 10)}...`,
       client: session.clientInfo?.name || "unknown",
@@ -141,7 +142,7 @@ export function logSessionInfo(prefix = "Session Info") {
       toolCallCount: session.toolCallCount || 0
     });
   } else {
-    console.error(`${prefix}: No active session`);
+    mcpLogger.debug('session', `${prefix}: No active session`);
   }
 }
 
@@ -149,7 +150,7 @@ export function logSessionInfo(prefix = "Session Info") {
  * Session cleanup on connection close
  */
 export function cleanupSession(sessionId: string) {
-  console.error("Cleaning up session", { sessionId });
+  mcpLogger.debug('session', 'Cleaning up session', { sessionId });
   
   const session = getCurrentSession();
   if (session?.startTime) {
@@ -158,7 +159,7 @@ export function cleanupSession(sessionId: string) {
       ? Date.now() - session.conversationStartTime 
       : duration;
     
-    console.error("Session ended", {
+    mcpLogger.info('session', 'Session ended', {
       sessionId,
       duration,
       conversationDuration,
@@ -334,7 +335,7 @@ export function startNewConversationThread(reason: string = 'manual'): void {
   session.conversationStartTime = Date.now();
   session.currentThread = undefined;
   
-  console.error('Started new conversation thread', {
+  mcpLogger.debug('session', 'Started new conversation thread', {
     sessionId: session.sessionId.substring(0, 8) + '...',
     reason,
     previousThreadCount: session.threadHistory.length

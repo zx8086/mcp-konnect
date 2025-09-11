@@ -8,6 +8,7 @@ import { getCurrentSession, incrementToolCallCount, createNamedConnectionTrace, 
 import { getOrCreateConversation, updateConversation, createConversationAwareTraceName, trackConversationFlow, getConversationStats, type ConversationInfo } from './conversation-tracker.js';
 import { detectIntent, detectContextTransition, type UserIntent } from './intent-detector.js';
 import { analyzeConversationQuality, generateConversationInsights, type ConversationQuality } from './conversation-metrics.js';
+import { mcpLogger } from './mcp-logger.js';
 
 interface TraceMetadata {
   category: string;
@@ -54,7 +55,7 @@ export class UniversalTracingManager {
     // Initialize asynchronously - graceful degradation if it fails
     this.initialize().catch(() => {
       this.enabled = false;
-      console.error('LangSmith initialization failed during construction - graceful degradation active');
+      mcpLogger.warning('tracing', 'LangSmith initialization failed during construction - graceful degradation active');
     });
   }
 
@@ -71,14 +72,14 @@ export class UniversalTracingManager {
       
       // Show runtime info for debugging
       const runtimeInfo = await getRuntimeInfo();
-      console.error(`Runtime: ${runtimeInfo.runtime} ${runtimeInfo.version} (env source: ${runtimeInfo.envSource})`);
+      mcpLogger.info('tracing', `Runtime: ${runtimeInfo.runtime} ${runtimeInfo.version} (env source: ${runtimeInfo.envSource})`);
       
       // Initialize LangSmith
       await this.initializeLangSmith();
       
       this.initialized = true;
     } catch (error: any) {
-      console.error('Tracing initialization failed:', error.message);
+      mcpLogger.error('tracing', 'Tracing initialization failed', { error: error.message });
       this.enabled = false;
       this.initialized = true;
     }
@@ -92,12 +93,12 @@ export class UniversalTracingManager {
       // Validate configuration
       const validation = validateTracingConfig(this.config);
       if (!validation.isValid) {
-        console.error('LangSmith tracing configuration invalid:', validation.errors);
+        mcpLogger.error('tracing', 'LangSmith tracing configuration invalid', { errors: validation.errors });
         return;
       }
 
       if (!this.config.enabled) {
-        console.error('LangSmith tracing disabled (LANGSMITH_TRACING=false)');
+        mcpLogger.info('tracing', 'LangSmith tracing disabled (LANGSMITH_TRACING=false)');
         return;
       }
 
@@ -117,7 +118,7 @@ export class UniversalTracingManager {
           getCurrentRunTree = traceableImport.getCurrentRunTree;
         }
       } catch (traceableError: any) {
-        console.error('Failed to import traceable functions:', traceableError.message);
+        mcpLogger.warning('tracing', 'Failed to import traceable functions', { error: traceableError.message });
       }
       
       // Set up environment variables for LangSmith SDK (both standard and legacy)
@@ -140,12 +141,12 @@ export class UniversalTracingManager {
       });
 
       this.enabled = true;
-      console.error(`LangSmith tracing enabled for project: ${this.config.project}`);
-      console.error(`Dashboard: ${this.config.endpoint?.replace('api.', '')}/p/${this.config.project}`);
+      mcpLogger.info('tracing', `LangSmith tracing enabled for project: ${this.config.project}`, {
+        dashboardUrl: `${this.config.endpoint?.replace('api.', '')}/p/${this.config.project}`
+      });
       
     } catch (error: any) {
-      console.error('WARNING: LangSmith initialization failed - graceful degradation active');
-      console.error('Error:', error.message);
+      mcpLogger.warning('tracing', 'LangSmith initialization failed - graceful degradation active', { error: error.message });
       this.enabled = false;
     }
   }
@@ -238,7 +239,7 @@ export class UniversalTracingManager {
         // Detect session resumption
         const resumption = detectSessionResumption(session.sessionId);
         if (resumption.isResumption) {
-          console.error('Session resumption detected', {
+          mcpLogger.info('tracing', 'Session resumption detected', {
             sessionId: session.sessionId.substring(0, 8) + '...',
             gapDuration: resumption.gapDuration,
             contextLoss: resumption.contextLoss
@@ -255,7 +256,7 @@ export class UniversalTracingManager {
           const startTime = Date.now();
           const currentRun = getCurrentRunTree ? getCurrentRunTree() : null;
 
-          console.error("Executing tool with enhanced session context", {
+          mcpLogger.debug('tracing', 'Executing tool with enhanced session context', {
             toolName,
             conversationAwareTraceName,
             project: this.config.project,
@@ -266,7 +267,7 @@ export class UniversalTracingManager {
             clientName: session?.clientInfo?.name,
             hasParentTrace: !!currentRun,
             parentTraceId: currentRun?.id,
-            inputReceived: !!toolInput, // Log that we received input
+            inputReceived: !!toolInput
           });
 
           try {
@@ -294,7 +295,7 @@ export class UniversalTracingManager {
               }
             }
 
-            console.error("Tool execution completed with conversation context", {
+            mcpLogger.debug('tracing', 'Tool execution completed with conversation context', {
               toolName,
               conversationAwareTraceName,
               project: this.config.project,
@@ -308,7 +309,7 @@ export class UniversalTracingManager {
                 efficiencyScore: conversationQuality.efficiencyScore,
                 completeness: conversationQuality.conversationCompleteness
               } : undefined,
-              hasResult: !!result,
+              hasResult: !!result
             });
 
             // Enhanced result with comprehensive trace metadata
@@ -342,13 +343,14 @@ export class UniversalTracingManager {
             }
             
             // Log error with enhanced context
-            console.error(`Tool execution failed: ${toolName}`, {
+            mcpLogger.error('tracing', 'Tool execution failed', {
+              toolName,
               conversationAwareTraceName,
               executionTime,
               sessionId: session?.sessionId,
               conversationId: conversation?.conversationId,
               userIntent: userIntent?.primary,
-              error: error instanceof Error ? error.message : String(error),
+              error: error instanceof Error ? error.message : String(error)
             });
             
             throw error; // Re-throw to maintain error propagation
@@ -444,7 +446,7 @@ export class UniversalTracingManager {
 
     } catch (tracingError: any) {
       // If tracing fails, still execute the operation
-      console.error('LangSmith tracing error:', tracingError.message);
+      mcpLogger.error('tracing', 'LangSmith tracing error', { error: tracingError.message });
       const result = await operation();
       return { result };
     }
@@ -467,24 +469,24 @@ export class UniversalTracingManager {
         async () => {
           const startTime = Date.now();
           
-          console.error(`INFO: Starting MCP session: ${traceName}`, {
+          mcpLogger.info('tracing', `Starting MCP session: ${traceName}`, {
             connectionId: sessionContext.connectionId,
             transportMode: sessionContext.transportMode,
             clientInfo: sessionContext.clientInfo,
-            sessionId: sessionContext.sessionId,
+            sessionId: sessionContext.sessionId
           });
           
           try {
             const result = await operation();
             const executionTime = Date.now() - startTime;
             
-            console.error(`SUCCESS: MCP session established: ${traceName}`, {
+            mcpLogger.info('tracing', `MCP session established: ${traceName}`, {
               executionTime
             });
             
             return result;
           } catch (error) {
-            console.error(`ERROR: MCP session failed: ${traceName}`, { error });
+            mcpLogger.error('tracing', `MCP session failed: ${traceName}`, { error });
             throw error;
           }
         },
@@ -510,7 +512,7 @@ export class UniversalTracingManager {
 
       return await sessionTracer();
     } catch (error: any) {
-      console.error('Session tracing error:', error.message);
+      mcpLogger.error('tracing', 'Session tracing error', { error: error.message });
       return await operation();
     }
   }
@@ -519,11 +521,12 @@ export class UniversalTracingManager {
    * Log session information for debugging (sessions are created via metadata)
    */
   logSessionInfo(metadata: Record<string, any> = {}) {
-    console.error(`Session ID: ${this.sessionId}`);
-    console.error(`Session metadata:`, {
-      createdAt: new Date().toISOString(),
-      version: '2.0.0',
-      ...metadata
+    mcpLogger.info('tracing', `Session ID: ${this.sessionId}`, {
+      sessionMetadata: {
+        createdAt: new Date().toISOString(),
+        version: '2.0.0',
+        ...metadata
+      }
     });
   }
 

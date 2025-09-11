@@ -4,6 +4,7 @@
  */
 
 import { getCurrentSession } from './session-manager.js';
+import { mcpLogger } from './mcp-logger.js';
 
 export interface ConversationInfo {
   conversationId: string;
@@ -69,7 +70,7 @@ export function getOrCreateConversation(sessionId: string, toolName?: string): C
     
     conversations.set(sessionId, conversation);
     
-    console.error('Created new conversation', {
+    mcpLogger.debug('conversation', 'Created new conversation', {
       conversationId,
       sessionId: sessionId.substring(0, 8) + '...',
       isExpired: !!isExpired
@@ -299,7 +300,7 @@ export function trackConversationFlow(toolName: string, context?: string): void 
   
   // This is called before execution, so we just update the tracking
   // The actual metrics update happens in updateConversation after execution
-  console.error('Tracking conversation flow', {
+  mcpLogger.debug('conversation', 'Tracking conversation flow', {
     toolName,
     conversationId: conversation.conversationId.substring(0, 10) + '...',
     messageCount: conversation.messageCount + 1, // +1 because this will be the next message
@@ -356,7 +357,7 @@ export function cleanupOldConversations(): void {
   for (const [sessionId, conversation] of conversations) {
     if (now - conversation.lastActivity > staleThreshold) {
       conversations.delete(sessionId);
-      console.error('Cleaned up stale conversation', {
+      mcpLogger.debug('conversation', 'Cleaned up stale conversation', {
         sessionId: sessionId.substring(0, 8) + '...',
         conversationId: conversation.conversationId
       });

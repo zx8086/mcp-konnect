@@ -4,6 +4,7 @@ import { MigrationAnalyzer } from "../operations/migration-analyzer.js";
 import { TagElicitationEngine } from "../utils/tag-elicitation.js";
 import { contextDetector } from "../utils/context-detection.js";
 import { elicitationBridge } from "../utils/elicitation-bridge.js";
+import { mcpLogger } from '../utils/mcp-logger.js';
 
 /**
  * MCP Tool for Kong Migration Elicitation
@@ -120,7 +121,7 @@ export class ElicitationOperations {
       try {
         analysisResult = JSON.parse(analysisResult);
       } catch (error) {
-        console.error('Failed to parse analysisResult JSON:', error);
+        mcpLogger.error('elicitation', 'Failed to parse analysisResult JSON', { error });
         return {
           sessionId: '',
           requests: [],

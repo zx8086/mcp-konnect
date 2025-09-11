@@ -9,6 +9,7 @@
 
 import { ElicitationManager, ElicitationSession, KongElicitationPatterns } from '../utils/elicitation.js';
 import { MigrationAnalyzer, MigrationContext } from '../operations/migration-analyzer.js';
+import { mcpLogger } from '../utils/mcp-logger.js';
 
 export interface MandatoryContext {
   domain: string;
@@ -77,7 +78,7 @@ export class MandatoryElicitationGate {
   public async validateMandatoryContext(
     context: KongOperationContext
   ): Promise<MandatoryContext> {
-    console.error(`[ENFORCEMENT] GATE: Validating context for ${context.operationName}`);
+    mcpLogger.debug('enforcement', 'Enforcement gate validating context', { operationName: context.operationName });
     
     // Step 1: Analyze current context and confidence  
     const migrationContext = {
@@ -94,7 +95,7 @@ export class MandatoryElicitationGate {
     const existingContext = this.activeSessions.get(sessionId);
 
     if (existingContext?.elicitationComplete) {
-      console.error(`SUCCESS: ENFORCEMENT GATE: Context already validated for session ${sessionId}`);
+      mcpLogger.debug('enforcement', 'Enforcement gate context already validated', { sessionId });
       return existingContext;
     }
 
@@ -113,7 +114,7 @@ export class MandatoryElicitationGate {
 
     // Step 4: BLOCK OPERATION IF ANY MANDATORY FIELDS MISSING
     if (missingFields.length > 0) {
-      console.error(`[BLOCKING] ENFORCEMENT GATE: BLOCKING ${context.operationName} - Missing: ${missingFields.join(', ')}`);
+      mcpLogger.warning('enforcement', 'Enforcement gate blocking operation - missing fields', { operationName: context.operationName, missingFields });
       
       // Create elicitation session for missing context
       const elicitationSession = this.elicitationManager.createSession({
@@ -144,7 +145,7 @@ export class MandatoryElicitationGate {
     // Step 6: Cache validated context for session
     this.activeSessions.set(sessionId, validatedContext);
     
-    console.error(`SUCCESS: ENFORCEMENT GATE: Context validated - Domain: ${validatedContext.domain}, Env: ${validatedContext.environment}, Team: ${validatedContext.team}`);
+    mcpLogger.info('enforcement', 'Enforcement gate context validated successfully', { domain: validatedContext.domain, environment: validatedContext.environment, team: validatedContext.team });
     
     return validatedContext;
   }
@@ -158,7 +159,7 @@ export class MandatoryElicitationGate {
     sessionId: string,
     responses: Record<string, string>
   ): Promise<MandatoryContext> {
-    console.error(`INFO: ENFORCEMENT GATE: Processing elicitation response for session ${sessionId}`);
+    mcpLogger.debug('enforcement', 'Enforcement gate processing elicitation response', { sessionId });
     
     // SECURITY: Validate that this session was actually created by a blocked operation
     // This prevents bypass attempts with fake session IDs
@@ -196,10 +197,10 @@ export class MandatoryElicitationGate {
       const originalContext = elicitationSessionData.context.originalKongContext;
       const deterministicSessionId = this.generateSessionId(originalContext);
       this.activeSessions.set(deterministicSessionId, validatedContext);
-      console.error(`INFO: ENFORCEMENT GATE: Context stored for both elicitation session ${sessionId} and deterministic session ${deterministicSessionId}`);
+      mcpLogger.debug('enforcement', 'Enforcement gate context stored for both sessions', { sessionId, deterministicSessionId });
     }
     
-    console.error(`SUCCESS: ENFORCEMENT GATE: Elicitation complete - Context validated for session ${sessionId}`);
+    mcpLogger.info('enforcement', 'Enforcement gate elicitation complete - context validated', { sessionId });
     
     return validatedContext;
   }
@@ -228,7 +229,7 @@ export class MandatoryElicitationGate {
    */
   public clearSession(sessionId: string): void {
     this.activeSessions.delete(sessionId);
-    console.error(`INFO: ENFORCEMENT GATE: Cleared session context for ${sessionId}`);
+    mcpLogger.debug('enforcement', 'Enforcement gate cleared session context', { sessionId });
   }
 
   /**
@@ -261,7 +262,7 @@ export async function withMandatoryElicitation<T>(
   const gate = MandatoryElicitationGate.getInstance();
   const validatedContext = await gate.validateMandatoryContext(context);
   
-  console.error(`[MANDATORY] ELICITATION: Executing ${operationName} with validated context`);
+  mcpLogger.info('enforcement', 'Mandatory elicitation executing operation with validated context', { operationName });
   
   return await operation(validatedContext);
 }

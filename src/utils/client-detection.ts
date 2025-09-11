@@ -3,6 +3,8 @@
  * Determines client environment during initialization for better UX adaptation
  */
 
+import { mcpLogger } from './mcp-logger.js';
+
 export type ClientType = 
   // Official Claude Clients
   | 'claude-code' | 'claude-desktop' | 'claude-web'
@@ -861,7 +863,7 @@ export function getElicitationStrategy(client: ClientEnvironment): {
  * Log client detection results for debugging
  */
 export function logClientDetection(client: ClientEnvironment): void {
-  console.error('CLIENT DETECTION RESULTS:', {
+  mcpLogger.debug('session', 'Client detection results', {
     type: client.type,
     name: client.name,
     confidence: `${(client.detectionConfidence * 100).toFixed(1)}%`,

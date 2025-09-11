@@ -21,6 +21,7 @@ import {
 import { elicitationOrchestrator, ElicitationRequestFormatter } from './elicitation-validation-gates';
 import { unifiedElicitationBridge } from './unified-elicitation-bridge.js';
 import { ElicitationOperations } from '../tools/elicitation-tool.js';
+import { mcpLogger } from '../utils/mcp-logger.js';
 
 /**
  * ELICITATION MCP TOOL DEFINITIONS
@@ -335,7 +336,7 @@ export function createBlockedOperationHandler(
           originalMethod
         );
         
-        console.error(`OPERATION BLOCKED - ELICITATION REQUIRED:`, {
+        mcpLogger.warning('enforcement', 'Operation blocked - elicitation required', {
           operation: originalMethod,
           sessionId: elicitationRequest.sessionId,
           missingFields: elicitationRequest.missingFields,
@@ -345,7 +346,7 @@ export function createBlockedOperationHandler(
         
         // If auto-unblocked through bridge, retry the operation
         if (bridgeResult.autoUnblocked) {
-          console.error(`[AUTO-UNBLOCKED] Retrying operation ${originalMethod} with bridged context`);
+          mcpLogger.info('enforcement', 'Auto-unblocked - retrying operation', { operation: originalMethod });
           
           // Retry the operation that was blocked
           try {
@@ -361,7 +362,7 @@ export function createBlockedOperationHandler(
               note: "Operation would succeed if retried - context has been provided through migration bridge"
             };
           } catch (retryError) {
-            console.error(`ERROR: AUTO-UNBLOCK RETRY FAILED:`, retryError);
+            mcpLogger.error('enforcement', 'Auto-unblock retry failed', { error: retryError });
           }
         }
 
@@ -407,7 +408,7 @@ const elicitationOps = new ElicitationOperations();
  */
 export const ELICITATION_TOOL_HANDLERS = {
   async analyze_migration_context(args: any, _extra: RequestHandlerExtra) {
-    console.error(`ANALYZING MIGRATION CONTEXT`);
+    mcpLogger.info('enforcement', 'Analyzing migration context');
     
     const result = await elicitationOps.analyzeContext(
       args.userMessage,
@@ -416,12 +417,12 @@ export const ELICITATION_TOOL_HANDLERS = {
       args.gitContext
     );
     
-    console.error(`CONTEXT ANALYSIS COMPLETE: Elicitation required: ${result.elicitationRequired}`);
+    mcpLogger.info('enforcement', 'Context analysis complete', { elicitationRequired: result.elicitationRequired });
     return result;
   },
 
   async create_elicitation_session(args: any, _extra: RequestHandlerExtra) {
-    console.error(`CREATING ELICITATION SESSION`);
+    mcpLogger.info('enforcement', 'Creating elicitation session');
     
     // Fix the analysisResult structure - handle both formats safely
     let analysisResult;
@@ -461,21 +462,21 @@ export const ELICITATION_TOOL_HANDLERS = {
       );
     }
     
-    console.error(`SESSION CREATED: ${result.sessionId}, Needs input: ${result.needsUserInput}`);
+    mcpLogger.info('enforcement', 'Elicitation session created', { sessionId: result.sessionId, needsUserInput: result.needsUserInput });
     return result;
   },
 
   async process_elicitation_response(args: any, _extra: RequestHandlerExtra) {
-    console.error(`PROCESSING ELICITATION RESPONSE: Session ${args.sessionId}`);
+    mcpLogger.info('enforcement', 'Processing elicitation response', { sessionId: args.sessionId });
     
     // Check bridge status first
     const bridgeStatus = unifiedElicitationBridge.getBridgedSessionStatus(args.sessionId);
-    console.error(`[BRIDGE] STATUS for ${args.sessionId}:`, bridgeStatus);
+    mcpLogger.debug('enforcement', 'Bridge status check', { sessionId: args.sessionId, bridgeStatus });
     
     // Handle both the enforcement system format and the migration analysis format
     if (args.responses && !args.requestId) {
       // Enforcement system format (blocking operation response)
-      console.error(`[PROCESSING] BLOCKING SYSTEM RESPONSE`);
+      mcpLogger.debug('enforcement', 'Processing blocking system response');
       
       const bridgeResult = await unifiedElicitationBridge.processBlockingResponse(
         args.sessionId,
@@ -483,12 +484,12 @@ export const ELICITATION_TOOL_HANDLERS = {
       );
       
       if (bridgeResult.success) {
-        console.error(`SUCCESS: BLOCKING RESPONSE PROCESSED: Kong operations unblocked for session ${args.sessionId}`);
+        mcpLogger.info('enforcement', 'Blocking response processed - Kong operations unblocked', { sessionId: args.sessionId });
         if (bridgeResult.bridgeUpdated) {
-          console.error(`[BRIDGE] UPDATED: Migration session ${bridgeResult.migrationSessionId} updated`);
+          mcpLogger.debug('enforcement', 'Bridge updated migration session', { migrationSessionId: bridgeResult.migrationSessionId });
         }
       } else {
-        console.error(`ERROR: BLOCKING RESPONSE FAILED`);
+        mcpLogger.error('enforcement', 'Blocking response processing failed');
       }
       
       return {
@@ -500,7 +501,7 @@ export const ELICITATION_TOOL_HANDLERS = {
       
     } else {
       // Migration analysis format (migration elicitation response)
-      console.error(`INFO: PROCESSING MIGRATION SYSTEM RESPONSE`);
+      mcpLogger.debug('enforcement', 'Processing migration system response');
       
       const result = await elicitationOps.processElicitationResponse(
         args.sessionId,
@@ -514,8 +515,7 @@ export const ELICITATION_TOOL_HANDLERS = {
         args.response
       );
       
-      console.error(`INFO: MIGRATION RESPONSE PROCESSED: Session ${args.sessionId}, Complete: ${result.sessionComplete}`);
-      console.error(`[BRIDGE] RESULT:`, bridgeResult);
+      mcpLogger.info('enforcement', 'Migration response processed', { sessionId: args.sessionId, sessionComplete: result.sessionComplete, bridgeResult });
       
       return {
         ...result,
@@ -529,12 +529,12 @@ export const ELICITATION_TOOL_HANDLERS = {
     // Try both the enforcement system and migration analysis system
     try {
       const migrationStatus = await elicitationOps.getSessionStatus(args.sessionId);
-      console.error(`MIGRATION SESSION STATUS: Session ${args.sessionId} - Complete: ${migrationStatus.isComplete}`);
+      mcpLogger.debug('enforcement', 'Migration session status', { sessionId: args.sessionId, isComplete: migrationStatus.isComplete });
       return migrationStatus;
     } catch (error) {
       // Fallback to enforcement system
       const status = await elicitationOrchestrator.getElicitationStatus(args.sessionId);
-      console.error(`ENFORCEMENT SESSION STATUS: Session ${args.sessionId} - Exists: ${status.exists}, Complete: ${status.completed}`);
+      mcpLogger.debug('enforcement', 'Enforcement session status', { sessionId: args.sessionId, exists: status.exists, completed: status.completed });
       return status;
     }
   }

@@ -60,6 +60,86 @@ Before any commit:
 
 ---
 
+## 📊 UNIFIED LOGGING SYSTEM
+
+**✅ 100% Consolidated MCP-Compliant Logging**: The codebase now uses a unified logging approach with structured JSON output:
+
+- **Single Logger**: All server code uses `mcpLogger` from `src/utils/mcp-logger.ts` 
+- **Structured Format**: JSON-formatted logs with consistent categorization
+- **MCP Compliance**: Uses stderr for all output, preserving stdout for JSON-RPC messages
+- **Rate Limiting**: Built-in protection against log flooding
+- **Security-Aware**: Automatic redaction of sensitive data (tokens, keys, credentials)
+- **149+ Console Calls Unified**: Converted across 15+ server files
+
+### 🎯 **Our Unified Format (All Server Code)**
+```
+[INFO] config: Configuration loaded successfully { environment: "development", ... }
+[DEBUG] tracing: Tool execution started { toolName: "list_services", ... }
+[ERROR] api: Kong API request failed { statusCode: 404, endpoint: "/services" }
+[WARNING] enforcement: Operation blocked - missing context { operation: "create_service" }
+```
+
+**Logger Categories**:
+- `config`: Configuration loading, validation, and environment setup
+- `server`: MCP server startup, lifecycle, and session management
+- `api`: Kong API interactions, requests, and responses  
+- `tracing`: LangSmith integration and distributed tracing
+- `session`: Session context and connection management
+- `enforcement`: Elicitation gates and security validation
+- `elicitation`: Information gathering workflows
+- `certificates`: Certificate operations and parsing
+
+### 🚫 **External Library Logs (Cannot Be Unified)**
+These logs come from external dependencies and cannot be changed:
+
+**MCP SDK Logs** (`@modelcontextprotocol/sdk`):
+```
+2025-09-11T12:29:05.743Z [kong-konnect] [info] Initializing server... { metadata: undefined }
+2025-09-11T12:29:05.780Z [kong-konnect] [info] Message from client: {"method":"initialize"...}
+```
+- **Source**: Official MCP SDK framework
+- **Purpose**: Protocol-level debugging and transport monitoring
+- **Format**: Timestamped JSON with metadata
+
+**LangSmith SDK Logs**:
+```
+[LANGSMITH]: Failed to fetch info on supported operations. Falling back to batch operations...
+```
+- **Source**: LangSmith tracing SDK
+- **Purpose**: Tracing infrastructure diagnostics  
+- **Format**: Bracketed prefix with descriptive messages
+
+### 📋 **Log Format Reference Guide**
+
+| Format | Source | Example | Can Change? |
+|--------|--------|---------|-------------|
+| `[LEVEL] category: message { data }` | **Our Code** | `[INFO] config: Server ready { port: 3000 }` | ✅ **Our Format** |
+| `YYYY-MM-DD [service] [level] message` | **MCP SDK** | `2025-09-11 [kong-konnect] [info] Server started` | ❌ External Library |
+| `[LANGSMITH]: message` | **LangSmith** | `[LANGSMITH]: Tracing enabled for project` | ❌ External Library |
+| `Plain text lines` | **CLI Utilities** | `Configuration Health Check` | ✅ **Legitimate** (CLI tools) |
+
+### ✅ **Expected vs. Problematic Logs**
+
+**✅ EXPECTED (Normal Operation)**:
+- Our structured JSON format for all server operations
+- MCP SDK timestamped logs during protocol handshake
+- LangSmith bracketed logs during tracing setup
+
+**🚨 INDICATES PROBLEMS**:
+- Plain console.log/error from server code (should be structured)
+- Unhandled exception stack traces
+- Validation errors or missing configurations
+
+**Usage Pattern**:
+```typescript
+import { mcpLogger } from './utils/mcp-logger.js';
+
+// Always use structured logging in server code
+mcpLogger.debug('tracing', 'Tool execution started', { toolName, sessionId });
+mcpLogger.info('config', 'Configuration loaded', { environment: 'development' });
+mcpLogger.error('api', 'Kong API request failed', { statusCode: 404, endpoint: '/services' });
+```
+
 ## ✅ RECENT PRODUCTION VALIDATION
 
 **Commit 6089b9d - Direct MCP Tool Kong Deployment Success**:

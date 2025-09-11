@@ -7,6 +7,7 @@
 
 import { elicitationManager } from "./elicitation.js";
 import { KongDeploymentContext } from "./mcp-elicitation.js";
+import { mcpLogger } from './mcp-logger.js';
 
 export interface BridgeSession {
   sessionId: string;
@@ -29,19 +30,19 @@ class ElicitationBridge {
   setCompletedSession(sessionId: string): void {
     const session = elicitationManager.getSession(sessionId);
     if (!session) {
-      console.error(`Session ${sessionId} not found in elicitation manager`);
+      mcpLogger.warning('elicitation', 'Session not found in elicitation manager', { sessionId });
       return;
     }
 
     if (!elicitationManager.isSessionComplete(sessionId)) {
-      console.error(`Session ${sessionId} is not complete, cannot set as completed`);
+      mcpLogger.warning('elicitation', 'Session is not complete, cannot set as completed', { sessionId });
       return;
     }
 
     // Extract context from session responses
     const context = this.extractContextFromSession(sessionId);
     if (!context) {
-      console.error(`Failed to extract context from session ${sessionId}`);
+      mcpLogger.error('elicitation', 'Failed to extract context from session', { sessionId });
       return;
     }
 
@@ -55,8 +56,12 @@ class ElicitationBridge {
     this.completedSessions.set(sessionId, bridgeSession);
     this.latestSessionId = sessionId;
 
-    console.error(`SUCCESS: Elicitation bridge: Session ${sessionId} ready for enhanced operations`);
-    console.error(`INFO: Context: domain=${context.domain}, environment=${context.environment}, team=${context.team}`);
+    mcpLogger.info('elicitation', 'Elicitation bridge session ready for enhanced operations', {
+      sessionId,
+      domain: context.domain,
+      environment: context.environment,
+      team: context.team
+    });
   }
 
   /**
@@ -74,7 +79,7 @@ class ElicitationBridge {
 
     // Check if session is still valid (not expired)
     if (this.isSessionExpired(bridgeSession)) {
-      console.error(`Session ${this.latestSessionId} expired, removing from bridge`);
+      mcpLogger.debug('elicitation', 'Session expired, removing from bridge', { sessionId: this.latestSessionId });
       this.completedSessions.delete(this.latestSessionId);
       this.latestSessionId = null;
       return null;
@@ -167,7 +172,7 @@ class ElicitationBridge {
     });
 
     if (expiredSessions.length > 0) {
-      console.error(`INFO: Cleaned up ${expiredSessions.length} expired elicitation sessions`);
+      mcpLogger.debug('elicitation', 'Cleaned up expired elicitation sessions', { expiredCount: expiredSessions.length });
     }
   }
 
@@ -206,7 +211,8 @@ class ElicitationBridge {
 
       // Validate we have all required fields
       if (!domain || !environment || !team) {
-        console.error(`ERROR: Incomplete context extracted from session ${sessionId}:`, {
+        mcpLogger.warning('elicitation', 'Incomplete context extracted from session', {
+          sessionId,
           domain, environment, team
         });
         return null;
@@ -217,11 +223,11 @@ class ElicitationBridge {
       context.environment = environment.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-');
       context.team = team.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-');
 
-      console.error(`SUCCESS: Context extracted from session ${sessionId}:`, context);
+      mcpLogger.info('elicitation', 'Context extracted from session successfully', { sessionId, context });
       return context as KongDeploymentContext;
 
     } catch (error) {
-      console.error(`Failed to extract context from session ${sessionId}:`, error);
+      mcpLogger.error('elicitation', 'Failed to extract context from session', { sessionId, error });
       return null;
     }
   }

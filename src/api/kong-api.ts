@@ -5,6 +5,7 @@ import {
   ApiRequestsResponse 
 } from "../types.js";
 import { PortalApi, PortalApiOptions } from "./portal-api.js";
+import { mcpLogger } from "../utils/mcp-logger.js";
 
 /**
  * Kong API Regions - Different geographical API endpoints 
@@ -34,7 +35,7 @@ export class KongApi {
     this.apiKey = options.apiKey || process.env.KONNECT_ACCESS_TOKEN || "";
 
     if (!this.apiKey) {
-      console.error("Warning: KONNECT_ACCESS_TOKEN not set in environment. API calls will fail.");
+      mcpLogger.warning('api', 'KONNECT_ACCESS_TOKEN not set in environment - API calls will fail');
     }
   }
 
@@ -44,7 +45,7 @@ export class KongApi {
   async kongRequest<T>(endpoint: string, method = "GET", data: any = null): Promise<T> {
     try {
       const url = `${this.baseUrl}${endpoint}`;
-      console.error(`Making request to: ${url}`);
+      mcpLogger.debug('api', 'Making Kong API request', { url });
 
       const headers = {
         "Authorization": `Bearer ${this.apiKey}`,
@@ -60,10 +61,10 @@ export class KongApi {
       };
 
       const response = await axios(config);
-      console.error(`Received response with status: ${response.status}`);
+      mcpLogger.debug('api', 'Received Kong API response', { status: response.status });
       return response.data;
     } catch (error: any) {
-      console.error("API request error:", error.message);
+      mcpLogger.error('api', 'Kong API request failed', { error: error.message });
 
       if (error.response) {
         const errorData = error.response.data;

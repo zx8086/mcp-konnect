@@ -19,6 +19,7 @@ import {
 import { getEnvVar, getEnvVarWithDefault, initializeEnvironment, getRuntimeInfo } from "./utils/env.js";
 import { loadConfiguration } from "./config/index.js";
 import { mcpLogger } from "./utils/mcp-logger.js";
+import { mcpLogger } from "./utils/mcp-logger.js";
 import { mcpPaginator } from "./utils/pagination.js";
 
 // Import operations
@@ -95,8 +96,7 @@ class KongKonnectMcpServer extends McpServer {
     // Override default tools/list handler to provide pagination
     // TEMPORARILY DISABLED: this.registerPaginatedToolsList();
     
-    // Initialize MCP-compliant logging after server setup
-    // TEMPORARILY DISABLED: mcpLogger.initialize(this);
+    // MCP-compliant logging will be initialized after server creation
   }
 
   /**
@@ -1064,6 +1064,9 @@ async function main() {
     mcpLogger.info("config", "Loading configuration");
     const config = await loadConfiguration();
     
+    // Apply log level from configuration to mcpLogger
+    mcpLogger.setMinLevelFromConfig(config.application.logLevel);
+    
     // Show runtime information
     const runtimeInfo = getRuntimeInfo();
     mcpLogger.info("runtime", "Runtime information", {
@@ -1094,7 +1097,7 @@ async function main() {
     const sessionId = generateSessionId(connectionId, clientInfo);
     const sessionContext = createSessionContext(connectionId, "stdio", sessionId, clientInfo);
     
-    console.error("Session context created:", {
+    mcpLogger.info('server', 'Session context created', {
       sessionId,
       connectionId,
       clientName: clientInfo.name,
@@ -1107,6 +1110,12 @@ async function main() {
       await server.tracingManager.createSessionTrace(sessionContext, async () => {
         // All tool calls within this scope inherit session context AND nest under session trace
         await server.connect(transport);
+        
+        // Set MCP logger default level from configuration
+        const configLogLevel = config.application.logLevel;
+        const mcpLogLevel = configLogLevel === 'warn' ? 'warning' : configLogLevel as any;
+        mcpLogger.initializeWithDefaultLevel(mcpLogLevel);
+        
         mcpLogger.ready("server", {
           sessionId,
           connectionId,
@@ -1159,7 +1168,7 @@ const isMainModule = process.argv[1] && import.meta.url.includes(process.argv[1]
 
 if (isMainModule) {
   main().catch((error) => {
-    console.error("Failed to start Kong Konnect MCP Server:", error);
+    mcpLogger.error('server', 'Failed to start Kong Konnect MCP Server', { error: error.message });
     process.exit(1);
   });
 }

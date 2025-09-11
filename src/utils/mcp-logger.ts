@@ -51,24 +51,67 @@ class MCPLogger {
   };
 
   /**
-   * Initialize the logger with an MCP server instance
+   * Initialize the logger with an MCP server instance and optional default level
    */
-  initialize(server: McpServer): void {
+  initialize(server: McpServer, defaultLevel?: LogLevel): void {
     this.server = server;
     
+    // Set default level if provided (from configuration)
+    if (defaultLevel && defaultLevel in this.logLevelOrder) {
+      this.minLevel = defaultLevel;
+      this.info('logger', `MCP logger initialized with default level: ${defaultLevel}`);
+    }
+    
     // Register logging/setLevel handler as per MCP spec
-    server.setRequestHandler({ method: "logging/setLevel" }, async (request) => {
-      const level = request.params?.level as LogLevel;
-      if (level && level in this.logLevelOrder) {
-        this.minLevel = level;
-        return {};
-      }
-      throw new Error(`Invalid log level: ${level}`);
-    });
+    // Note: This may fail during initialization if server isn't fully ready
+    try {
+      server.setRequestHandler({ method: "logging/setLevel" }, async (request) => {
+        const level = request.params?.level as LogLevel;
+        if (level && level in this.logLevelOrder) {
+          this.minLevel = level;
+          this.info('logger', `MCP log level changed by client to: ${level}`);
+          return {};
+        }
+        throw new Error(`Invalid log level: ${level}`);
+      });
+    } catch (error) {
+      // Fallback: Just set the default level without registering handler
+      this.info('logger', 'MCP logging handler registration failed, using default level only');
+    }
+  }
+  
+  /**
+   * Initialize with default level only (no MCP handler registration)
+   */
+  initializeWithDefaultLevel(defaultLevel: LogLevel): void {
+    if (defaultLevel && defaultLevel in this.logLevelOrder) {
+      this.minLevel = defaultLevel;
+      this.info('logger', `Logger default level set to: ${defaultLevel}`);
+    }
   }
 
   setMinLevel(level: LogLevel): void {
     this.minLevel = level;
+  }
+
+  /**
+   * Map configuration log levels to mcpLogger log levels
+   */
+  setMinLevelFromConfig(configLogLevel: string): void {
+    const levelMapping: Record<string, LogLevel> = {
+      'debug': 'debug',
+      'info': 'info',
+      'warn': 'warning',  // Map config 'warn' to mcpLogger 'warning'
+      'error': 'error'
+    };
+    
+    const mappedLevel = levelMapping[configLogLevel.toLowerCase()];
+    if (mappedLevel) {
+      this.minLevel = mappedLevel;
+      this.log('info', 'logger', `Log level set to ${mappedLevel} from config level ${configLogLevel}`);
+    } else {
+      this.log('warning', 'logger', `Invalid log level '${configLogLevel}', keeping default 'info'`);
+    }
   }
 
   private shouldLog(level: LogLevel): boolean {

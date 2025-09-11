@@ -7,6 +7,7 @@
 
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { elicitationBridge } from "./elicitation-bridge.js";
+import { mcpLogger } from './mcp-logger.js';
 
 export interface KongDeploymentContext {
   domain?: string;
@@ -52,7 +53,7 @@ export class MCPElicitationManager {
       const bridgeContext = elicitationBridge.getLatestCompletedContext();
       if (bridgeContext) {
         const completeContext = { ...provided, ...bridgeContext };
-        console.error('SUCCESS: Using context from completed elicitation session:', completeContext);
+        mcpLogger.info('elicitation', 'Using context from completed elicitation session', { context: completeContext });
         
         // Cache the result for future use
         this.cacheContext('kong-deployment', completeContext, 3600); // 1 hour TTL
@@ -61,7 +62,7 @@ export class MCPElicitationManager {
     }
 
     // Fallback to native MCP elicitation (Claude Code)
-    console.error('INFO: No completed sessions found, attempting native MCP elicitation...');
+    mcpLogger.debug('elicitation', 'No completed sessions found, attempting native MCP elicitation');
 
     // Phase 1: Essential information (mandatory fields)
     const essentialResult = await this.elicitEssentialContext(missing, mcpContext);
@@ -102,7 +103,7 @@ export class MCPElicitationManager {
       this.cacheContext(key, data, ttlSeconds);
       return data;
     } catch (error) {
-      console.error(`Elicitation failed for ${key}:`, error);
+      mcpLogger.error('elicitation', 'Elicitation failed for context key', { key, error });
       return null;
     }
   }
@@ -118,7 +119,7 @@ export class MCPElicitationManager {
   ): Promise<Partial<KongDeploymentContext> | null> {
     if (!mcpContext || !mcpContext.elicit) {
       // Fallback for environments without MCP elicitation
-      console.error('MCP elicitation not available, context required but cannot be gathered');
+      mcpLogger.warning('elicitation', 'MCP elicitation not available, context required but cannot be gathered');
       return null;
     }
 
@@ -139,14 +140,14 @@ Please provide this information to proceed with deployment.`,
       if (result.action === 'accept') {
         return this.validateAndNormalizeContext(result.data);
       } else if (result.action === 'decline') {
-        console.error('User declined to provide essential context');
+        mcpLogger.warning('elicitation', 'User declined to provide essential context');
         return null;
       } else {
-        console.error('Elicitation cancelled by user');
+        mcpLogger.info('elicitation', 'Elicitation cancelled by user');
         return null;
       }
     } catch (error) {
-      console.error('Essential context elicitation failed:', error);
+      mcpLogger.error('elicitation', 'Essential context elicitation failed', { error });
       return null;
     }
   }
@@ -192,7 +193,7 @@ Would you like to provide additional context? (You can skip this step)`,
       }
     } catch (error) {
       // Additional context is optional, so failures are not critical
-      console.error('Additional context elicitation skipped or failed:', error.message);
+      mcpLogger.debug('elicitation', 'Additional context elicitation skipped or failed', { error: error.message });
     }
 
     return null;

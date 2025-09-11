@@ -12,6 +12,7 @@ import { withMandatoryElicitation, MandatoryContext, KongOperationContext, Elici
 import { KongApi } from '../api/kong-api.js';
 import * as configOps from '../tools/configuration/operations.js';
 import * as controlPlaneOps from '../tools/control-planes/operations.js';
+import { mcpLogger } from '../utils/mcp-logger.js';
 
 /**
  * ELICITATION ENFORCEMENT ERROR
@@ -68,7 +69,7 @@ function generateMandatoryTags(
 
   const allTags = [...mandatoryTags, ...optionalTags];
   
-  console.error(`INFO: MANDATORY TAGS GENERATED: ${allTags.join(', ')}`);
+  mcpLogger.debug('enforcement', 'Mandatory tags generated', { tags: allTags });
   
   return allTags;
 }
@@ -97,7 +98,7 @@ export const BlockedServiceOperations = {
         requestContext
       },
       async (validatedContext: MandatoryContext) => {
-        console.error(`[CREATING] SERVICE: ${name} with validated context`);
+        mcpLogger.info('enforcement', 'Creating service with validated context', { name });
         
         const api = await getValidatedKongApi(validatedContext);
         const tags = generateMandatoryTags(validatedContext, 'service', additionalParams.purpose);

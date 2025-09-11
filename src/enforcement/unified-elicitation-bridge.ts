@@ -12,6 +12,7 @@
 import { elicitationOrchestrator } from './elicitation-validation-gates.js';
 import { MandatoryElicitationGate } from './mandatory-elicitation-gate.js';
 import { ElicitationOperations } from '../tools/elicitation-tool.js';
+import { mcpLogger } from '../utils/mcp-logger.js';
 
 export interface BridgedElicitationSession {
   migrationSessionId: string;
@@ -55,7 +56,7 @@ export class UnifiedElicitationBridge {
     analysisResult: any,
     context: any
   ): void {
-    console.error(`[BRIDGE] REGISTERING migration session ${migrationSessionId}`);
+    mcpLogger.debug('enforcement', 'Bridge registering migration session', { migrationSessionId });
     
     this.sessionBridge.set(migrationSessionId, {
       migrationSessionId,
@@ -83,24 +84,24 @@ export class UnifiedElicitationBridge {
     contextCaptured: boolean;
     bridgeReady: boolean;
   }> {
-    console.error(`[BRIDGE] PROCESSING migration response for session ${migrationSessionId}`);
+    mcpLogger.debug('enforcement', 'Bridge processing migration response', { migrationSessionId });
     
     const bridgeSession = this.sessionBridge.get(migrationSessionId);
     if (!bridgeSession) {
-      console.error(`ERROR: BRIDGE: Migration session ${migrationSessionId} not found`);
+      mcpLogger.error('enforcement', 'Bridge migration session not found', { migrationSessionId });
       return { success: false, contextCaptured: false, bridgeReady: false };
     }
 
     // Handle declined/cancelled
     if (userResponse.declined || userResponse.cancelled) {
-      console.error(`WARNING: BRIDGE: User declined/cancelled migration session ${migrationSessionId}`);
+      mcpLogger.warning('enforcement', 'Bridge user declined/cancelled migration session', { migrationSessionId });
       bridgeSession.isComplete = true;
       return { success: true, contextCaptured: false, bridgeReady: false };
     }
 
     // Extract user context from response
     if (userResponse.data) {
-      console.error(`SUCCESS: BRIDGE: Capturing context from migration response:`, userResponse.data);
+      mcpLogger.info('enforcement', 'Bridge capturing context from migration response', { responseData: userResponse.data });
       
       // Handle different response formats
       let extractedContext: any = {};
@@ -121,7 +122,7 @@ export class UnifiedElicitationBridge {
       
       bridgeSession.isComplete = this.isContextComplete(bridgeSession.userContext);
       
-      console.error(`SUCCESS: BRIDGE: Context captured:`, {
+      mcpLogger.info('enforcement', 'Bridge context captured successfully', {
         domain: bridgeSession.userContext.domain,
         environment: bridgeSession.userContext.environment,
         team: bridgeSession.userContext.team,
@@ -153,12 +154,12 @@ export class UnifiedElicitationBridge {
     autoUnblocked: boolean;
     migrationSessionId?: string;
   }> {
-    console.error(`[BRIDGE] ATTEMPTING to bridge Kong blocking session ${blockingSessionId}`);
+    mcpLogger.debug('enforcement', 'Bridge attempting to bridge Kong blocking session', { blockingSessionId });
     
     // Look for a completed migration session with the needed context
     for (const [migrationSessionId, bridgeSession] of this.sessionBridge.entries()) {
       if (bridgeSession.isComplete && this.hasRequiredFields(bridgeSession.userContext, missingFields)) {
-        console.error(`SUCCESS: BRIDGE: Found compatible migration session ${migrationSessionId}`);
+        mcpLogger.info('enforcement', 'Bridge found compatible migration session', { migrationSessionId });
         
         // Establish bidirectional mapping
         this.migrationToBlocking.set(migrationSessionId, blockingSessionId);
@@ -182,7 +183,7 @@ export class UnifiedElicitationBridge {
       }
     }
     
-    console.error(`WARNING: BRIDGE: No compatible migration session found for blocking session ${blockingSessionId}`);
+    mcpLogger.warning('enforcement', 'Bridge no compatible migration session found', { blockingSessionId });
     return { bridged: false, autoUnblocked: false };
   }
 
@@ -196,7 +197,7 @@ export class UnifiedElicitationBridge {
     userContext: any
   ): Promise<boolean> {
     try {
-      console.error(`[UNBLOCKING] BRIDGE: Auto-unblocking session ${blockingSessionId} with context:`, userContext);
+      mcpLogger.info('enforcement', 'Bridge auto-unblocking session', { blockingSessionId, userContext });
       
       // Use the elicitation orchestrator to process the bridged response
       const response = {
@@ -208,15 +209,15 @@ export class UnifiedElicitationBridge {
       const result = await elicitationOrchestrator.processElicitationResponse(response);
       
       if (result.success) {
-        console.error(`SUCCESS: BRIDGE: Auto-unblocked session ${blockingSessionId} successfully`);
+        mcpLogger.info('enforcement', 'Bridge auto-unblocked session successfully', { blockingSessionId });
         return true;
       } else {
-        console.error(`ERROR: BRIDGE: Failed to auto-unblock session ${blockingSessionId}:`, result.errors);
+        mcpLogger.error('enforcement', 'Bridge failed to auto-unblock session', { blockingSessionId, errors: result.errors });
         return false;
       }
       
     } catch (error) {
-      console.error(`[ERROR] BRIDGE: Error auto-unblocking session ${blockingSessionId}:`, error);
+      mcpLogger.error('enforcement', 'Bridge error auto-unblocking session', { blockingSessionId, error });
       return false;
     }
   }
@@ -235,7 +236,7 @@ export class UnifiedElicitationBridge {
     bridgeUpdated: boolean;
     migrationSessionId?: string;
   }> {
-    console.error(`[BRIDGE] PROCESSING direct blocking response for session ${blockingSessionId}`);
+    mcpLogger.debug('enforcement', 'Bridge processing direct blocking response', { blockingSessionId });
     
     // Process the response normally through the orchestrator
     const result = await elicitationOrchestrator.processElicitationResponse({
@@ -251,7 +252,7 @@ export class UnifiedElicitationBridge {
       if (bridgeSession) {
         bridgeSession.userContext = { ...bridgeSession.userContext, ...(userResponse.responses || userResponse) };
         bridgeSession.isComplete = true;
-        console.error(`SUCCESS: BRIDGE: Updated migration session ${migrationSessionId} from blocking response`);
+        mcpLogger.info('enforcement', 'Bridge updated migration session from blocking response', { migrationSessionId });
       }
     }
     
