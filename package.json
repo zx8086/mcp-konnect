@@ -57,7 +57,7 @@
   "author": "Simon Owusu",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.5",
+    "@modelcontextprotocol/sdk": "^1.24.0",
     "axios": "^1.11.0",
     "zod": "^3.22.2",
     "langsmith": "^0.3.67",
