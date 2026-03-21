@@ -5,3 +5,7 @@ config
 build
 .mcp.json
 # demo/
+
+demo/dECK/kong_demo_ii.yaml
+demo/dECK/pvh*
+demo/*

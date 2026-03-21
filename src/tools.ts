@@ -1,6 +1,6 @@
-import { z } from "zod";
-import * as prompts from "./prompts.js";
+import type { z } from "zod";
 import * as parameters from "./parameters.js";
+import * as prompts from "./prompts.js";
 import { elicitationTools } from "./tools/elicitation-tool.js";
 
 export type Tool = {
@@ -20,14 +20,14 @@ export const tools = (): Tool[] => [
     name: "Query API Requests",
     description: prompts.queryApiRequestsPrompt(),
     parameters: parameters.queryApiRequestsParameters(),
-    category: "analytics"
+    category: "analytics",
   },
   {
     method: "get_consumer_requests",
     name: "Get Consumer Requests",
     description: prompts.getConsumerRequestsPrompt(),
     parameters: parameters.getConsumerRequestsParameters(),
-    category: "analytics"
+    category: "analytics",
   },
 
   // =========================
@@ -38,28 +38,28 @@ export const tools = (): Tool[] => [
     name: "List Services",
     description: prompts.listServicesPrompt(),
     parameters: parameters.listServicesParameters(),
-    category: "configuration"
+    category: "configuration",
   },
   {
     method: "list_routes",
     name: "List Routes",
     description: prompts.listRoutesPrompt(),
     parameters: parameters.listRoutesParameters(),
-    category: "configuration"
+    category: "configuration",
   },
   {
     method: "list_consumers",
     name: "List Consumers",
     description: prompts.listConsumersPrompt(),
     parameters: parameters.listConsumersParameters(),
-    category: "configuration"
+    category: "configuration",
   },
   {
     method: "list_plugins",
     name: "List Plugins",
     description: prompts.listPluginsPrompt(),
     parameters: parameters.listPluginsParameters(),
-    category: "configuration"
+    category: "configuration",
   },
 
   // =========================
@@ -70,28 +70,28 @@ export const tools = (): Tool[] => [
     name: "List Control Planes",
     description: prompts.listControlPlanesPrompt(),
     parameters: parameters.listControlPlanesParameters(),
-    category: "control_planes"
+    category: "control_planes",
   },
   {
     method: "get_control_plane",
     name: "Get Control Plane",
     description: prompts.getControlPlanePrompt(),
     parameters: parameters.getControlPlaneParameters(),
-    category: "control_planes"
+    category: "control_planes",
   },
   {
     method: "list_control_plane_group_memberships",
     name: "List Control Plane Group Memberships",
     description: prompts.listControlPlaneGroupMembershipsPrompt(),
     parameters: parameters.listControlPlaneGroupMembershipsParameters(),
-    category: "control_planes"
+    category: "control_planes",
   },
   {
     method: "check_control_plane_group_membership",
     name: "Check Control Plane Group Membership",
     description: prompts.checkControlPlaneGroupMembershipPrompt(),
     parameters: parameters.checkControlPlaneGroupMembershipParameters(),
-    category: "control_planes"
+    category: "control_planes",
   },
 
   // =========================
@@ -102,32 +102,32 @@ export const tools = (): Tool[] => [
     name: "Create Service",
     description: prompts.createServicePrompt(),
     parameters: parameters.createServiceParameters(),
-    category: "configuration"
+    category: "configuration",
   },
   {
     method: "get_service",
     name: "Get Service",
     description: prompts.getServicePrompt(),
     parameters: parameters.getServiceParameters(),
-    category: "configuration"
+    category: "configuration",
   },
   {
     method: "update_service",
     name: "Update Service",
     description: prompts.updateServicePrompt(),
     parameters: parameters.updateServiceParameters(),
-    category: "configuration"
+    category: "configuration",
   },
   {
     method: "delete_service",
     name: "Delete Service",
     description: prompts.deleteServicePrompt(),
     parameters: parameters.deleteServiceParameters(),
-    category: "configuration"
+    category: "configuration",
   },
 
   // =========================
   // Elicitation Tools
   // =========================
-  ...elicitationTools
+  ...elicitationTools,
 ];

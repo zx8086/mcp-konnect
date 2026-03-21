@@ -14,13 +14,11 @@ https://github.com/user-attachments/assets/19c2f716-49b5-46c3-9457-65b3784e2111
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Available Tools](#available-tools)
-  - [Analytics Tools](#analytics-tools)
-  - [Configuration Tools](#configuration-tools) 
-  - [Control Planes Tools](#control-planes-tools)
 - [Usage with Claude](#usage-with-claude)
 - [Testing](#testing)
 - [Example Workflows](#example-workflows)
 - [Development](#development)
+- [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
 
 ## Overview
@@ -28,10 +26,16 @@ https://github.com/user-attachments/assets/19c2f716-49b5-46c3-9457-65b3784e2111
 This project provides a Model Context Protocol (MCP) server that enables AI assistants like Claude to interact with Kong Konnect's API Gateway. It offers a set of tools to query analytics data, inspect configuration details, and manage control planes through natural language conversation.
 
 Key features:
+- 78 MCP tools across 7 categories for complete Kong Gateway management
+- **AI-guided workflow chaining** -- every tool response includes `relatedTools` suggestions that guide the AI to the next logical action, plus prompt-level `NEXT STEPS` and `SETUP WORKFLOW` sections that teach multi-step procedures
+- **Dynamic prompt architecture** -- tool prompts are functions, enabling runtime composition based on context
 - Query API request analytics with customizable filters
-- List and inspect gateway services, routes, consumers, and plugins
-- Manage control planes and control plane groups
-- Integration with Claude and other MCP-compatible AI assistants
+- Full CRUD for services, routes, consumers, plugins, and certificates
+- Manage control planes, data plane nodes, and tokens
+- Developer portal management with applications, registrations, and credentials
+- Intelligent elicitation system for context gathering and mandatory tagging
+- LangSmith tracing integration for observability
+- MCP-compliant structured logging (stderr-only, JSON-RPC safe)
 
 Konnect MCP is a **work in progress** and we will be adding additional functionality and improvements with each release.
 
@@ -39,24 +43,37 @@ Konnect MCP is a **work in progress** and we will be adding additional functiona
 
 ```
 src/
-├── index.ts              # Main entry point
-├── api.ts                # Kong API client
-├── tools.ts              # Tool definitions
-├── parameters.ts         # Zod schemas for tool parameters
-├── prompts.ts            # Detailed tool documentation
-├── operations/
-│   ├── analytics.ts      # API request analytics operations
-│   ├── configuration.ts  # Services, routes, consumers, plugins
-│   └── controlPlanes.ts  # Control plane management
-└── types.ts              # Common type definitions
+├── index.ts                    # MCP server class, tool registration, request routing
+├── types.ts                    # TypeScript interfaces
+├── api/
+│   ├── kong-api.ts             # Kong API client with regional endpoints
+│   └── portal-api.ts           # Developer portal API client
+├── config/
+│   └── index.ts                # Zod-validated configuration management
+├── tools/
+│   ├── registry.ts             # Central tool registry (78 tools)
+│   ├── analytics/              # 2 tools  -- API request analytics
+│   ├── certificates/           # 5 tools  -- SSL/TLS certificate management
+│   ├── configuration/          # 21 tools -- Services, routes, consumers, plugins
+│   ├── control-planes/         # 14 tools -- Control planes, data planes, tokens
+│   ├── portal/                 # 24 tools -- Developer portal operations
+│   ├── portal-management/      # 8 tools  -- Portal lifecycle, API publishing
+│   ├── elicitation-tool.ts     # 4 tools  -- Context gathering for migrations
+│   └── enhanced-kong-tools.ts  # Enhanced operations with native elicitation
+├── enforcement/                # Mandatory tagging gates
+├── operations/                 # Legacy operation modules
+├── utils/                      # Logging, tracing, session, elicitation utilities
+└── tests/                      # Comprehensive test suite
 ```
+
+Each tool category follows a 4-file pattern: `tools.ts`, `parameters.ts`, `prompts.ts`, `operations.ts`. See [Tool Module Pattern](docs/architecture/TOOL_MODULE_PATTERN.md) for details.
 
 ## Installation
 
 ### Prerequisites
-- Node.js 20 or higher
+- [Bun](https://bun.sh/) 1.0+ (recommended) or Node.js 20+
 - A Kong Konnect account with API access
-- A client with MCP capabilities (e.g. Claude Desktop, Cursor, etc...)
+- A client with MCP capabilities (e.g. Claude Desktop, Claude Code, Cursor)
 
 ### Setup
 
@@ -66,10 +83,10 @@ git clone https://github.com/Kong/mcp-konnect.git
 cd mcp-konnect
 
 # Install dependencies
-npm install
+bun install
 
 # Build the project
-npm run build
+bun run build
 ```
 
 ## Configuration
@@ -87,120 +104,48 @@ export KONNECT_REGION=us
 
 ## Available Tools
 
-The server provides tools organized in three categories:
+The server provides 78 tools organized in 7 categories:
 
-### Analytics Tools
+### Analytics (2 tools)
+- **query_api_requests** -- Query and analyze API Gateway requests with time range, status code, HTTP method, and consumer/service/route filters
+- **get_consumer_requests** -- Analyze API requests made by a specific consumer
 
-#### Query API Requests
-Query and analyze Kong API Gateway requests with customizable filters.
+### Configuration (21 tools)
+Full CRUD operations for core Kong Gateway entities:
+- **Services**: list, get, create, update, delete
+- **Routes**: list, get, create, update, delete
+- **Consumers**: list, get, create, update, delete
+- **Plugins**: list, get, create, update, delete, list_plugin_schemas
 
-```
-Inputs:
-- timeRange: Time range for data retrieval (15M, 1H, 6H, 12H, 24H, 7D)
-- statusCodes: Filter by specific HTTP status codes
-- excludeStatusCodes: Exclude specific HTTP status codes
-- httpMethods: Filter by HTTP methods
-- consumerIds: Filter by consumer IDs
-- serviceIds: Filter by service IDs
-- routeIds: Filter by route IDs
-- maxResults: Maximum number of results to return
-```
+### Control Planes (14 tools)
+- **Control planes**: list, get, create, update, delete
+- **Data plane nodes**: list, get
+- **Data plane tokens**: list, create, revoke
+- **Configuration**: get, update
+- **Groups**: list memberships, check membership
 
-#### Get Consumer Requests
-Analyze API requests made by a specific consumer.
+### Certificates (5 tools)
+- SSL/TLS certificate management: list, get, create, update, delete
 
-```
-Inputs:
-- consumerId: ID of the consumer to analyze
-- timeRange: Time range for data retrieval
-- successOnly: Show only successful (2xx) requests
-- failureOnly: Show only failed (non-2xx) requests
-- maxResults: Maximum number of results to return
-```
+### Portal (24 tools)
+Developer portal operations:
+- **APIs**: list, fetch, fetch document, list documents, get actions
+- **Applications**: list, get, create, update, delete, regenerate secret
+- **Registrations**: list, get, create, delete
+- **Credentials**: list, create, update, delete
+- **Developer auth**: register, authenticate, get profile, logout
+- **Analytics**: query application analytics
 
-### Configuration Tools
+### Portal Management (8 tools)
+- **Portals**: list, get, create, update, delete
+- **Products**: list, publish, unpublish
 
-#### List Services
-List all services associated with a control plane.
-
-```
-Inputs:
-- controlPlaneId: ID of the control plane
-- size: Number of services to return
-- offset: Pagination offset token
-```
-
-#### List Routes
-List all routes associated with a control plane.
-
-```
-Inputs:
-- controlPlaneId: ID of the control plane
-- size: Number of routes to return
-- offset: Pagination offset token
-```
-
-#### List Consumers
-List all consumers associated with a control plane.
-
-```
-Inputs:
-- controlPlaneId: ID of the control plane
-- size: Number of consumers to return
-- offset: Pagination offset token
-```
-
-#### List Plugins
-List all plugins associated with a control plane.
-
-```
-Inputs:
-- controlPlaneId: ID of the control plane
-- size: Number of plugins to return
-- offset: Pagination offset token
-```
-
-### Control Planes Tools
-
-#### List Control Planes
-List all control planes in your organization.
-
-```
-Inputs:
-- pageSize: Number of control planes per page
-- pageNumber: Page number to retrieve
-- filterName: Filter control planes by name
-- filterClusterType: Filter by cluster type
-- filterCloudGateway: Filter by cloud gateway capability
-- labels: Filter by labels
-- sort: Sort field and direction
-```
-
-#### Get Control Plane
-Get detailed information about a specific control plane.
-
-```
-Inputs:
-- controlPlaneId: ID of the control plane to retrieve
-```
-
-#### List Control Plane Group Memberships
-List all control planes that are members of a specific group.
-
-```
-Inputs:
-- groupId: Control plane group ID
-- pageSize: Number of members to return per page
-- pageAfter: Cursor for pagination
-```
-
-#### Check Control Plane Group Membership
-Check if a control plane is a member of any group.
-
-```
-Inputs:
-- controlPlaneId: Control plane ID to check
-```
+### Elicitation (4 tools)
+Intelligent context gathering for Kong migrations:
+- **analyze_migration_context** -- Detect domain/environment/team from user input
+- **create_elicitation_session** -- Generate prompts for missing information
+- **process_elicitation_response** -- Validate and normalize user responses
+- **get_session_status** -- Track elicitation progress
 
 ## Usage with Claude
 
@@ -217,9 +162,10 @@ To use this MCP server with Claude for Desktop:
 {
   "mcpServers": {
     "kong-konnect": {
-      "command": "node",
+      "command": "bun",
       "args": [
-        "/absolute/path/to/mcp-konnect/build/index.js"
+        "run",
+        "/absolute/path/to/mcp-konnect/dist/index.js"
       ],
       "env": {
         "KONNECT_ACCESS_TOKEN": "kpat_api_key_here",
@@ -237,9 +183,9 @@ To use this MCP server with Claude for Desktop:
 
 ### Comprehensive Flight API Test Suite
 
-The project includes a **comprehensive test suite** that demonstrates all 66 Kong Konnect MCP tools using a realistic flight booking API scenario.
+The project includes a **comprehensive test suite** that demonstrates all 78 Kong Konnect MCP tools using a realistic flight booking API scenario.
 
-📍 **Complete Documentation**: [`docs/FLIGHT_API_TEST_SUITE.md`](docs/FLIGHT_API_TEST_SUITE.md)
+Complete Documentation: [`docs/testing/FLIGHT_API_TEST_SUITE.md`](docs/testing/FLIGHT_API_TEST_SUITE.md)
 
 #### Quick Start
 ```bash
@@ -252,15 +198,16 @@ bun run test:flight-api
 ```
 
 #### Test Categories
-- **Integration Tests** (36 tests) - End-to-end workflows with real Kong API calls
-- **Unit Tests** (36 tests) - Individual operations with mocked dependencies  
-- **Performance Tests** (21 tests) - Load testing and security validation
+- **Integration Tests** -- End-to-end workflows with real Kong API calls
+- **Unit Tests** -- Individual operations with mocked dependencies
+- **Performance Tests** -- Load testing and security validation
+- **Elicitation Tests** -- Context gathering and enforcement validation
 
-#### Key Achievements  
-- ✅ **99% Tool Coverage** (65/66 MCP tools tested)
-- ⚡ **12,115+ RPS** throughput achieved
-- 🔒 **Security Validated** (SQL injection, XSS, rate limiting)
-- 🧹 **Auto Cleanup** of all test resources
+#### Key Achievements
+- **100% Tool Coverage** (78/78 MCP tools tested)
+- **12,115+ RPS** throughput achieved
+- **Security Validated** (SQL injection, XSS, rate limiting)
+- **Auto Cleanup** of all test resources
 
 #### Available Commands
 ```bash
@@ -314,11 +261,24 @@ bun run test:flight-api:coverage     # Coverage report
 
 ### Adding New Tools
 
-1. Define the parameters in `parameters.ts`
-2. Add documentation in `prompts.ts`
-3. Create the operation logic in the appropriate file in `operations/`
-4. Register the tool in `tools.ts`
-5. Handle the tool execution in `index.ts`
+Each tool category follows a 4-file pattern under `src/tools/{category}/`:
+
+1. Define the Zod parameter schema in `parameters.ts`
+2. Add the tool definition in `tools.ts` (method, name, description, parameters, category)
+3. Add AI-facing documentation in `prompts.ts`
+4. Implement the operation logic in `operations.ts`
+5. Add the handler case in `src/index.ts` within `registerTools()`
+
+For a new category, also register it in `src/tools/registry.ts`. See [Tool Module Pattern](docs/architecture/TOOL_MODULE_PATTERN.md) for the full guide.
+
+## Documentation
+
+Comprehensive documentation is in [`docs/`](docs/README.md):
+
+- **Architecture**: [System Overview](docs/architecture/SYSTEM_OVERVIEW.md), [Tool Module Pattern](docs/architecture/TOOL_MODULE_PATTERN.md), [Elicitation System](docs/architecture/ELICITATION_SYSTEM.md)
+- **Guides**: [Configuration](docs/guides/CONFIGURATION.md), [MCP Compliance](docs/guides/MCP_SCHEMA_COMPLIANCE.md), [Logging](docs/guides/MCP_LOGGING_COMPLIANCE.md)
+- **Testing**: [Flight API Test Suite](docs/testing/FLIGHT_API_TEST_SUITE.md), [Best Practices](docs/testing/TESTING_BEST_PRACTICES.md)
+- **Implementation**: [LangSmith Tracing](docs/implementation/LANGSMITH_TRACE_GROUPING_GUIDE.md), [API Architecture](docs/implementation/MCP_API_WRAPPER_ARCHITECTURE.md)
 
 ## Troubleshooting
 

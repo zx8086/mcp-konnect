@@ -7,12 +7,15 @@ import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.j
 
 export interface ElicitationSchema {
   type: "object";
-  properties: Record<string, {
-    type: string;
-    description: string;
-    enum?: string[];
-    default?: any;
-  }>;
+  properties: Record<
+    string,
+    {
+      type: string;
+      description: string;
+      enum?: string[];
+      default?: any;
+    }
+  >;
   required: string[];
 }
 
@@ -27,7 +30,7 @@ export interface ElicitationRequest {
 export function createElicitationResponse(request: ElicitationRequest) {
   return {
     method: "elicitation/requestInput",
-    params: request
+    params: request,
   };
 }
 
@@ -41,18 +44,24 @@ export function extractDeploymentContext(tags?: string[]): {
   missing: string[];
 } {
   if (!tags || tags.length === 0) {
-    return { missing: ['domain', 'environment', 'team'] };
+    return { missing: ["domain", "environment", "team"] };
   }
-  
-  const domain = tags.find(tag => tag.startsWith('domain-'))?.replace('domain-', '');
-  const environment = tags.find(tag => tag.startsWith('env-'))?.replace('env-', '');
-  const team = tags.find(tag => tag.startsWith('team-'))?.replace('team-', '');
-  
+
+  const domain = tags
+    .find((tag) => tag.startsWith("domain-"))
+    ?.replace("domain-", "");
+  const environment = tags
+    .find((tag) => tag.startsWith("env-"))
+    ?.replace("env-", "");
+  const team = tags
+    .find((tag) => tag.startsWith("team-"))
+    ?.replace("team-", "");
+
   const missing = [];
-  if (!domain) missing.push('domain');
-  if (!environment) missing.push('environment');
-  if (!team) missing.push('team');
-  
+  if (!domain) missing.push("domain");
+  if (!environment) missing.push("environment");
+  if (!team) missing.push("team");
+
   return { domain, environment, team, missing };
 }
 
@@ -61,28 +70,33 @@ export function extractDeploymentContext(tags?: string[]): {
  */
 export function generateTags(
   context: { domain: string; environment: string; team: string },
-  entityType: 'service' | 'route' | 'consumer' | 'plugin',
-  entityName?: string
+  entityType: "service" | "route" | "consumer" | "plugin",
+  entityName?: string,
 ): string[] {
   const baseTags = [
     `env-${context.environment}`,
-    `domain-${context.domain}`, 
-    `team-${context.team}`
+    `domain-${context.domain}`,
+    `team-${context.team}`,
   ];
-  
+
   // Add contextual tags based on entity type
   const contextualTags = getContextualTags(entityType, entityName);
-  
+
   return [...baseTags, ...contextualTags];
 }
 
 function getContextualTags(entityType: string, entityName?: string): string[] {
   const tagMap = {
-    service: ['function-api-gateway', 'type-external-api'],
-    route: ['function-routing', 'type-external-api'], 
-    consumer: ['function-authentication', 'access-external'],
-    plugin: ['function-security', 'type-middleware']
+    service: ["function-api-gateway", "type-external-api"],
+    route: ["function-routing", "type-external-api"],
+    consumer: ["function-authentication", "access-external"],
+    plugin: ["function-security", "type-middleware"],
   };
-  
-  return tagMap[entityType as keyof typeof tagMap] || ['function-unknown', 'type-unknown'];
+
+  return (
+    tagMap[entityType as keyof typeof tagMap] || [
+      "function-unknown",
+      "type-unknown",
+    ]
+  );
 }

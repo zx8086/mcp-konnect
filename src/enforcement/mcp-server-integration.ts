@@ -1,122 +1,148 @@
 /**
  * MCP SERVER ENFORCEMENT INTEGRATION
- * 
+ *
  * This file replaces the original Kong operations in the MCP server
  * with blocked versions that enforce mandatory elicitation.
- * 
+ *
  * ARCHITECTURAL PRINCIPLE: Intercept ALL Kong modification operations
  * at the MCP server level to enforce elicitation before execution.
  */
 
-import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import { 
-  BlockedServiceOperations, 
-  BlockedRouteOperations, 
-  BlockedConsumerOperations, 
-  BlockedPluginOperations,
-  BlockedListOperations,
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import { ElicitationOperations } from "../tools/elicitation-tool.js";
+import { mcpLogger } from "../utils/mcp-logger.js";
+import {
+  ElicitationRequestFormatter,
+  elicitationOrchestrator,
+} from "./elicitation-validation-gates";
+import {
+  BlockedConsumerOperations,
   BlockedControlPlaneOperations,
-  KongOperationBlockedError 
-} from './kong-tool-blockers';
-import { elicitationOrchestrator, ElicitationRequestFormatter } from './elicitation-validation-gates';
-import { unifiedElicitationBridge } from './unified-elicitation-bridge.js';
-import { ElicitationOperations } from '../tools/elicitation-tool.js';
-import { mcpLogger } from '../utils/mcp-logger.js';
+  BlockedListOperations,
+  BlockedPluginOperations,
+  BlockedRouteOperations,
+  BlockedServiceOperations,
+  KongOperationBlockedError,
+} from "./kong-tool-blockers";
+import { unifiedElicitationBridge } from "./unified-elicitation-bridge.js";
 
 /**
  * ELICITATION MCP TOOL DEFINITIONS
- * 
+ *
  * These are ALL elicitation tools - both enforcement and migration analysis tools
  */
 export const ELICITATION_MCP_TOOLS = [
   {
     name: "analyze_migration_context",
-    description: "Analyze Kong migration context and determine what information needs to be elicited from users",
+    description:
+      "Analyze Kong migration context and determine what information needs to be elicited from users",
     inputSchema: {
       type: "object",
       properties: {
-        userMessage: { type: "string", description: "User's original migration request" },
-        deckFiles: { type: "array", items: { type: "string" }, description: "Paths to Kong deck YAML files" },
-        deckConfigs: { type: "array", items: { type: "object" }, description: "Parsed deck configurations" },
+        userMessage: {
+          type: "string",
+          description: "User's original migration request",
+        },
+        deckFiles: {
+          type: "array",
+          items: { type: "string" },
+          description: "Paths to Kong deck YAML files",
+        },
+        deckConfigs: {
+          type: "array",
+          items: { type: "object" },
+          description: "Parsed deck configurations",
+        },
         gitContext: {
           type: "object",
           properties: {
             branch: { type: "string" },
             repoName: { type: "string" },
-            teamMembers: { type: "array", items: { type: "string" } }
+            teamMembers: { type: "array", items: { type: "string" } },
           },
-          description: "Git repository context"
-        }
+          description: "Git repository context",
+        },
       },
-      additionalProperties: false
-    }
+      additionalProperties: false,
+    },
   },
   {
     name: "create_elicitation_session",
-    description: "Create an MCP elicitation session to gather missing information for Kong migration",
+    description:
+      "Create an MCP elicitation session to gather missing information for Kong migration",
     inputSchema: {
       type: "object",
       properties: {
-        analysisResult: { type: "object", description: "Migration analysis result from analyze-context" },
-        context: { type: "object", description: "Original migration context" }
+        analysisResult: {
+          type: "object",
+          description: "Migration analysis result from analyze-context",
+        },
+        context: { type: "object", description: "Original migration context" },
       },
       required: ["analysisResult", "context"],
-      additionalProperties: false
-    }
+      additionalProperties: false,
+    },
   },
   {
     name: "process_elicitation_response",
-    description: "Process user response to elicitation request and unblock Kong operations",
+    description:
+      "Process user response to elicitation request and unblock Kong operations",
     inputSchema: {
       type: "object",
       properties: {
-        sessionId: { type: "string", description: "Session ID from elicitation request" },
+        sessionId: {
+          type: "string",
+          description: "Session ID from elicitation request",
+        },
         requestId: { type: "string", description: "Elicitation request ID" },
         response: {
           type: "object",
           properties: {
             data: { type: "object", description: "User response data" },
             declined: { type: "boolean", description: "Whether user declined" },
-            cancelled: { type: "boolean", description: "Whether user cancelled" },
-            error: { type: "string", description: "Error message if any" }
+            cancelled: {
+              type: "boolean",
+              description: "Whether user cancelled",
+            },
+            error: { type: "string", description: "Error message if any" },
           },
-          additionalProperties: false
-        }
+          additionalProperties: false,
+        },
       },
       required: ["sessionId", "requestId", "response"],
-      additionalProperties: false
-    }
+      additionalProperties: false,
+    },
   },
   {
-    name: "get_session_status", 
+    name: "get_session_status",
     description: "Get current status and progress of an elicitation session",
     inputSchema: {
       type: "object",
       properties: {
-        sessionId: { type: "string", description: "Session ID to check" }
+        sessionId: { type: "string", description: "Session ID to check" },
       },
       required: ["sessionId"],
-      additionalProperties: false
-    }
-  }
+      additionalProperties: false,
+    },
+  },
 ];
 
 /**
  * BLOCKED OPERATION HANDLER
- * 
+ *
  * Creates enhanced handlers that intercept Kong operations and enforce elicitation
  */
 export function createBlockedOperationHandler(
   originalMethod: string,
-  userMessage: string = '',
+  userMessage: string = "",
   files: string[] = [],
-  configs: any[] = []
+  configs: any[] = [],
 ) {
   return async (args: any, _extra: RequestHandlerExtra) => {
     const requestContext = {
       userMessage,
       files,
-      configs
+      configs,
     };
 
     try {
@@ -132,7 +158,7 @@ export function createBlockedOperationHandler(
             args.name,
             args.host,
             args.port || 80,
-            args.protocol || 'http',
+            args.protocol || "http",
             requestContext,
             {
               path: args.path,
@@ -141,8 +167,8 @@ export function createBlockedOperationHandler(
               writeTimeout: args.writeTimeout,
               readTimeout: args.readTimeout,
               enabled: args.enabled,
-              purpose: args.name ? `service-${args.name}` : 'gateway-service'
-            }
+              purpose: args.name ? `service-${args.name}` : "gateway-service",
+            },
           );
           break;
 
@@ -161,9 +187,9 @@ export function createBlockedOperationHandler(
               writeTimeout: args.writeTimeout,
               readTimeout: args.readTimeout,
               tags: args.tags,
-              enabled: args.enabled
+              enabled: args.enabled,
             },
-            requestContext
+            requestContext,
           );
           break;
 
@@ -171,7 +197,7 @@ export function createBlockedOperationHandler(
           result = await BlockedServiceOperations.deleteService(
             args.controlPlaneId,
             args.serviceId,
-            requestContext
+            requestContext,
           );
           break;
 
@@ -191,9 +217,9 @@ export function createBlockedOperationHandler(
               stripPath: args.stripPath,
               preserveHost: args.preserveHost,
               regexPriority: args.regexPriority,
-              purpose: args.name ? `route-${args.name}` : 'api-route'
+              purpose: args.name ? `route-${args.name}` : "api-route",
             },
-            requestContext
+            requestContext,
           );
           break;
 
@@ -212,9 +238,9 @@ export function createBlockedOperationHandler(
               preserveHost: args.preserveHost,
               regexPriority: args.regexPriority,
               tags: args.tags,
-              enabled: args.enabled
+              enabled: args.enabled,
             },
-            requestContext
+            requestContext,
           );
           break;
 
@@ -222,7 +248,7 @@ export function createBlockedOperationHandler(
           result = await BlockedRouteOperations.deleteRoute(
             args.controlPlaneId,
             args.routeId,
-            requestContext
+            requestContext,
           );
           break;
 
@@ -236,9 +262,11 @@ export function createBlockedOperationHandler(
               username: args.username,
               customId: args.customId,
               enabled: args.enabled,
-              purpose: args.username ? `consumer-${args.username}` : 'api-consumer'
+              purpose: args.username
+                ? `consumer-${args.username}`
+                : "api-consumer",
             },
-            requestContext
+            requestContext,
           );
           break;
 
@@ -246,7 +274,7 @@ export function createBlockedOperationHandler(
           result = await BlockedConsumerOperations.deleteConsumer(
             args.controlPlaneId,
             args.consumerId,
-            requestContext
+            requestContext,
           );
           break;
 
@@ -263,9 +291,9 @@ export function createBlockedOperationHandler(
               consumerId: args.consumerId,
               serviceId: args.serviceId,
               routeId: args.routeId,
-              enabled: args.enabled
+              enabled: args.enabled,
             },
-            requestContext
+            requestContext,
           );
           break;
 
@@ -281,9 +309,9 @@ export function createBlockedOperationHandler(
               serviceId: args.serviceId,
               routeId: args.routeId,
               tags: args.tags,
-              enabled: args.enabled
+              enabled: args.enabled,
             },
-            requestContext
+            requestContext,
           );
           break;
 
@@ -291,7 +319,7 @@ export function createBlockedOperationHandler(
           result = await BlockedPluginOperations.deletePlugin(
             args.controlPlaneId,
             args.pluginId,
-            requestContext
+            requestContext,
           );
           break;
 
@@ -299,7 +327,9 @@ export function createBlockedOperationHandler(
         // READ OPERATIONS - NOT BLOCKED
         // ===========================
         case "list_services":
-          result = await BlockedListOperations.listServices(args.controlPlaneId);
+          result = await BlockedListOperations.listServices(
+            args.controlPlaneId,
+          );
           break;
 
         case "list_routes":
@@ -307,7 +337,9 @@ export function createBlockedOperationHandler(
           break;
 
         case "list_consumers":
-          result = await BlockedListOperations.listConsumers(args.controlPlaneId);
+          result = await BlockedListOperations.listConsumers(
+            args.controlPlaneId,
+          );
           break;
 
         case "list_plugins":
@@ -323,31 +355,38 @@ export function createBlockedOperationHandler(
       }
 
       return result;
-
     } catch (error) {
       if (error instanceof KongOperationBlockedError) {
         // Convert blocked operation error to elicitation request for user
-        const elicitationRequest = await elicitationOrchestrator.handleBlockedOperation(error);
-        
+        const elicitationRequest =
+          await elicitationOrchestrator.handleBlockedOperation(error);
+
         // Try to bridge with existing migration context
-        const bridgeResult = await unifiedElicitationBridge.bridgeToKongBlocking(
-          elicitationRequest.sessionId,
-          elicitationRequest.missingFields,
-          originalMethod
+        const bridgeResult =
+          await unifiedElicitationBridge.bridgeToKongBlocking(
+            elicitationRequest.sessionId,
+            elicitationRequest.missingFields,
+            originalMethod,
+          );
+
+        mcpLogger.warning(
+          "enforcement",
+          "Operation blocked - elicitation required",
+          {
+            operation: originalMethod,
+            sessionId: elicitationRequest.sessionId,
+            missingFields: elicitationRequest.missingFields,
+            bridged: bridgeResult.bridged,
+            autoUnblocked: bridgeResult.autoUnblocked,
+          },
         );
-        
-        mcpLogger.warning('enforcement', 'Operation blocked - elicitation required', {
-          operation: originalMethod,
-          sessionId: elicitationRequest.sessionId,
-          missingFields: elicitationRequest.missingFields,
-          bridged: bridgeResult.bridged,
-          autoUnblocked: bridgeResult.autoUnblocked
-        });
-        
+
         // If auto-unblocked through bridge, retry the operation
         if (bridgeResult.autoUnblocked) {
-          mcpLogger.info('enforcement', 'Auto-unblocked - retrying operation', { operation: originalMethod });
-          
+          mcpLogger.info("enforcement", "Auto-unblocked - retrying operation", {
+            operation: originalMethod,
+          });
+
           // Retry the operation that was blocked
           try {
             // We can't easily retry here due to the catch block structure
@@ -359,14 +398,17 @@ export function createBlockedOperationHandler(
               bridged: true,
               migrationSessionId: bridgeResult.migrationSessionId,
               autoUnblocked: true,
-              note: "Operation would succeed if retried - context has been provided through migration bridge"
+              note: "Operation would succeed if retried - context has been provided through migration bridge",
             };
           } catch (retryError) {
-            mcpLogger.error('enforcement', 'Auto-unblock retry failed', { error: retryError });
+            mcpLogger.error("enforcement", "Auto-unblock retry failed", {
+              error: retryError,
+            });
           }
         }
 
-        const userMessage = ElicitationRequestFormatter.formatForUser(elicitationRequest);
+        const userMessage =
+          ElicitationRequestFormatter.formatForUser(elicitationRequest);
 
         // Return structured error with elicitation guidance and bridge info
         return {
@@ -378,17 +420,20 @@ export function createBlockedOperationHandler(
           elicitationRequest: userMessage,
           bridgeInfo: {
             bridged: bridgeResult.bridged,
-            migrationSessionId: bridgeResult.migrationSessionId
+            migrationSessionId: bridgeResult.migrationSessionId,
           },
-          nextSteps: bridgeResult.bridged ? [
-            `SUCCESS: BRIDGED: Migration session ${bridgeResult.migrationSessionId} linked to this operation`,
-            `Use process_elicitation_response with sessionId: ${elicitationRequest.sessionId}`,
-            "Context from migration analysis will be applied automatically"
-          ] : [
-            `Use the process_elicitation_response tool with sessionId: ${elicitationRequest.sessionId}`,
-            "Provide responses for all required fields: " + elicitationRequest.missingFields.join(", "),
-            "Once elicitation is complete, retry the original operation"
-          ]
+          nextSteps: bridgeResult.bridged
+            ? [
+                `SUCCESS: BRIDGED: Migration session ${bridgeResult.migrationSessionId} linked to this operation`,
+                `Use process_elicitation_response with sessionId: ${elicitationRequest.sessionId}`,
+                "Context from migration analysis will be applied automatically",
+              ]
+            : [
+                `Use the process_elicitation_response tool with sessionId: ${elicitationRequest.sessionId}`,
+                "Provide responses for all required fields: " +
+                  elicitationRequest.missingFields.join(", "),
+                "Once elicitation is complete, retry the original operation",
+              ],
         };
       }
 
@@ -403,27 +448,29 @@ const elicitationOps = new ElicitationOperations();
 
 /**
  * ELICITATION TOOL HANDLERS
- * 
+ *
  * Handlers for ALL elicitation tools - both enforcement and migration analysis
  */
 export const ELICITATION_TOOL_HANDLERS = {
   async analyze_migration_context(args: any, _extra: RequestHandlerExtra) {
-    mcpLogger.info('enforcement', 'Analyzing migration context');
-    
+    mcpLogger.info("enforcement", "Analyzing migration context");
+
     const result = await elicitationOps.analyzeContext(
       args.userMessage,
       args.deckFiles,
       args.deckConfigs,
-      args.gitContext
+      args.gitContext,
     );
-    
-    mcpLogger.info('enforcement', 'Context analysis complete', { elicitationRequired: result.elicitationRequired });
+
+    mcpLogger.info("enforcement", "Context analysis complete", {
+      elicitationRequired: result.elicitationRequired,
+    });
     return result;
   },
 
   async create_elicitation_session(args: any, _extra: RequestHandlerExtra) {
-    mcpLogger.info('enforcement', 'Creating elicitation session');
-    
+    mcpLogger.info("enforcement", "Creating elicitation session");
+
     // Fix the analysisResult structure - handle both formats safely
     let analysisResult;
     if (args.analysisResult && args.analysisResult.migrationAnalysis) {
@@ -431,9 +478,9 @@ export const ELICITATION_TOOL_HANDLERS = {
       analysisResult = args.analysisResult;
     } else if (args.analysisResult) {
       // Wrap in expected structure
-      analysisResult = { 
-        migrationAnalysis: args.analysisResult, 
-        elicitationRequired: args.analysisResult.elicitationRequired || true 
+      analysisResult = {
+        migrationAnalysis: args.analysisResult,
+        elicitationRequired: args.analysisResult.elicitationRequired || true,
       };
     } else {
       // Fallback structure
@@ -441,86 +488,116 @@ export const ELICITATION_TOOL_HANDLERS = {
         migrationAnalysis: {
           elicitationRequired: true,
           missingInfo: { domain: true, environment: true, team: true },
-          entityCounts: { total: 0, services: 0, routes: 0, consumers: 0, plugins: 0 },
-          confidence: { overall: 0, breakdown: { domain: 0, environment: 0, team: 0 } }
+          entityCounts: {
+            total: 0,
+            services: 0,
+            routes: 0,
+            consumers: 0,
+            plugins: 0,
+          },
+          confidence: {
+            overall: 0,
+            breakdown: { domain: 0, environment: 0, team: 0 },
+          },
         },
-        elicitationRequired: true
+        elicitationRequired: true,
       };
     }
-    
+
     const result = await elicitationOps.createElicitationSession(
       analysisResult,
-      args.context
+      args.context,
     );
-    
+
     // Register with bridge for potential Kong operation bridging
     if (result.sessionId) {
       unifiedElicitationBridge.registerMigrationSession(
         result.sessionId,
         analysisResult,
-        args.context
+        args.context,
       );
     }
-    
-    mcpLogger.info('enforcement', 'Elicitation session created', { sessionId: result.sessionId, needsUserInput: result.needsUserInput });
+
+    mcpLogger.info("enforcement", "Elicitation session created", {
+      sessionId: result.sessionId,
+      needsUserInput: result.needsUserInput,
+    });
     return result;
   },
 
   async process_elicitation_response(args: any, _extra: RequestHandlerExtra) {
-    mcpLogger.info('enforcement', 'Processing elicitation response', { sessionId: args.sessionId });
-    
+    mcpLogger.info("enforcement", "Processing elicitation response", {
+      sessionId: args.sessionId,
+    });
+
     // Check bridge status first
-    const bridgeStatus = unifiedElicitationBridge.getBridgedSessionStatus(args.sessionId);
-    mcpLogger.debug('enforcement', 'Bridge status check', { sessionId: args.sessionId, bridgeStatus });
-    
+    const bridgeStatus = unifiedElicitationBridge.getBridgedSessionStatus(
+      args.sessionId,
+    );
+    mcpLogger.debug("enforcement", "Bridge status check", {
+      sessionId: args.sessionId,
+      bridgeStatus,
+    });
+
     // Handle both the enforcement system format and the migration analysis format
     if (args.responses && !args.requestId) {
       // Enforcement system format (blocking operation response)
-      mcpLogger.debug('enforcement', 'Processing blocking system response');
-      
-      const bridgeResult = await unifiedElicitationBridge.processBlockingResponse(
-        args.sessionId,
-        args
-      );
-      
+      mcpLogger.debug("enforcement", "Processing blocking system response");
+
+      const bridgeResult =
+        await unifiedElicitationBridge.processBlockingResponse(
+          args.sessionId,
+          args,
+        );
+
       if (bridgeResult.success) {
-        mcpLogger.info('enforcement', 'Blocking response processed - Kong operations unblocked', { sessionId: args.sessionId });
+        mcpLogger.info(
+          "enforcement",
+          "Blocking response processed - Kong operations unblocked",
+          { sessionId: args.sessionId },
+        );
         if (bridgeResult.bridgeUpdated) {
-          mcpLogger.debug('enforcement', 'Bridge updated migration session', { migrationSessionId: bridgeResult.migrationSessionId });
+          mcpLogger.debug("enforcement", "Bridge updated migration session", {
+            migrationSessionId: bridgeResult.migrationSessionId,
+          });
         }
       } else {
-        mcpLogger.error('enforcement', 'Blocking response processing failed');
+        mcpLogger.error("enforcement", "Blocking response processing failed");
       }
-      
+
       return {
         success: bridgeResult.success,
         sessionComplete: bridgeResult.success,
         bridgeUpdated: bridgeResult.bridgeUpdated,
-        migrationSessionId: bridgeResult.migrationSessionId
+        migrationSessionId: bridgeResult.migrationSessionId,
       };
-      
     } else {
       // Migration analysis format (migration elicitation response)
-      mcpLogger.debug('enforcement', 'Processing migration system response');
-      
+      mcpLogger.debug("enforcement", "Processing migration system response");
+
       const result = await elicitationOps.processElicitationResponse(
         args.sessionId,
         args.requestId,
-        args.response
+        args.response,
       );
-      
+
       // Bridge the migration response
-      const bridgeResult = await unifiedElicitationBridge.processMigrationResponse(
-        args.sessionId,
-        args.response
-      );
-      
-      mcpLogger.info('enforcement', 'Migration response processed', { sessionId: args.sessionId, sessionComplete: result.sessionComplete, bridgeResult });
-      
+      const bridgeResult =
+        await unifiedElicitationBridge.processMigrationResponse(
+          args.sessionId,
+          args.response,
+        );
+
+      mcpLogger.info("enforcement", "Migration response processed", {
+        sessionId: args.sessionId,
+        sessionComplete: result.sessionComplete,
+        bridgeResult,
+      });
+
       return {
         ...result,
         bridgeReady: bridgeResult.bridgeReady,
-        contextCaptured: bridgeResult.contextCaptured
+        contextCaptured: bridgeResult.contextCaptured,
       };
     }
   },
@@ -528,38 +605,49 @@ export const ELICITATION_TOOL_HANDLERS = {
   async get_session_status(args: any, _extra: RequestHandlerExtra) {
     // Try both the enforcement system and migration analysis system
     try {
-      const migrationStatus = await elicitationOps.getSessionStatus(args.sessionId);
-      mcpLogger.debug('enforcement', 'Migration session status', { sessionId: args.sessionId, isComplete: migrationStatus.isComplete });
+      const migrationStatus = await elicitationOps.getSessionStatus(
+        args.sessionId,
+      );
+      mcpLogger.debug("enforcement", "Migration session status", {
+        sessionId: args.sessionId,
+        isComplete: migrationStatus.isComplete,
+      });
       return migrationStatus;
     } catch (error) {
       // Fallback to enforcement system
-      const status = await elicitationOrchestrator.getElicitationStatus(args.sessionId);
-      mcpLogger.debug('enforcement', 'Enforcement session status', { sessionId: args.sessionId, exists: status.exists, completed: status.completed });
+      const status = await elicitationOrchestrator.getElicitationStatus(
+        args.sessionId,
+      );
+      mcpLogger.debug("enforcement", "Enforcement session status", {
+        sessionId: args.sessionId,
+        exists: status.exists,
+        completed: status.completed,
+      });
       return status;
     }
-  }
+  },
 };
 
 /**
  * ENFORCEMENT INTEGRATION SUMMARY
- * 
+ *
  * This integration replaces ALL Kong modification operations with blocked versions:
- * 
+ *
  * BLOCKED OPERATIONS:
  * - create_service, update_service, delete_service
- * - create_route, update_route, delete_route  
+ * - create_route, update_route, delete_route
  * - create_consumer, delete_consumer
  * - create_plugin, update_plugin, delete_plugin
- * 
+ *
  * UNBLOCKED OPERATIONS:
  * - All list_* operations (read-only)
  * - All get_* operations (read-only)
  * - Analytics operations (read-only)
- * 
+ *
  * NEW OPERATIONS:
  * - process_elicitation_response (handles user responses)
  * - get_elicitation_status (checks elicitation progress)
- * 
+ *
  * BEHAVIORAL CHANGE:
  * When users attempt Kong modification operations without proper context,
  * they receive structured elicitation requests instead of errors.

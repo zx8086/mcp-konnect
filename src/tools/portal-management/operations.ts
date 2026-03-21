@@ -1,4 +1,4 @@
-import { KongApi } from "../../api/kong-api.js";
+import type { KongApi } from "../../api/kong-api.js";
 
 /**
  * List all developer portals
@@ -6,7 +6,7 @@ import { KongApi } from "../../api/kong-api.js";
 export async function listPortals(
   api: KongApi,
   pageSize = 10,
-  pageNumber?: number
+  pageNumber?: number,
 ) {
   try {
     const result = await api.listPortals(pageSize, pageNumber);
@@ -17,34 +17,35 @@ export async function listPortals(
           pageSize: pageSize,
           pageNumber: pageNumber || 1,
           totalPages: result.meta?.page?.total || 1,
-          totalItems: result.meta?.page?.total_count || 0
-        }
-      },
-      portals: result.data?.map((portal: any) => ({
-        portalId: portal.id,
-        name: portal.name,
-        description: portal.description,
-        displayName: portal.display_name,
-        isPublic: portal.is_public,
-        autoApproveDevelopers: portal.auto_approve_developers,
-        autoApproveApplications: portal.auto_approve_applications,
-        defaultDomain: portal.default_domain,
-        customDomain: portal.custom_domain,
-        statistics: {
-          developerCount: portal.developer_count || 0,
-          applicationCount: portal.application_count || 0,
-          publishedProductCount: portal.published_product_count || 0
+          totalItems: result.meta?.page?.total_count || 0,
         },
-        metadata: {
-          createdAt: portal.created_at,
-          updatedAt: portal.updated_at
-        }
-      })) || [],
+      },
+      portals:
+        result.data?.map((portal: any) => ({
+          portalId: portal.id,
+          name: portal.name,
+          description: portal.description,
+          displayName: portal.display_name,
+          isPublic: portal.is_public,
+          autoApproveDevelopers: portal.auto_approve_developers,
+          autoApproveApplications: portal.auto_approve_applications,
+          defaultDomain: portal.default_domain,
+          customDomain: portal.custom_domain,
+          statistics: {
+            developerCount: portal.developer_count || 0,
+            applicationCount: portal.application_count || 0,
+            publishedProductCount: portal.published_product_count || 0,
+          },
+          metadata: {
+            createdAt: portal.created_at,
+            updatedAt: portal.updated_at,
+          },
+        })) || [],
       relatedTools: [
         "Use create-portal to create a new developer portal",
         "Use get-portal for detailed portal information",
-        "Use update-portal to modify portal settings"
-      ]
+        "Use update-portal to modify portal settings",
+      ],
     };
   } catch (error) {
     throw error;
@@ -65,7 +66,7 @@ export async function createPortal(
     autoApproveApplications?: boolean;
     customDomain?: string;
     labels?: Record<string, string>;
-  }
+  },
 ) {
   try {
     const requestData = {
@@ -76,7 +77,7 @@ export async function createPortal(
       auto_approve_developers: portalData.autoApproveDevelopers || true,
       auto_approve_applications: portalData.autoApproveApplications || true,
       custom_domain: portalData.customDomain,
-      labels: portalData.labels || {}
+      labels: portalData.labels || {},
     };
 
     const result = await api.createPortal(requestData);
@@ -94,20 +95,20 @@ export async function createPortal(
         autoApproveDevelopers: result.auto_approve_developers,
         autoApproveApplications: result.auto_approve_applications,
         metadata: {
-          createdAt: result.created_at
-        }
+          createdAt: result.created_at,
+        },
       },
       message: `Developer portal '${result.name}' created successfully`,
       nextSteps: [
         "Portal URL: " + result.default_domain,
         "Use publish-portal-product to add APIs to the portal",
-        "Use register-developer to create developer accounts"
+        "Use register-developer to create developer accounts",
       ],
       relatedTools: [
         "Use publish-portal-product to add Flight API to the portal",
         "Use list-portal-products to see published APIs",
-        "Use get-portal to view complete portal details"
-      ]
+        "Use get-portal to view complete portal details",
+      ],
     };
   } catch (error) {
     throw error;
@@ -117,10 +118,7 @@ export async function createPortal(
 /**
  * Get detailed information about a portal
  */
-export async function getPortal(
-  api: KongApi,
-  portalId: string
-) {
+export async function getPortal(api: KongApi, portalId: string) {
   try {
     const result = await api.getPortal(portalId);
 
@@ -137,27 +135,27 @@ export async function getPortal(
         domains: {
           defaultDomain: result.default_domain,
           customDomain: result.custom_domain,
-          customClientDomain: result.custom_client_domain
+          customClientDomain: result.custom_client_domain,
         },
         authentication: {
-          defaultAuthStrategyId: result.default_application_auth_strategy_id
+          defaultAuthStrategyId: result.default_application_auth_strategy_id,
         },
         statistics: {
           developerCount: result.developer_count || 0,
           applicationCount: result.application_count || 0,
-          publishedProductCount: result.published_product_count || 0
+          publishedProductCount: result.published_product_count || 0,
         },
         labels: result.labels || {},
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use update-portal to modify portal settings",
         "Use list-portal-products to see published APIs",
-        "Use register-developer to add developers"
-      ]
+        "Use register-developer to add developers",
+      ],
     };
   } catch (error) {
     throw error;
@@ -179,18 +177,25 @@ export async function updatePortal(
     autoApproveApplications?: boolean;
     customDomain?: string;
     labels?: Record<string, string>;
-  }
+  },
 ) {
   try {
     const requestData: any = {};
-    
+
     if (portalData.name !== undefined) requestData.name = portalData.name;
-    if (portalData.description !== undefined) requestData.description = portalData.description;
-    if (portalData.displayName !== undefined) requestData.display_name = portalData.displayName;
-    if (portalData.isPublic !== undefined) requestData.is_public = portalData.isPublic;
-    if (portalData.autoApproveDevelopers !== undefined) requestData.auto_approve_developers = portalData.autoApproveDevelopers;
-    if (portalData.autoApproveApplications !== undefined) requestData.auto_approve_applications = portalData.autoApproveApplications;
-    if (portalData.customDomain !== undefined) requestData.custom_domain = portalData.customDomain;
+    if (portalData.description !== undefined)
+      requestData.description = portalData.description;
+    if (portalData.displayName !== undefined)
+      requestData.display_name = portalData.displayName;
+    if (portalData.isPublic !== undefined)
+      requestData.is_public = portalData.isPublic;
+    if (portalData.autoApproveDevelopers !== undefined)
+      requestData.auto_approve_developers = portalData.autoApproveDevelopers;
+    if (portalData.autoApproveApplications !== undefined)
+      requestData.auto_approve_applications =
+        portalData.autoApproveApplications;
+    if (portalData.customDomain !== undefined)
+      requestData.custom_domain = portalData.customDomain;
     if (portalData.labels !== undefined) requestData.labels = portalData.labels;
 
     const result = await api.updatePortal(portalId, requestData);
@@ -208,13 +213,11 @@ export async function updatePortal(
         customDomain: result.custom_domain,
         labels: result.labels,
         metadata: {
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: "Portal updated successfully",
-      relatedTools: [
-        "Use get-portal to see all updated details"
-      ]
+      relatedTools: ["Use get-portal to see all updated details"],
     };
   } catch (error) {
     throw error;
@@ -224,21 +227,19 @@ export async function updatePortal(
 /**
  * Delete a developer portal
  */
-export async function deletePortal(
-  api: KongApi,
-  portalId: string
-) {
+export async function deletePortal(api: KongApi, portalId: string) {
   try {
     await api.deletePortal(portalId);
 
     return {
       success: true,
       message: `Portal ${portalId} deleted successfully`,
-      warning: "WARNING: All portal data, developers, applications, and published products have been permanently removed",
+      warning:
+        "WARNING: All portal data, developers, applications, and published products have been permanently removed",
       relatedTools: [
         "Use list-portals to see remaining portals",
-        "Use create-portal to create a new portal"
-      ]
+        "Use create-portal to create a new portal",
+      ],
     };
   } catch (error) {
     throw error;
@@ -252,7 +253,7 @@ export async function listPortalProducts(
   api: KongApi,
   portalId: string,
   pageSize = 10,
-  pageNumber?: number
+  pageNumber?: number,
 ) {
   try {
     const result = await api.listPortalProducts(portalId, pageSize, pageNumber);
@@ -264,24 +265,25 @@ export async function listPortalProducts(
           pageSize: pageSize,
           pageNumber: pageNumber || 1,
           totalPages: result.meta?.page?.total || 1,
-          totalItems: result.meta?.page?.total_count || 0
-        }
+          totalItems: result.meta?.page?.total_count || 0,
+        },
       },
-      products: result.data?.map((product: any) => ({
-        productId: product.id,
-        name: product.name,
-        description: product.description,
-        version: product.version,
-        status: product.status,
-        publishedAt: product.published_at,
-        apiCount: product.api_count || 0,
-        applicationRegistrations: product.application_registration_count || 0
-      })) || [],
+      products:
+        result.data?.map((product: any) => ({
+          productId: product.id,
+          name: product.name,
+          description: product.description,
+          version: product.version,
+          status: product.status,
+          publishedAt: product.published_at,
+          apiCount: product.api_count || 0,
+          applicationRegistrations: product.application_registration_count || 0,
+        })) || [],
       relatedTools: [
         "Use publish-portal-product to add more APIs",
         "Use unpublish-portal-product to remove APIs",
-        "Use fetch-api to get API details"
-      ]
+        "Use fetch-api to get API details",
+      ],
     };
   } catch (error) {
     throw error;
@@ -298,13 +300,13 @@ export async function publishPortalProduct(
     productId: string;
     productVersionId?: string;
     description?: string;
-  }
+  },
 ) {
   try {
     const requestData = {
       product_id: productData.productId,
       product_version_id: productData.productVersionId,
-      description: productData.description
+      description: productData.description,
     };
 
     const result = await api.publishPortalProduct(portalId, requestData);
@@ -316,13 +318,13 @@ export async function publishPortalProduct(
         productId: result.product_id,
         productName: result.product_name,
         status: result.status,
-        publishedAt: result.published_at
+        publishedAt: result.published_at,
       },
       message: `API product published to portal successfully`,
       relatedTools: [
         "Use list-portal-products to see all published APIs",
-        "Use create-application to register applications for this API"
-      ]
+        "Use create-application to register applications for this API",
+      ],
     };
   } catch (error) {
     throw error;
@@ -335,7 +337,7 @@ export async function publishPortalProduct(
 export async function unpublishPortalProduct(
   api: KongApi,
   portalId: string,
-  productId: string
+  productId: string,
 ) {
   try {
     await api.unpublishPortalProduct(portalId, productId);
@@ -345,8 +347,8 @@ export async function unpublishPortalProduct(
       message: `API product ${productId} unpublished from portal`,
       warning: "Existing application registrations for this API remain active",
       relatedTools: [
-        "Use list-portal-products to see remaining published APIs"
-      ]
+        "Use list-portal-products to see remaining published APIs",
+      ],
     };
   } catch (error) {
     throw error;

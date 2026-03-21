@@ -1,9 +1,9 @@
-import { KongApi } from "../../api/kong-api.js";
-import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { z } from "zod";
-import { 
-  extractDeploymentContext, 
-  generateTags 
+import type { KongApi } from "../../api/kong-api.js";
+import {
+  extractDeploymentContext,
+  generateTags,
 } from "../../utils/simple-elicitation.js";
 
 /**
@@ -13,7 +13,7 @@ export async function listServices(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listServices(controlPlaneId, size, offset);
@@ -25,7 +25,7 @@ export async function listServices(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       services: result.data.map((service: any) => ({
         serviceId: service.id,
@@ -46,13 +46,13 @@ export async function listServices(
         enabled: service.enabled,
         metadata: {
           createdAt: service.created_at,
-          updatedAt: service.updated_at
-        }
+          updatedAt: service.updated_at,
+        },
       })),
       relatedTools: [
         "Use list-routes to find routes that point to these services",
-        "Use list-plugins to see plugins configured for these services"
-      ]
+        "Use list-plugins to see plugins configured for these services",
+      ],
     };
   } catch (error) {
     throw error;
@@ -78,7 +78,7 @@ export async function createService(
     tags?: string[];
     enabled?: boolean;
   },
-  extra?: RequestHandlerExtra<any, any>
+  extra?: RequestHandlerExtra<any, any>,
 ) {
   // Validate minimum required data
   if (!serviceData.name || !serviceData.host) {
@@ -87,7 +87,7 @@ export async function createService(
 
   // Check if deployment context is missing from tags
   const contextCheck = extractDeploymentContext(serviceData.tags);
-  
+
   if (contextCheck.missing.length > 0) {
     if (extra?.sendRequest) {
       // Follow MCP elicitation specification exactly
@@ -103,51 +103,68 @@ export async function createService(
                   domain: {
                     type: "string",
                     title: "Domain",
-                    description: "What domain does this service belong to?"
+                    description: "What domain does this service belong to?",
                   },
                   environment: {
                     type: "string",
-                    title: "Environment", 
-                    description: "What environment is this for?"
+                    title: "Environment",
+                    description: "What environment is this for?",
                   },
                   team: {
                     type: "string",
                     title: "Team",
-                    description: "Which team owns this service?"
-                  }
+                    description: "Which team owns this service?",
+                  },
                 },
-                required: ["domain", "environment", "team"]
-              }
-            }
+                required: ["domain", "environment", "team"],
+              },
+            },
           },
           // Response schema as per specification
           z.object({
             action: z.enum(["accept", "decline", "cancel"]),
-            content: z.object({
-              domain: z.string(),
-              environment: z.string(),
-              team: z.string()
-            }).optional()
-          })
+            content: z
+              .object({
+                domain: z.string(),
+                environment: z.string(),
+                team: z.string(),
+              })
+              .optional(),
+          }),
         );
 
-        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+        if (
+          elicitationResponse.action === "accept" &&
+          elicitationResponse.content
+        ) {
           // Generate complete tag structure with user-provided context
-          const completeTags = generateTags(elicitationResponse.content, 'service', serviceData.name);
+          const completeTags = generateTags(
+            elicitationResponse.content,
+            "service",
+            serviceData.name,
+          );
           serviceData.tags = completeTags;
         } else if (elicitationResponse.action === "decline") {
-          throw new Error(`Service creation declined by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Service creation declined by user. Please provide deployment tags manually.`,
+          );
         } else {
           // Cancelled
-          throw new Error(`Service creation cancelled by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Service creation cancelled by user. Please provide deployment tags manually.`,
+          );
         }
       } catch (error) {
-        // Elicitation failed - fall back to error with instructions  
-        throw new Error(`Service creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+        // Elicitation failed - fall back to error with instructions
+        throw new Error(
+          `Service creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+        );
       }
     } else {
       // No elicitation support - throw error with instructions
-      throw new Error(`Service creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      throw new Error(
+        `Service creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+      );
     }
   }
 
@@ -163,7 +180,7 @@ export async function createService(
       write_timeout: serviceData.writeTimeout || 60000,
       read_timeout: serviceData.readTimeout || 60000,
       tags: serviceData.tags,
-      enabled: serviceData.enabled ?? true
+      enabled: serviceData.enabled ?? true,
     };
 
     const result = await api.createService(controlPlaneId, requestData);
@@ -185,15 +202,15 @@ export async function createService(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Service '${result.name}' created successfully with ID: ${result.id}`,
       relatedTools: [
         "Use create-route to create routes that point to this service",
         "Use list-services to see all services in this control plane",
-        "Use create-plugin to add plugins to this service"
-      ]
+        "Use create-plugin to add plugins to this service",
+      ],
     };
   } catch (error) {
     throw error;
@@ -206,7 +223,7 @@ export async function createService(
 export async function getService(
   api: KongApi,
   controlPlaneId: string,
-  serviceId: string
+  serviceId: string,
 ) {
   try {
     const result = await api.getService(controlPlaneId, serviceId);
@@ -231,14 +248,14 @@ export async function getService(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use list-routes to find routes that point to this service",
         "Use list-plugins to see plugins configured for this service",
-        "Use update-service to modify this service's configuration"
-      ]
+        "Use update-service to modify this service's configuration",
+      ],
     };
   } catch (error) {
     throw error;
@@ -264,24 +281,34 @@ export async function updateService(
     readTimeout?: number;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
 ) {
   try {
     const requestData: any = {};
-    
+
     if (serviceData.name !== undefined) requestData.name = serviceData.name;
     if (serviceData.host !== undefined) requestData.host = serviceData.host;
     if (serviceData.port !== undefined) requestData.port = serviceData.port;
-    if (serviceData.protocol !== undefined) requestData.protocol = serviceData.protocol;
+    if (serviceData.protocol !== undefined)
+      requestData.protocol = serviceData.protocol;
     if (serviceData.path !== undefined) requestData.path = serviceData.path;
-    if (serviceData.retries !== undefined) requestData.retries = serviceData.retries;
-    if (serviceData.connectTimeout !== undefined) requestData.connect_timeout = serviceData.connectTimeout;
-    if (serviceData.writeTimeout !== undefined) requestData.write_timeout = serviceData.writeTimeout;
-    if (serviceData.readTimeout !== undefined) requestData.read_timeout = serviceData.readTimeout;
+    if (serviceData.retries !== undefined)
+      requestData.retries = serviceData.retries;
+    if (serviceData.connectTimeout !== undefined)
+      requestData.connect_timeout = serviceData.connectTimeout;
+    if (serviceData.writeTimeout !== undefined)
+      requestData.write_timeout = serviceData.writeTimeout;
+    if (serviceData.readTimeout !== undefined)
+      requestData.read_timeout = serviceData.readTimeout;
     if (serviceData.tags !== undefined) requestData.tags = serviceData.tags;
-    if (serviceData.enabled !== undefined) requestData.enabled = serviceData.enabled;
+    if (serviceData.enabled !== undefined)
+      requestData.enabled = serviceData.enabled;
 
-    const result = await api.updateService(controlPlaneId, serviceId, requestData);
+    const result = await api.updateService(
+      controlPlaneId,
+      serviceId,
+      requestData,
+    );
 
     return {
       success: true,
@@ -300,14 +327,14 @@ export async function updateService(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Service '${result.name}' updated successfully`,
       relatedTools: [
         "Use get-service to see the updated service details",
-        "Use list-routes to see routes affected by this change"
-      ]
+        "Use list-routes to see routes affected by this change",
+      ],
     };
   } catch (error) {
     throw error;
@@ -320,7 +347,7 @@ export async function updateService(
 export async function deleteService(
   api: KongApi,
   controlPlaneId: string,
-  serviceId: string
+  serviceId: string,
 ) {
   try {
     await api.deleteService(controlPlaneId, serviceId);
@@ -328,11 +355,12 @@ export async function deleteService(
     return {
       success: true,
       message: `Service ${serviceId} deleted successfully`,
-      warning: "All routes pointing to this service have been orphaned and may need to be updated or deleted",
+      warning:
+        "All routes pointing to this service have been orphaned and may need to be updated or deleted",
       relatedTools: [
         "Use list-routes to check for orphaned routes",
-        "Use list-services to see remaining services in this control plane"
-      ]
+        "Use list-services to see remaining services in this control plane",
+      ],
     };
   } catch (error) {
     throw error;
@@ -346,7 +374,7 @@ export async function listRoutes(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listRoutes(controlPlaneId, size, offset);
@@ -358,7 +386,7 @@ export async function listRoutes(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       routes: result.data.map((route: any) => ({
         routeId: route.id,
@@ -378,14 +406,14 @@ export async function listRoutes(
         enabled: route.enabled,
         metadata: {
           createdAt: route.created_at,
-          updatedAt: route.updated_at
-        }
+          updatedAt: route.updated_at,
+        },
       })),
       relatedTools: [
         "Use query-api-requests with specific routeIds to analyze traffic",
         "Use list-services to find details about the services these routes connect to",
-        "Use list-plugins to see plugins configured for these routes"
-      ]
+        "Use list-plugins to see plugins configured for these routes",
+      ],
     };
   } catch (error) {
     throw error;
@@ -410,11 +438,11 @@ export async function createRoute(
     regexPriority?: number;
     tags?: string[];
   },
-  extra?: RequestHandlerExtra<any, any>
+  extra?: RequestHandlerExtra<any, any>,
 ) {
   // Check if deployment context is missing from tags
   const contextCheck = extractDeploymentContext(routeData.tags);
-  
+
   if (contextCheck.missing.length > 0) {
     if (extra?.sendRequest) {
       // Follow MCP elicitation specification exactly
@@ -423,58 +451,75 @@ export async function createRoute(
           {
             method: "elicitation/create",
             params: {
-              message: `Please provide deployment context for route "${routeData.name || 'unnamed'}":`,
+              message: `Please provide deployment context for route "${routeData.name || "unnamed"}":`,
               requestedSchema: {
                 type: "object",
                 properties: {
                   domain: {
                     type: "string",
                     title: "Domain",
-                    description: "What domain does this route belong to?"
+                    description: "What domain does this route belong to?",
                   },
                   environment: {
                     type: "string",
-                    title: "Environment", 
-                    description: "What environment is this for?"
+                    title: "Environment",
+                    description: "What environment is this for?",
                   },
                   team: {
                     type: "string",
                     title: "Team",
-                    description: "Which team owns this route?"
-                  }
+                    description: "Which team owns this route?",
+                  },
                 },
-                required: ["domain", "environment", "team"]
-              }
-            }
+                required: ["domain", "environment", "team"],
+              },
+            },
           },
           // Response schema as per specification
           z.object({
             action: z.enum(["accept", "decline", "cancel"]),
-            content: z.object({
-              domain: z.string(),
-              environment: z.string(),
-              team: z.string()
-            }).optional()
-          })
+            content: z
+              .object({
+                domain: z.string(),
+                environment: z.string(),
+                team: z.string(),
+              })
+              .optional(),
+          }),
         );
 
-        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+        if (
+          elicitationResponse.action === "accept" &&
+          elicitationResponse.content
+        ) {
           // Generate complete tag structure with user-provided context
-          const completeTags = generateTags(elicitationResponse.content, 'route', routeData.name);
+          const completeTags = generateTags(
+            elicitationResponse.content,
+            "route",
+            routeData.name,
+          );
           routeData.tags = completeTags;
         } else if (elicitationResponse.action === "decline") {
-          throw new Error(`Route creation declined by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Route creation declined by user. Please provide deployment tags manually.`,
+          );
         } else {
           // Cancelled
-          throw new Error(`Route creation cancelled by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Route creation cancelled by user. Please provide deployment tags manually.`,
+          );
         }
       } catch (error) {
-        // Elicitation failed - fall back to error with instructions  
-        throw new Error(`Route creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+        // Elicitation failed - fall back to error with instructions
+        throw new Error(
+          `Route creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+        );
       }
     } else {
       // No elicitation support - throw error with instructions
-      throw new Error(`Route creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      throw new Error(
+        `Route creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+      );
     }
   }
 
@@ -483,7 +528,7 @@ export async function createRoute(
       protocols: routeData.protocols || ["http", "https"],
       strip_path: routeData.stripPath ?? true,
       preserve_host: routeData.preserveHost ?? false,
-      regex_priority: routeData.regexPriority || 0
+      regex_priority: routeData.regexPriority || 0,
     };
 
     if (routeData.name) requestData.name = routeData.name;
@@ -511,15 +556,15 @@ export async function createRoute(
         tags: result.tags,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Route created successfully with ID: ${result.id}`,
       relatedTools: [
         "Use list-routes to see all routes in this control plane",
         "Use create-plugin to add plugins to this route",
-        "Use query-api-requests to monitor traffic on this route"
-      ]
+        "Use query-api-requests to monitor traffic on this route",
+      ],
     };
   } catch (error) {
     throw error;
@@ -532,7 +577,7 @@ export async function createRoute(
 export async function getRoute(
   api: KongApi,
   controlPlaneId: string,
-  routeId: string
+  routeId: string,
 ) {
   try {
     const result = await api.getRoute(controlPlaneId, routeId);
@@ -553,14 +598,14 @@ export async function getRoute(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use list-plugins to see plugins configured for this route",
         "Use update-route to modify this route's configuration",
-        "Use query-api-requests to analyze traffic on this route"
-      ]
+        "Use query-api-requests to analyze traffic on this route",
+      ],
     };
   } catch (error) {
     throw error;
@@ -586,22 +631,29 @@ export async function updateRoute(
     regexPriority?: number;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
 ) {
   try {
     const requestData: any = {};
-    
+
     if (routeData.name !== undefined) requestData.name = routeData.name;
-    if (routeData.protocols !== undefined) requestData.protocols = routeData.protocols;
-    if (routeData.methods !== undefined) requestData.methods = routeData.methods;
+    if (routeData.protocols !== undefined)
+      requestData.protocols = routeData.protocols;
+    if (routeData.methods !== undefined)
+      requestData.methods = routeData.methods;
     if (routeData.hosts !== undefined) requestData.hosts = routeData.hosts;
     if (routeData.paths !== undefined) requestData.paths = routeData.paths;
-    if (routeData.serviceId !== undefined) requestData.service = { id: routeData.serviceId };
-    if (routeData.stripPath !== undefined) requestData.strip_path = routeData.stripPath;
-    if (routeData.preserveHost !== undefined) requestData.preserve_host = routeData.preserveHost;
-    if (routeData.regexPriority !== undefined) requestData.regex_priority = routeData.regexPriority;
+    if (routeData.serviceId !== undefined)
+      requestData.service = { id: routeData.serviceId };
+    if (routeData.stripPath !== undefined)
+      requestData.strip_path = routeData.stripPath;
+    if (routeData.preserveHost !== undefined)
+      requestData.preserve_host = routeData.preserveHost;
+    if (routeData.regexPriority !== undefined)
+      requestData.regex_priority = routeData.regexPriority;
     if (routeData.tags !== undefined) requestData.tags = routeData.tags;
-    if (routeData.enabled !== undefined) requestData.enabled = routeData.enabled;
+    if (routeData.enabled !== undefined)
+      requestData.enabled = routeData.enabled;
 
     const result = await api.updateRoute(controlPlaneId, routeId, requestData);
 
@@ -622,14 +674,14 @@ export async function updateRoute(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Route updated successfully`,
       relatedTools: [
         "Use get-route to see the updated route details",
-        "Use query-api-requests to monitor changes in traffic patterns"
-      ]
+        "Use query-api-requests to monitor changes in traffic patterns",
+      ],
     };
   } catch (error) {
     throw error;
@@ -642,7 +694,7 @@ export async function updateRoute(
 export async function deleteRoute(
   api: KongApi,
   controlPlaneId: string,
-  routeId: string
+  routeId: string,
 ) {
   try {
     await api.deleteRoute(controlPlaneId, routeId);
@@ -652,8 +704,8 @@ export async function deleteRoute(
       message: `Route ${routeId} deleted successfully`,
       relatedTools: [
         "Use list-routes to see remaining routes in this control plane",
-        "Use list-services to check service configurations"
-      ]
+        "Use list-services to check service configurations",
+      ],
     };
   } catch (error) {
     throw error;
@@ -667,7 +719,7 @@ export async function listConsumers(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listConsumers(controlPlaneId, size, offset);
@@ -679,7 +731,7 @@ export async function listConsumers(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       consumers: result.data.map((consumer: any) => ({
         consumerId: consumer.id,
@@ -689,14 +741,14 @@ export async function listConsumers(
         enabled: consumer.enabled,
         metadata: {
           createdAt: consumer.created_at,
-          updatedAt: consumer.updated_at
-        }
+          updatedAt: consumer.updated_at,
+        },
       })),
       relatedTools: [
         "Use get-consumer-requests to analyze traffic for a specific consumer",
         "Use list-plugins to see plugins configured for these consumers",
-        "Use query-api-requests to identify consumers with high error rates"
-      ]
+        "Use query-api-requests to identify consumers with high error rates",
+      ],
     };
   } catch (error) {
     throw error;
@@ -715,11 +767,11 @@ export async function createConsumer(
     tags?: string[];
     enabled?: boolean;
   },
-  extra?: RequestHandlerExtra<any, any>
+  extra?: RequestHandlerExtra<any, any>,
 ) {
   // Check if deployment context is missing from tags
   const contextCheck = extractDeploymentContext(consumerData.tags);
-  
+
   if (contextCheck.missing.length > 0) {
     if (extra?.sendRequest) {
       // Follow MCP elicitation specification exactly
@@ -728,58 +780,75 @@ export async function createConsumer(
           {
             method: "elicitation/create",
             params: {
-              message: `Please provide deployment context for consumer "${consumerData.username || consumerData.customId || 'unnamed'}":`,
+              message: `Please provide deployment context for consumer "${consumerData.username || consumerData.customId || "unnamed"}":`,
               requestedSchema: {
                 type: "object",
                 properties: {
                   domain: {
                     type: "string",
                     title: "Domain",
-                    description: "What domain does this consumer belong to?"
+                    description: "What domain does this consumer belong to?",
                   },
                   environment: {
                     type: "string",
-                    title: "Environment", 
-                    description: "What environment is this for?"
+                    title: "Environment",
+                    description: "What environment is this for?",
                   },
                   team: {
                     type: "string",
                     title: "Team",
-                    description: "Which team owns this consumer?"
-                  }
+                    description: "Which team owns this consumer?",
+                  },
                 },
-                required: ["domain", "environment", "team"]
-              }
-            }
+                required: ["domain", "environment", "team"],
+              },
+            },
           },
           // Response schema as per specification
           z.object({
             action: z.enum(["accept", "decline", "cancel"]),
-            content: z.object({
-              domain: z.string(),
-              environment: z.string(),
-              team: z.string()
-            }).optional()
-          })
+            content: z
+              .object({
+                domain: z.string(),
+                environment: z.string(),
+                team: z.string(),
+              })
+              .optional(),
+          }),
         );
 
-        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+        if (
+          elicitationResponse.action === "accept" &&
+          elicitationResponse.content
+        ) {
           // Generate complete tag structure with user-provided context
-          const completeTags = generateTags(elicitationResponse.content, 'consumer', consumerData.username || consumerData.customId);
+          const completeTags = generateTags(
+            elicitationResponse.content,
+            "consumer",
+            consumerData.username || consumerData.customId,
+          );
           consumerData.tags = completeTags;
         } else if (elicitationResponse.action === "decline") {
-          throw new Error(`Consumer creation declined by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Consumer creation declined by user. Please provide deployment tags manually.`,
+          );
         } else {
           // Cancelled
-          throw new Error(`Consumer creation cancelled by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Consumer creation cancelled by user. Please provide deployment tags manually.`,
+          );
         }
       } catch (error) {
-        // Elicitation failed - fall back to error with instructions  
-        throw new Error(`Consumer creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+        // Elicitation failed - fall back to error with instructions
+        throw new Error(
+          `Consumer creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+        );
       }
     } else {
       // No elicitation support - throw error with instructions
-      throw new Error(`Consumer creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      throw new Error(
+        `Consumer creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+      );
     }
   }
   try {
@@ -801,14 +870,14 @@ export async function createConsumer(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Consumer created successfully with ID: ${result.id}`,
       relatedTools: [
         "Use list-consumers to see all consumers in this control plane",
-        "Use create-plugin to add authentication plugins for this consumer"
-      ]
+        "Use create-plugin to add authentication plugins for this consumer",
+      ],
     };
   } catch (error) {
     throw error;
@@ -821,7 +890,7 @@ export async function createConsumer(
 export async function getConsumer(
   api: KongApi,
   controlPlaneId: string,
-  consumerId: string
+  consumerId: string,
 ) {
   try {
     const result = await api.getConsumer(controlPlaneId, consumerId);
@@ -835,14 +904,14 @@ export async function getConsumer(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use get-consumer-requests to analyze this consumer's API usage",
         "Use list-plugins to see plugins configured for this consumer",
-        "Use update-consumer to modify this consumer's configuration"
-      ]
+        "Use update-consumer to modify this consumer's configuration",
+      ],
     };
   } catch (error) {
     throw error;
@@ -861,17 +930,24 @@ export async function updateConsumer(
     customId?: string;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
 ) {
   try {
     const requestData: any = {};
-    
-    if (consumerData.username !== undefined) requestData.username = consumerData.username;
-    if (consumerData.customId !== undefined) requestData.custom_id = consumerData.customId;
-    if (consumerData.tags !== undefined) requestData.tags = consumerData.tags;
-    if (consumerData.enabled !== undefined) requestData.enabled = consumerData.enabled;
 
-    const result = await api.updateConsumer(controlPlaneId, consumerId, requestData);
+    if (consumerData.username !== undefined)
+      requestData.username = consumerData.username;
+    if (consumerData.customId !== undefined)
+      requestData.custom_id = consumerData.customId;
+    if (consumerData.tags !== undefined) requestData.tags = consumerData.tags;
+    if (consumerData.enabled !== undefined)
+      requestData.enabled = consumerData.enabled;
+
+    const result = await api.updateConsumer(
+      controlPlaneId,
+      consumerId,
+      requestData,
+    );
 
     return {
       success: true,
@@ -883,14 +959,14 @@ export async function updateConsumer(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Consumer updated successfully`,
       relatedTools: [
         "Use get-consumer to see the updated consumer details",
-        "Use get-consumer-requests to monitor this consumer's activity"
-      ]
+        "Use get-consumer-requests to monitor this consumer's activity",
+      ],
     };
   } catch (error) {
     throw error;
@@ -903,7 +979,7 @@ export async function updateConsumer(
 export async function deleteConsumer(
   api: KongApi,
   controlPlaneId: string,
-  consumerId: string
+  consumerId: string,
 ) {
   try {
     await api.deleteConsumer(controlPlaneId, consumerId);
@@ -911,10 +987,11 @@ export async function deleteConsumer(
     return {
       success: true,
       message: `Consumer ${consumerId} deleted successfully`,
-      warning: "All credentials and plugins associated with this consumer have been removed",
+      warning:
+        "All credentials and plugins associated with this consumer have been removed",
       relatedTools: [
-        "Use list-consumers to see remaining consumers in this control plane"
-      ]
+        "Use list-consumers to see remaining consumers in this control plane",
+      ],
     };
   } catch (error) {
     throw error;
@@ -928,7 +1005,7 @@ export async function listPlugins(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listPlugins(controlPlaneId, size, offset);
@@ -940,7 +1017,7 @@ export async function listPlugins(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       plugins: result.data.map((plugin: any) => ({
         pluginId: plugin.id,
@@ -953,17 +1030,17 @@ export async function listPlugins(
           consumerId: plugin.consumer?.id,
           serviceId: plugin.service?.id,
           routeId: plugin.route?.id,
-          global: (!plugin.consumer && !plugin.service && !plugin.route)
+          global: !plugin.consumer && !plugin.service && !plugin.route,
         },
         metadata: {
           createdAt: plugin.created_at,
-          updatedAt: plugin.updated_at
-        }
+          updatedAt: plugin.updated_at,
+        },
       })),
       relatedTools: [
         "Use list-services and list-routes to find entities these plugins are applied to",
-        "Use query-api-requests to analyze traffic affected by these plugins"
-      ]
+        "Use query-api-requests to analyze traffic affected by these plugins",
+      ],
     };
   } catch (error) {
     throw error;
@@ -986,11 +1063,11 @@ export async function createPlugin(
     tags?: string[];
     enabled?: boolean;
   },
-  extra?: RequestHandlerExtra<any, any>
+  extra?: RequestHandlerExtra<any, any>,
 ) {
   // Check if deployment context is missing from tags
   const contextCheck = extractDeploymentContext(pluginData.tags);
-  
+
   if (contextCheck.missing.length > 0) {
     if (extra?.sendRequest) {
       // Follow MCP elicitation specification exactly
@@ -1006,63 +1083,82 @@ export async function createPlugin(
                   domain: {
                     type: "string",
                     title: "Domain",
-                    description: "What domain does this plugin belong to?"
+                    description: "What domain does this plugin belong to?",
                   },
                   environment: {
                     type: "string",
-                    title: "Environment", 
-                    description: "What environment is this for?"
+                    title: "Environment",
+                    description: "What environment is this for?",
                   },
                   team: {
                     type: "string",
                     title: "Team",
-                    description: "Which team owns this plugin?"
-                  }
+                    description: "Which team owns this plugin?",
+                  },
                 },
-                required: ["domain", "environment", "team"]
-              }
-            }
+                required: ["domain", "environment", "team"],
+              },
+            },
           },
           // Response schema as per specification
           z.object({
             action: z.enum(["accept", "decline", "cancel"]),
-            content: z.object({
-              domain: z.string(),
-              environment: z.string(),
-              team: z.string()
-            }).optional()
-          })
+            content: z
+              .object({
+                domain: z.string(),
+                environment: z.string(),
+                team: z.string(),
+              })
+              .optional(),
+          }),
         );
 
-        if (elicitationResponse.action === "accept" && elicitationResponse.content) {
+        if (
+          elicitationResponse.action === "accept" &&
+          elicitationResponse.content
+        ) {
           // Generate complete tag structure with user-provided context
-          const completeTags = generateTags(elicitationResponse.content, 'plugin', pluginData.name);
+          const completeTags = generateTags(
+            elicitationResponse.content,
+            "plugin",
+            pluginData.name,
+          );
           pluginData.tags = completeTags;
         } else if (elicitationResponse.action === "decline") {
-          throw new Error(`Plugin creation declined by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Plugin creation declined by user. Please provide deployment tags manually.`,
+          );
         } else {
           // Cancelled
-          throw new Error(`Plugin creation cancelled by user. Please provide deployment tags manually.`);
+          throw new Error(
+            `Plugin creation cancelled by user. Please provide deployment tags manually.`,
+          );
         }
       } catch (error) {
-        // Elicitation failed - fall back to error with instructions  
-        throw new Error(`Plugin creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+        // Elicitation failed - fall back to error with instructions
+        throw new Error(
+          `Plugin creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+        );
       }
     } else {
       // No elicitation support - throw error with instructions
-      throw new Error(`Plugin creation requires deployment tags. Missing: ${contextCheck.missing.join(', ')}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`);
+      throw new Error(
+        `Plugin creation requires deployment tags. Missing: ${contextCheck.missing.join(", ")}. Use mcp__kong-konnect__analyze_migration_context to analyze your configuration and mcp__kong-konnect__create_elicitation_session to gather missing information.`,
+      );
     }
   }
   try {
     const requestData: any = {
       name: pluginData.name,
-      enabled: pluginData.enabled ?? true
+      enabled: pluginData.enabled ?? true,
     };
 
     if (pluginData.config) requestData.config = pluginData.config;
     if (pluginData.protocols) requestData.protocols = pluginData.protocols;
-    if (pluginData.consumerId) requestData.consumer = { id: pluginData.consumerId };
-    if (pluginData.serviceId) requestData.service = { id: pluginData.serviceId };
+    if (pluginData.consumerId)
+      requestData.consumer = { id: pluginData.consumerId };
+    if (pluginData.serviceId)
+      requestData.service = { id: pluginData.serviceId };
     if (pluginData.routeId) requestData.route = { id: pluginData.routeId };
     if (pluginData.tags) requestData.tags = pluginData.tags;
 
@@ -1081,18 +1177,18 @@ export async function createPlugin(
           consumerId: result.consumer?.id,
           serviceId: result.service?.id,
           routeId: result.route?.id,
-          global: (!result.consumer && !result.service && !result.route)
+          global: !result.consumer && !result.service && !result.route,
         },
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Plugin '${result.name}' created successfully with ID: ${result.id}`,
       relatedTools: [
         "Use list-plugins to see all plugins in this control plane",
-        "Use query-api-requests to monitor the impact of this plugin"
-      ]
+        "Use query-api-requests to monitor the impact of this plugin",
+      ],
     };
   } catch (error) {
     throw error;
@@ -1105,7 +1201,7 @@ export async function createPlugin(
 export async function getPlugin(
   api: KongApi,
   controlPlaneId: string,
-  pluginId: string
+  pluginId: string,
 ) {
   try {
     const result = await api.getPlugin(controlPlaneId, pluginId);
@@ -1122,17 +1218,17 @@ export async function getPlugin(
           consumerId: result.consumer?.id,
           serviceId: result.service?.id,
           routeId: result.route?.id,
-          global: (!result.consumer && !result.service && !result.route)
+          global: !result.consumer && !result.service && !result.route,
         },
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use update-plugin to modify this plugin's configuration",
-        "Use list-plugin-schemas to see configuration options"
-      ]
+        "Use list-plugin-schemas to see configuration options",
+      ],
     };
   } catch (error) {
     throw error;
@@ -1155,21 +1251,30 @@ export async function updatePlugin(
     routeId?: string;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
 ) {
   try {
     const requestData: any = {};
-    
+
     if (pluginData.name !== undefined) requestData.name = pluginData.name;
     if (pluginData.config !== undefined) requestData.config = pluginData.config;
-    if (pluginData.protocols !== undefined) requestData.protocols = pluginData.protocols;
-    if (pluginData.consumerId !== undefined) requestData.consumer = { id: pluginData.consumerId };
-    if (pluginData.serviceId !== undefined) requestData.service = { id: pluginData.serviceId };
-    if (pluginData.routeId !== undefined) requestData.route = { id: pluginData.routeId };
+    if (pluginData.protocols !== undefined)
+      requestData.protocols = pluginData.protocols;
+    if (pluginData.consumerId !== undefined)
+      requestData.consumer = { id: pluginData.consumerId };
+    if (pluginData.serviceId !== undefined)
+      requestData.service = { id: pluginData.serviceId };
+    if (pluginData.routeId !== undefined)
+      requestData.route = { id: pluginData.routeId };
     if (pluginData.tags !== undefined) requestData.tags = pluginData.tags;
-    if (pluginData.enabled !== undefined) requestData.enabled = pluginData.enabled;
+    if (pluginData.enabled !== undefined)
+      requestData.enabled = pluginData.enabled;
 
-    const result = await api.updatePlugin(controlPlaneId, pluginId, requestData);
+    const result = await api.updatePlugin(
+      controlPlaneId,
+      pluginId,
+      requestData,
+    );
 
     return {
       success: true,
@@ -1184,18 +1289,18 @@ export async function updatePlugin(
           consumerId: result.consumer?.id,
           serviceId: result.service?.id,
           routeId: result.route?.id,
-          global: (!result.consumer && !result.service && !result.route)
+          global: !result.consumer && !result.service && !result.route,
         },
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Plugin '${result.name}' updated successfully`,
       relatedTools: [
         "Use get-plugin to see the updated plugin details",
-        "Use query-api-requests to monitor the plugin's impact"
-      ]
+        "Use query-api-requests to monitor the plugin's impact",
+      ],
     };
   } catch (error) {
     throw error;
@@ -1208,7 +1313,7 @@ export async function updatePlugin(
 export async function deletePlugin(
   api: KongApi,
   controlPlaneId: string,
-  pluginId: string
+  pluginId: string,
 ) {
   try {
     await api.deletePlugin(controlPlaneId, pluginId);
@@ -1217,8 +1322,8 @@ export async function deletePlugin(
       success: true,
       message: `Plugin ${pluginId} deleted successfully`,
       relatedTools: [
-        "Use list-plugins to see remaining plugins in this control plane"
-      ]
+        "Use list-plugins to see remaining plugins in this control plane",
+      ],
     };
   } catch (error) {
     throw error;
@@ -1228,25 +1333,24 @@ export async function deletePlugin(
 /**
  * List all available plugin schemas
  */
-export async function listPluginSchemas(
-  api: KongApi,
-  controlPlaneId: string
-) {
+export async function listPluginSchemas(api: KongApi, controlPlaneId: string) {
   try {
     const result = await api.listPluginSchemas(controlPlaneId);
 
     return {
-      schemas: result.data ? result.data.map((schema: any) => ({
-        name: schema.name,
-        description: schema.description,
-        fields: schema.fields,
-        required: schema.required,
-        examples: schema.examples
-      })) : result,
+      schemas: result.data
+        ? result.data.map((schema: any) => ({
+            name: schema.name,
+            description: schema.description,
+            fields: schema.fields,
+            required: schema.required,
+            examples: schema.examples,
+          }))
+        : result,
       relatedTools: [
         "Use create-plugin to create plugins using these schemas",
-        "Use list-plugins to see currently configured plugins"
-      ]
+        "Use list-plugins to see currently configured plugins",
+      ],
     };
   } catch (error) {
     throw error;

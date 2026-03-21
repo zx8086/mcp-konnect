@@ -1,13 +1,13 @@
 /**
  * MCP-Native Elicitation Implementation
- * 
+ *
  * Based on best practices from elicitation.md - uses MCP's built-in context.elicit()
  * instead of complex enforcement layers.
  */
 
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { elicitationBridge } from "./elicitation-bridge.js";
-import { mcpLogger } from './mcp-logger.js';
+import { mcpLogger } from "./mcp-logger.js";
 
 export interface KongDeploymentContext {
   domain?: string;
@@ -26,24 +26,27 @@ export interface ElicitationRequest {
  * Progressive Context Gatherer using MCP's native elicitation
  */
 export class MCPElicitationManager {
-  private contextCache = new Map<string, {
-    data: any;
-    timestamp: number;
-    ttl: number;
-  }>();
+  private contextCache = new Map<
+    string,
+    {
+      data: any;
+      timestamp: number;
+      ttl: number;
+    }
+  >();
 
   /**
    * Gather required Kong deployment context using progressive disclosure
-   * 
+   *
    * CLAUDE DESKTOP COMPATIBILITY: First checks for completed elicitation sessions
    * before falling back to native MCP elicitation (Claude Code)
    */
   async gatherKongContext(
     provided: Partial<KongDeploymentContext>,
-    mcpContext: any
+    mcpContext: any,
   ): Promise<KongDeploymentContext | null> {
     const missing = this.identifyMissingContext(provided);
-    
+
     if (missing.length === 0) {
       return provided as KongDeploymentContext;
     }
@@ -53,34 +56,47 @@ export class MCPElicitationManager {
       const bridgeContext = elicitationBridge.getLatestCompletedContext();
       if (bridgeContext) {
         const completeContext = { ...provided, ...bridgeContext };
-        mcpLogger.info('elicitation', 'Using context from completed elicitation session', { context: completeContext });
-        
+        mcpLogger.info(
+          "elicitation",
+          "Using context from completed elicitation session",
+          { context: completeContext },
+        );
+
         // Cache the result for future use
-        this.cacheContext('kong-deployment', completeContext, 3600); // 1 hour TTL
+        this.cacheContext("kong-deployment", completeContext, 3600); // 1 hour TTL
         return completeContext;
       }
     }
 
     // Fallback to native MCP elicitation (Claude Code)
-    mcpLogger.debug('elicitation', 'No completed sessions found, attempting native MCP elicitation');
+    mcpLogger.debug(
+      "elicitation",
+      "No completed sessions found, attempting native MCP elicitation",
+    );
 
     // Phase 1: Essential information (mandatory fields)
-    const essentialResult = await this.elicitEssentialContext(missing, mcpContext);
+    const essentialResult = await this.elicitEssentialContext(
+      missing,
+      mcpContext,
+    );
     if (!essentialResult) return null;
 
     const completeContext = { ...provided, ...essentialResult };
-    
+
     // Phase 2: Additional context if needed (optional fields)
     if (this.shouldGatherAdditionalContext(completeContext)) {
-      const additionalResult = await this.elicitAdditionalContext(completeContext, mcpContext);
+      const additionalResult = await this.elicitAdditionalContext(
+        completeContext,
+        mcpContext,
+      );
       if (additionalResult) {
         Object.assign(completeContext, additionalResult);
       }
     }
 
     // Cache the result for future use
-    this.cacheContext('kong-deployment', completeContext, 3600); // 1 hour TTL
-    
+    this.cacheContext("kong-deployment", completeContext, 3600); // 1 hour TTL
+
     return completeContext;
   }
 
@@ -90,11 +106,11 @@ export class MCPElicitationManager {
   async getCachedOrElicit<T>(
     key: string,
     elicitFunc: () => Promise<T>,
-    ttlSeconds: number = 3600
+    ttlSeconds: number = 3600,
   ): Promise<T | null> {
     const cached = this.contextCache.get(key);
-    
-    if (cached && (Date.now() - cached.timestamp) < cached.ttl * 1000) {
+
+    if (cached && Date.now() - cached.timestamp < cached.ttl * 1000) {
       return cached.data as T;
     }
 
@@ -103,78 +119,91 @@ export class MCPElicitationManager {
       this.cacheContext(key, data, ttlSeconds);
       return data;
     } catch (error) {
-      mcpLogger.error('elicitation', 'Elicitation failed for context key', { key, error });
+      mcpLogger.error("elicitation", "Elicitation failed for context key", {
+        key,
+        error,
+      });
       return null;
     }
   }
 
-  private identifyMissingContext(provided: Partial<KongDeploymentContext>): string[] {
-    const required = ['domain', 'environment', 'team'];
-    return required.filter(field => !provided[field]);
+  private identifyMissingContext(
+    provided: Partial<KongDeploymentContext>,
+  ): string[] {
+    const required = ["domain", "environment", "team"];
+    return required.filter((field) => !provided[field]);
   }
 
   private async elicitEssentialContext(
     missingFields: string[],
-    mcpContext: any
+    mcpContext: any,
   ): Promise<Partial<KongDeploymentContext> | null> {
     if (!mcpContext || !mcpContext.elicit) {
       // Fallback for environments without MCP elicitation
-      mcpLogger.warning('elicitation', 'MCP elicitation not available, context required but cannot be gathered');
+      mcpLogger.warning(
+        "elicitation",
+        "MCP elicitation not available, context required but cannot be gathered",
+      );
       return null;
     }
 
     const schema = this.buildEssentialSchema(missingFields);
-    
+
     try {
       const result = await mcpContext.elicit({
         message: `SECURITY: Kong Deployment Context Required
 
 Missing essential information for production-grade deployment:
-${missingFields.map(field => `• ${this.getFieldDescription(field)}`).join('\n')}
+${missingFields.map((field) => `• ${this.getFieldDescription(field)}`).join("\n")}
 
 Please provide this information to proceed with deployment.`,
         schema,
-        timeout: 30000 // 30 seconds
+        timeout: 30000, // 30 seconds
       });
 
-      if (result.action === 'accept') {
+      if (result.action === "accept") {
         return this.validateAndNormalizeContext(result.data);
-      } else if (result.action === 'decline') {
-        mcpLogger.warning('elicitation', 'User declined to provide essential context');
+      } else if (result.action === "decline") {
+        mcpLogger.warning(
+          "elicitation",
+          "User declined to provide essential context",
+        );
         return null;
       } else {
-        mcpLogger.info('elicitation', 'Elicitation cancelled by user');
+        mcpLogger.info("elicitation", "Elicitation cancelled by user");
         return null;
       }
     } catch (error) {
-      mcpLogger.error('elicitation', 'Essential context elicitation failed', { error });
+      mcpLogger.error("elicitation", "Essential context elicitation failed", {
+        error,
+      });
       return null;
     }
   }
 
   private async elicitAdditionalContext(
     baseContext: KongDeploymentContext,
-    mcpContext: any
+    mcpContext: any,
   ): Promise<Partial<KongDeploymentContext> | null> {
     const additionalSchema = {
       type: "object",
       properties: {
         description: {
           type: "string",
-          description: "Optional description for this deployment"
+          description: "Optional description for this deployment",
         },
         tags: {
           type: "array",
           items: { type: "string" },
-          description: "Additional tags for entities"
+          description: "Additional tags for entities",
         },
         criticality: {
           type: "string",
           enum: ["low", "medium", "high", "critical"],
-          description: "Criticality level for this deployment"
-        }
+          description: "Criticality level for this deployment",
+        },
       },
-      additionalProperties: false
+      additionalProperties: false,
     };
 
     try {
@@ -185,15 +214,19 @@ You're deploying to: ${baseContext.environment} environment, ${baseContext.domai
 
 Would you like to provide additional context? (You can skip this step)`,
         schema: additionalSchema,
-        timeout: 20000 // 20 seconds
+        timeout: 20000, // 20 seconds
       });
 
-      if (result.action === 'accept') {
+      if (result.action === "accept") {
         return result.data;
       }
     } catch (error) {
       // Additional context is optional, so failures are not critical
-      mcpLogger.debug('elicitation', 'Additional context elicitation skipped or failed', { error: error.message });
+      mcpLogger.debug(
+        "elicitation",
+        "Additional context elicitation skipped or failed",
+        { error: error.message },
+      );
     }
 
     return null;
@@ -203,32 +236,40 @@ Would you like to provide additional context? (You can skip this step)`,
     const properties: any = {};
     const required: string[] = [];
 
-    missingFields.forEach(field => {
+    missingFields.forEach((field) => {
       switch (field) {
-        case 'domain':
+        case "domain":
           properties.domain = {
             type: "string",
-            enum: ["api", "platform", "backend", "demo", "development", "infrastructure"],
-            description: "Domain classification for service organization"
+            enum: [
+              "api",
+              "platform",
+              "backend",
+              "demo",
+              "development",
+              "infrastructure",
+            ],
+            description: "Domain classification for service organization",
           };
-          required.push('domain');
+          required.push("domain");
           break;
-          
-        case 'environment':
+
+        case "environment":
           properties.environment = {
             type: "string",
             enum: ["production", "staging", "development", "test"],
-            description: "Target deployment environment"
+            description: "Target deployment environment",
           };
-          required.push('environment');
+          required.push("environment");
           break;
-          
-        case 'team':
+
+        case "team":
           properties.team = {
             type: "string",
-            description: "Team responsible for this service (e.g., platform, devops, api, backend)"
+            description:
+              "Team responsible for this service (e.g., platform, devops, api, backend)",
           };
-          required.push('team');
+          required.push("team");
           break;
       }
     });
@@ -237,7 +278,7 @@ Would you like to provide additional context? (You can skip this step)`,
       type: "object",
       properties,
       required,
-      additionalProperties: false
+      additionalProperties: false,
     };
   }
 
@@ -245,12 +286,14 @@ Would you like to provide additional context? (You can skip this step)`,
     const descriptions = {
       domain: "Domain (api, platform, backend, etc.)",
       environment: "Environment (production, staging, development, test)",
-      team: "Team ownership (platform, devops, api, etc.)"
+      team: "Team ownership (platform, devops, api, etc.)",
     };
     return descriptions[field as keyof typeof descriptions] || field;
   }
 
-  private validateAndNormalizeContext(data: any): Partial<KongDeploymentContext> {
+  private validateAndNormalizeContext(
+    data: any,
+  ): Partial<KongDeploymentContext> {
     const normalized: Partial<KongDeploymentContext> = {};
 
     if (data.domain) {
@@ -268,23 +311,29 @@ Would you like to provide additional context? (You can skip this step)`,
     return normalized;
   }
 
-  private shouldGatherAdditionalContext(context: KongDeploymentContext): boolean {
+  private shouldGatherAdditionalContext(
+    context: KongDeploymentContext,
+  ): boolean {
     // Gather additional context for production or high-priority deployments
-    return context.environment === 'production' || context.domain === 'api';
+    return context.environment === "production" || context.domain === "api";
   }
 
   private cacheContext(key: string, data: any, ttlSeconds: number): void {
     this.contextCache.set(key, {
       data,
       timestamp: Date.now(),
-      ttl: ttlSeconds
+      ttl: ttlSeconds,
     });
   }
 
   /**
    * Generate production-ready tags from context
    */
-  generateTags(context: KongDeploymentContext, entityType: string, entityName?: string): string[] {
+  generateTags(
+    context: KongDeploymentContext,
+    entityType: string,
+    entityName?: string,
+  ): string[] {
     const tags: string[] = [];
 
     // Mandatory tags (3)
@@ -294,25 +343,25 @@ Would you like to provide additional context? (You can skip this step)`,
 
     // Contextual tags based on entity type (2)
     switch (entityType) {
-      case 'service':
-        tags.push('function-api-gateway');
-        tags.push('type-external-api');
+      case "service":
+        tags.push("function-api-gateway");
+        tags.push("type-external-api");
         break;
-      case 'route':
-        tags.push('function-routing');
-        tags.push('access-public');
+      case "route":
+        tags.push("function-routing");
+        tags.push("access-public");
         break;
-      case 'consumer':
-        tags.push('function-authentication');
-        tags.push('access-external');
+      case "consumer":
+        tags.push("function-authentication");
+        tags.push("access-external");
         break;
-      case 'plugin':
-        tags.push('function-security');
-        tags.push('criticality-high');
+      case "plugin":
+        tags.push("function-security");
+        tags.push("criticality-high");
         break;
       default:
         tags.push(`function-${entityType}`);
-        tags.push('type-component');
+        tags.push("type-component");
     }
 
     // Additional tags from context

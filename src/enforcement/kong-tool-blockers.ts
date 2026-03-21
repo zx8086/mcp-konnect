@@ -1,22 +1,27 @@
 /**
  * KONG TOOL BLOCKING MECHANISMS
- * 
+ *
  * This file contains wrapped versions of ALL Kong MCP tools that
  * MUST pass through mandatory elicitation before execution.
- * 
- * ARCHITECTURAL PRINCIPLE: Every Kong operation is blocked until 
+ *
+ * ARCHITECTURAL PRINCIPLE: Every Kong operation is blocked until
  * mandatory context (domain, environment, team) is provided.
  */
 
-import { withMandatoryElicitation, MandatoryContext, KongOperationContext, ElicitationBlockedError } from './mandatory-elicitation-gate';
-import { KongApi } from '../api/kong-api.js';
-import * as configOps from '../tools/configuration/operations.js';
-import * as controlPlaneOps from '../tools/control-planes/operations.js';
-import { mcpLogger } from '../utils/mcp-logger.js';
+import { KongApi } from "../api/kong-api.js";
+import * as configOps from "../tools/configuration/operations.js";
+import * as controlPlaneOps from "../tools/control-planes/operations.js";
+import { mcpLogger } from "../utils/mcp-logger.js";
+import {
+  ElicitationBlockedError,
+  KongOperationContext,
+  type MandatoryContext,
+  withMandatoryElicitation,
+} from "./mandatory-elicitation-gate";
 
 /**
  * ELICITATION ENFORCEMENT ERROR
- * 
+ *
  * This error is thrown when operations are attempted without
  * completing mandatory elicitation. It includes the elicitation
  * session data needed to gather missing context.
@@ -26,51 +31,55 @@ export class KongOperationBlockedError extends ElicitationBlockedError {
     public operation: string,
     missingFields: string[],
     elicitationSession: any,
-    message: string = `[BLOCKED] KONG OPERATION BLOCKED: ${operation} requires mandatory context: ${missingFields.join(', ')}`
+    message: string = `[BLOCKED] KONG OPERATION BLOCKED: ${operation} requires mandatory context: ${missingFields.join(", ")}`,
   ) {
     super(missingFields, elicitationSession, message);
-    this.name = 'KongOperationBlockedError';
+    this.name = "KongOperationBlockedError";
   }
 }
 
 /**
  * BLOCKED KONG API CLIENT
- * 
+ *
  * Returns Kong API client only after elicitation validation
  */
-async function getValidatedKongApi(context: MandatoryContext): Promise<KongApi> {
+async function getValidatedKongApi(
+  context: MandatoryContext,
+): Promise<KongApi> {
   if (!context.elicitationComplete) {
-    throw new Error('INTERNAL ERROR: Kong API requested without completed elicitation');
+    throw new Error(
+      "INTERNAL ERROR: Kong API requested without completed elicitation",
+    );
   }
-  
+
   return new KongApi();
 }
 
 /**
  * TAG GENERATION WITH MANDATORY CONTEXT
- * 
+ *
  * Generates the mandatory 5-tag system using elicited context
  */
 function generateMandatoryTags(
   context: MandatoryContext,
   entityType: string,
-  entityPurpose?: string
+  entityPurpose?: string,
 ): string[] {
   const mandatoryTags = [
     `env-${context.environment}`,
     `domain-${context.domain}`,
-    `team-${context.team}`
+    `team-${context.team}`,
   ];
 
   const optionalTags = [
     `type-${entityType}`,
-    entityPurpose ? `purpose-${entityPurpose}` : `function-gateway`
+    entityPurpose ? `purpose-${entityPurpose}` : `function-gateway`,
   ];
 
   const allTags = [...mandatoryTags, ...optionalTags];
-  
-  mcpLogger.debug('enforcement', 'Mandatory tags generated', { tags: allTags });
-  
+
+  mcpLogger.debug("enforcement", "Mandatory tags generated", { tags: allTags });
+
   return allTags;
 }
 
@@ -86,32 +95,47 @@ export const BlockedServiceOperations = {
     name: string,
     host: string,
     port: number = 80,
-    protocol: string = 'http',
+    protocol: string = "http",
     requestContext: { userMessage: string; files?: string[]; configs?: any[] },
-    additionalParams: any = {}
+    additionalParams: any = {},
   ) {
     return await withMandatoryElicitation(
-      'create_service',
+      "create_service",
       {
-        operationName: 'create_service',
-        parameters: { controlPlaneId, name, host, port, protocol, ...additionalParams },
-        requestContext
+        operationName: "create_service",
+        parameters: {
+          controlPlaneId,
+          name,
+          host,
+          port,
+          protocol,
+          ...additionalParams,
+        },
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
-        mcpLogger.info('enforcement', 'Creating service with validated context', { name });
-        
+        mcpLogger.info(
+          "enforcement",
+          "Creating service with validated context",
+          { name },
+        );
+
         const api = await getValidatedKongApi(validatedContext);
-        const tags = generateMandatoryTags(validatedContext, 'service', additionalParams.purpose);
-        
+        const tags = generateMandatoryTags(
+          validatedContext,
+          "service",
+          additionalParams.purpose,
+        );
+
         return await configOps.createService(api, controlPlaneId, {
           name,
           host,
           port,
           protocol,
           tags,
-          ...additionalParams
+          ...additionalParams,
         });
-      }
+      },
     );
   },
 
@@ -122,53 +146,58 @@ export const BlockedServiceOperations = {
     controlPlaneId: string,
     serviceId: string,
     updates: any,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'update_service',
+      "update_service",
       {
-        operationName: 'update_service', 
+        operationName: "update_service",
         parameters: { controlPlaneId, serviceId, updates },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
-        
+
         // Ensure mandatory tags are preserved/added in updates
         if (!updates.tags) {
-          updates.tags = generateMandatoryTags(validatedContext, 'service');
+          updates.tags = generateMandatoryTags(validatedContext, "service");
         }
-        
-        return await configOps.updateService(api, controlPlaneId, serviceId, updates);
-      }
+
+        return await configOps.updateService(
+          api,
+          controlPlaneId,
+          serviceId,
+          updates,
+        );
+      },
     );
   },
 
   /**
-   * DELETE SERVICE - BLOCKED UNTIL ELICITATION  
+   * DELETE SERVICE - BLOCKED UNTIL ELICITATION
    */
   async deleteService(
     controlPlaneId: string,
     serviceId: string,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'delete_service',
+      "delete_service",
       {
-        operationName: 'delete_service',
+        operationName: "delete_service",
         parameters: { controlPlaneId, serviceId },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
         return await configOps.deleteService(api, controlPlaneId, serviceId);
-      }
+      },
     );
-  }
+  },
 };
 
 /**
- * BLOCKED ROUTE OPERATIONS  
+ * BLOCKED ROUTE OPERATIONS
  */
 export const BlockedRouteOperations = {
   /**
@@ -177,24 +206,28 @@ export const BlockedRouteOperations = {
   async createRoute(
     controlPlaneId: string,
     routeParams: any,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'create_route',
+      "create_route",
       {
-        operationName: 'create_route',
+        operationName: "create_route",
         parameters: { controlPlaneId, ...routeParams },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
-        const tags = generateMandatoryTags(validatedContext, 'route', routeParams.purpose);
-        
+        const tags = generateMandatoryTags(
+          validatedContext,
+          "route",
+          routeParams.purpose,
+        );
+
         return await configOps.createRoute(api, controlPlaneId, {
           ...routeParams,
-          tags
+          tags,
         });
-      }
+      },
     );
   },
 
@@ -205,24 +238,29 @@ export const BlockedRouteOperations = {
     controlPlaneId: string,
     routeId: string,
     updates: any,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'update_route',
+      "update_route",
       {
-        operationName: 'update_route',
+        operationName: "update_route",
         parameters: { controlPlaneId, routeId, updates },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
-        
+
         if (!updates.tags) {
-          updates.tags = generateMandatoryTags(validatedContext, 'route');
+          updates.tags = generateMandatoryTags(validatedContext, "route");
         }
-        
-        return await configOps.updateRoute(api, controlPlaneId, routeId, updates);
-      }
+
+        return await configOps.updateRoute(
+          api,
+          controlPlaneId,
+          routeId,
+          updates,
+        );
+      },
     );
   },
 
@@ -232,21 +270,21 @@ export const BlockedRouteOperations = {
   async deleteRoute(
     controlPlaneId: string,
     routeId: string,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'delete_route',
+      "delete_route",
       {
-        operationName: 'delete_route',
+        operationName: "delete_route",
         parameters: { controlPlaneId, routeId },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
         return await configOps.deleteRoute(api, controlPlaneId, routeId);
-      }
+      },
     );
-  }
+  },
 };
 
 /**
@@ -259,24 +297,28 @@ export const BlockedConsumerOperations = {
   async createConsumer(
     controlPlaneId: string,
     consumerParams: any,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'create_consumer',
+      "create_consumer",
       {
-        operationName: 'create_consumer',
+        operationName: "create_consumer",
         parameters: { controlPlaneId, ...consumerParams },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
-        const tags = generateMandatoryTags(validatedContext, 'consumer', consumerParams.purpose);
-        
+        const tags = generateMandatoryTags(
+          validatedContext,
+          "consumer",
+          consumerParams.purpose,
+        );
+
         return await configOps.createConsumer(api, controlPlaneId, {
           ...consumerParams,
-          tags
+          tags,
         });
-      }
+      },
     );
   },
 
@@ -286,21 +328,21 @@ export const BlockedConsumerOperations = {
   async deleteConsumer(
     controlPlaneId: string,
     consumerId: string,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'delete_consumer',
+      "delete_consumer",
       {
-        operationName: 'delete_consumer',
+        operationName: "delete_consumer",
         parameters: { controlPlaneId, consumerId },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
         return await configOps.deleteConsumer(api, controlPlaneId, consumerId);
-      }
+      },
     );
-  }
+  },
 };
 
 /**
@@ -308,29 +350,33 @@ export const BlockedConsumerOperations = {
  */
 export const BlockedPluginOperations = {
   /**
-   * CREATE PLUGIN - BLOCKED UNTIL ELICITATION  
+   * CREATE PLUGIN - BLOCKED UNTIL ELICITATION
    */
   async createPlugin(
     controlPlaneId: string,
     pluginParams: any,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'create_plugin',
+      "create_plugin",
       {
-        operationName: 'create_plugin',
+        operationName: "create_plugin",
         parameters: { controlPlaneId, ...pluginParams },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
-        const tags = generateMandatoryTags(validatedContext, 'plugin', pluginParams.name);
-        
+        const tags = generateMandatoryTags(
+          validatedContext,
+          "plugin",
+          pluginParams.name,
+        );
+
         return await configOps.createPlugin(api, controlPlaneId, {
           ...pluginParams,
-          tags
+          tags,
         });
-      }
+      },
     );
   },
 
@@ -341,24 +387,29 @@ export const BlockedPluginOperations = {
     controlPlaneId: string,
     pluginId: string,
     updates: any,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'update_plugin',
+      "update_plugin",
       {
-        operationName: 'update_plugin',
+        operationName: "update_plugin",
         parameters: { controlPlaneId, pluginId, updates },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
-        
+
         if (!updates.tags) {
-          updates.tags = generateMandatoryTags(validatedContext, 'plugin');
+          updates.tags = generateMandatoryTags(validatedContext, "plugin");
         }
-        
-        return await configOps.updatePlugin(api, controlPlaneId, pluginId, updates);
-      }
+
+        return await configOps.updatePlugin(
+          api,
+          controlPlaneId,
+          pluginId,
+          updates,
+        );
+      },
     );
   },
 
@@ -368,27 +419,27 @@ export const BlockedPluginOperations = {
   async deletePlugin(
     controlPlaneId: string,
     pluginId: string,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'delete_plugin',
+      "delete_plugin",
       {
-        operationName: 'delete_plugin',
+        operationName: "delete_plugin",
         parameters: { controlPlaneId, pluginId },
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
         return await configOps.deletePlugin(api, controlPlaneId, pluginId);
-      }
+      },
     );
-  }
+  },
 };
 
 /**
  * BLOCKED LIST OPERATIONS
- * 
- * Read operations are generally allowed, but we may want to 
+ *
+ * Read operations are generally allowed, but we may want to
  * track context for consistency in some cases.
  */
 export const BlockedListOperations = {
@@ -401,7 +452,7 @@ export const BlockedListOperations = {
   },
 
   /**
-   * LIST ROUTES - NO BLOCKING (READ OPERATION)  
+   * LIST ROUTES - NO BLOCKING (READ OPERATION)
    */
   async listRoutes(controlPlaneId: string) {
     const api = new KongApi();
@@ -422,12 +473,12 @@ export const BlockedListOperations = {
   async listPlugins(controlPlaneId: string) {
     const api = new KongApi();
     return await configOps.listPlugins(api, controlPlaneId);
-  }
+  },
 };
 
 /**
  * BLOCKED CONTROL PLANE OPERATIONS
- * 
+ *
  * Control plane operations typically don't need entity-level tagging
  * but may still require context for proper organization.
  */
@@ -445,31 +496,31 @@ export const BlockedControlPlaneOperations = {
    */
   async createControlPlane(
     params: any,
-    requestContext: { userMessage: string; files?: string[]; configs?: any[] }
+    requestContext: { userMessage: string; files?: string[]; configs?: any[] },
   ) {
     return await withMandatoryElicitation(
-      'create_control_plane',
+      "create_control_plane",
       {
-        operationName: 'create_control_plane',
+        operationName: "create_control_plane",
         parameters: params,
-        requestContext
+        requestContext,
       },
       async (validatedContext: MandatoryContext) => {
         const api = await getValidatedKongApi(validatedContext);
-        
+
         // Add context-aware labels to control plane
         const labels = {
           domain: validatedContext.domain,
           environment: validatedContext.environment,
           team: validatedContext.team,
-          ...params.labels
+          ...params.labels,
         };
-        
+
         return await controlPlaneOps.createControlPlane(api, {
           ...params,
-          labels
+          labels,
         });
-      }
+      },
     );
-  }
+  },
 };

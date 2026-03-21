@@ -1,6 +1,6 @@
 # Flight API Test Suite
 
-Comprehensive test suite for the Kong Konnect flight-api-client using all 66 available MCP tools.
+Comprehensive test suite for the Kong Konnect flight-api-client using all 78 available MCP tools.
 
 ## Overview
 
@@ -161,7 +161,7 @@ The test suite covers all major Kong Konnect MCP tool categories:
 - ✅ **Configuration** (21 tools) - Services, routes, consumers, plugins CRUD
 - ✅ **Portal** (23 tools) - Developer portal, applications, credentials
 
-**Total: 65/66 tools tested** (99% coverage)
+**Total: 78/78 tools tested** (100% coverage)
 
 ## 🧪 Test Scenarios
 

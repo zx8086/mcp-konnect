@@ -1,49 +1,72 @@
 import { z } from "zod";
-import { elicitationManager, kongElicitationPatterns } from "../utils/elicitation.js";
 import { MigrationAnalyzer } from "../operations/migration-analyzer.js";
-import { TagElicitationEngine } from "../utils/tag-elicitation.js";
 import { contextDetector } from "../utils/context-detection.js";
+import {
+  elicitationManager,
+  kongElicitationPatterns,
+} from "../utils/elicitation.js";
 import { elicitationBridge } from "../utils/elicitation-bridge.js";
-import { mcpLogger } from '../utils/mcp-logger.js';
+import { mcpLogger } from "../utils/mcp-logger.js";
+import { TagElicitationEngine } from "../utils/tag-elicitation.js";
 
 /**
  * MCP Tool for Kong Migration Elicitation
- * 
+ *
  * Provides elicitation capabilities as an MCP tool that can be used
  * within the Kong migration workflows to gather missing information.
  */
 
 // Parameter schemas
-export const analyzeContextParameters = () => z.object({
-  userMessage: z.string().optional().describe("User's original migration request"),
-  deckFiles: z.array(z.string()).optional().describe("Paths to Kong deck YAML files"),
-  deckConfigs: z.array(z.any()).optional().describe("Parsed deck configurations"),
-  gitContext: z.object({
-    branch: z.string().optional(),
-    repoName: z.string().optional(),
-    teamMembers: z.array(z.string()).optional()
-  }).optional().describe("Git repository context")
-});
+export const analyzeContextParameters = () =>
+  z.object({
+    userMessage: z
+      .string()
+      .optional()
+      .describe("User's original migration request"),
+    deckFiles: z
+      .array(z.string())
+      .optional()
+      .describe("Paths to Kong deck YAML files"),
+    deckConfigs: z
+      .array(z.any())
+      .optional()
+      .describe("Parsed deck configurations"),
+    gitContext: z
+      .object({
+        branch: z.string().optional(),
+        repoName: z.string().optional(),
+        teamMembers: z.array(z.string()).optional(),
+      })
+      .optional()
+      .describe("Git repository context"),
+  });
 
-export const createElicitationSessionParameters = () => z.object({
-  analysisResult: z.any().describe("Migration analysis result from analyze-context"),
-  context: z.any().describe("Original migration context")
-});
+export const createElicitationSessionParameters = () =>
+  z.object({
+    analysisResult: z
+      .any()
+      .describe("Migration analysis result from analyze-context"),
+    context: z.any().describe("Original migration context"),
+  });
 
-export const processElicitationResponseParameters = () => z.object({
-  sessionId: z.string().describe("Elicitation session ID"),
-  requestId: z.string().describe("Elicitation request ID"), 
-  response: z.object({
-    data: z.any().optional(),
-    declined: z.boolean().optional(),
-    cancelled: z.boolean().optional(),
-    error: z.string().optional()
-  }).describe("User response to elicitation request")
-});
+export const processElicitationResponseParameters = () =>
+  z.object({
+    sessionId: z.string().describe("Elicitation session ID"),
+    requestId: z.string().describe("Elicitation request ID"),
+    response: z
+      .object({
+        data: z.any().optional(),
+        declined: z.boolean().optional(),
+        cancelled: z.boolean().optional(),
+        error: z.string().optional(),
+      })
+      .describe("User response to elicitation request"),
+  });
 
-export const getSessionStatusParameters = () => z.object({
-  sessionId: z.string().describe("Elicitation session ID")
-});
+export const getSessionStatusParameters = () =>
+  z.object({
+    sessionId: z.string().describe("Elicitation session ID"),
+  });
 
 // Tool implementations
 export class ElicitationOperations {
@@ -51,7 +74,10 @@ export class ElicitationOperations {
   private tagElicitationEngine: TagElicitationEngine;
 
   constructor() {
-    this.migrationAnalyzer = new MigrationAnalyzer(elicitationManager, kongElicitationPatterns);
+    this.migrationAnalyzer = new MigrationAnalyzer(
+      elicitationManager,
+      kongElicitationPatterns,
+    );
     this.tagElicitationEngine = new TagElicitationEngine(elicitationManager);
   }
 
@@ -62,7 +88,7 @@ export class ElicitationOperations {
     userMessage?: string,
     deckFiles?: string[],
     deckConfigs?: any[],
-    gitContext?: any
+    gitContext?: any,
   ): Promise<{
     contextDetection: any;
     migrationAnalysis: any;
@@ -71,16 +97,22 @@ export class ElicitationOperations {
     summary: string;
   }> {
     // Detect context from various sources
-    let contextDetection = contextDetector.detectFromMessage(userMessage || '');
-    
+    let contextDetection = contextDetector.detectFromMessage(userMessage || "");
+
     if (deckFiles && deckFiles.length > 0) {
       const pathDetection = contextDetector.detectFromFilePaths(deckFiles);
-      contextDetection = contextDetector.mergeResults(contextDetection, pathDetection);
+      contextDetection = contextDetector.mergeResults(
+        contextDetection,
+        pathDetection,
+      );
     }
-    
+
     if (deckConfigs && deckConfigs.length > 0) {
       const configDetection = contextDetector.detectFromDeckConfig(deckConfigs);
-      contextDetection = contextDetector.mergeResults(contextDetection, configDetection);
+      contextDetection = contextDetector.mergeResults(
+        contextDetection,
+        configDetection,
+      );
     }
 
     // Perform migration analysis
@@ -89,18 +121,21 @@ export class ElicitationOperations {
       deckFiles,
       deckConfigs,
       filePaths: deckFiles,
-      gitContext
+      gitContext,
     });
 
     // Generate summary
-    const summary = this.generateAnalysisSummary(contextDetection, migrationAnalysis);
+    const summary = this.generateAnalysisSummary(
+      contextDetection,
+      migrationAnalysis,
+    );
 
     return {
       contextDetection,
       migrationAnalysis,
       elicitationRequired: migrationAnalysis.elicitationRequired,
       recommendations: migrationAnalysis.recommendations,
-      summary
+      summary,
     };
   }
 
@@ -108,7 +143,10 @@ export class ElicitationOperations {
    * Create elicitation session based on analysis
    * Now compatible with both Claude Code and Claude Desktop
    */
-  async createElicitationSession(analysisResult: any, context: any): Promise<{
+  async createElicitationSession(
+    analysisResult: any,
+    context: any,
+  ): Promise<{
     sessionId: string;
     requests: any[];
     summary: string;
@@ -117,16 +155,18 @@ export class ElicitationOperations {
     directInstructions?: string;
   }> {
     // Parse analysisResult if it's a string
-    if (typeof analysisResult === 'string') {
+    if (typeof analysisResult === "string") {
       try {
         analysisResult = JSON.parse(analysisResult);
       } catch (error) {
-        mcpLogger.error('elicitation', 'Failed to parse analysisResult JSON', { error });
+        mcpLogger.error("elicitation", "Failed to parse analysisResult JSON", {
+          error,
+        });
         return {
-          sessionId: '',
+          sessionId: "",
           requests: [],
-          summary: 'ERROR: Invalid analysis result format',
-          needsUserInput: false
+          summary: "ERROR: Invalid analysis result format",
+          needsUserInput: false,
         };
       }
     }
@@ -134,22 +174,24 @@ export class ElicitationOperations {
     // Handle case where analysisResult is null/undefined or elicitation is not required
     if (!analysisResult) {
       return {
-        sessionId: '',
+        sessionId: "",
         requests: [],
-        summary: 'ERROR: No analysis result provided',
-        needsUserInput: false
+        summary: "ERROR: No analysis result provided",
+        needsUserInput: false,
       };
     }
 
     // CRITICAL FIX: Check migrationAnalysis.elicitationRequired if top-level not available
-    const elicitationRequired = analysisResult.elicitationRequired ?? analysisResult.migrationAnalysis?.elicitationRequired;
-    
+    const elicitationRequired =
+      analysisResult.elicitationRequired ??
+      analysisResult.migrationAnalysis?.elicitationRequired;
+
     if (!elicitationRequired) {
       return {
-        sessionId: '',
+        sessionId: "",
         requests: [],
-        summary: 'SUCCESS: All required information is available',
-        needsUserInput: false
+        summary: "SUCCESS: All required information is available",
+        needsUserInput: false,
       };
     }
 
@@ -162,33 +204,48 @@ export class ElicitationOperations {
       migrationAnalysis = {
         elicitationRequired: true,
         missingInfo: { domain: true, environment: true, team: true },
-        entityCounts: { total: 1, services: 1, routes: 1, consumers: 0, plugins: 0 },
-        confidence: { overall: 0, breakdown: { domain: 0, environment: 0, team: 0 } }
+        entityCounts: {
+          total: 1,
+          services: 1,
+          routes: 1,
+          consumers: 0,
+          plugins: 0,
+        },
+        confidence: {
+          overall: 0,
+          breakdown: { domain: 0, environment: 0, team: 0 },
+        },
       };
     }
 
-    const elicitationSession = await this.migrationAnalyzer.createElicitationSession(
-      migrationAnalysis,
-      context
-    );
+    const elicitationSession =
+      await this.migrationAnalyzer.createElicitationSession(
+        migrationAnalysis,
+        context,
+      );
 
     // Generate Claude Desktop friendly prompt
-    const claudeDesktopPrompt = this.generateClaudeDesktopPrompt(elicitationSession.requests, migrationAnalysis);
-    const directInstructions = this.generateDirectInstructions(elicitationSession.requests);
+    const claudeDesktopPrompt = this.generateClaudeDesktopPrompt(
+      elicitationSession.requests,
+      migrationAnalysis,
+    );
+    const directInstructions = this.generateDirectInstructions(
+      elicitationSession.requests,
+    );
 
     return {
       sessionId: elicitationSession.sessionId,
-      requests: elicitationSession.requests.map(req => ({
+      requests: elicitationSession.requests.map((req) => ({
         id: req.id,
         message: req.message,
         required: req.required,
         suggestions: req.suggestions,
-        schema: this.serializeSchema(req.schema)
+        schema: this.serializeSchema(req.schema),
       })),
       summary: elicitationSession.summary,
       needsUserInput: true,
       claudeDesktopPrompt,
-      directInstructions
+      directInstructions,
     };
   }
 
@@ -203,7 +260,7 @@ export class ElicitationOperations {
       declined?: boolean;
       cancelled?: boolean;
       error?: string;
-    }
+    },
   ): Promise<{
     success: boolean;
     message: string;
@@ -211,10 +268,14 @@ export class ElicitationOperations {
     nextRequest?: any;
   }> {
     try {
-      const processedResponse = elicitationManager.processResponse(sessionId, requestId, response);
+      const processedResponse = elicitationManager.processResponse(
+        sessionId,
+        requestId,
+        response,
+      );
       const isSessionComplete = elicitationManager.isSessionComplete(sessionId);
-      
-      let message = '';
+
+      let message = "";
       if (response.declined) {
         message = `Request declined. You can proceed with default values or provide the information later.`;
       } else if (response.cancelled) {
@@ -241,13 +302,13 @@ export class ElicitationOperations {
         success: true,
         message,
         sessionComplete: isSessionComplete,
-        nextRequest
+        nextRequest,
       };
     } catch (error) {
       return {
         success: false,
-        message: `Error processing response: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        sessionComplete: false
+        message: `Error processing response: ${error instanceof Error ? error.message : "Unknown error"}`,
+        sessionComplete: false,
       };
     }
   }
@@ -264,16 +325,21 @@ export class ElicitationOperations {
   }> {
     const summary = elicitationManager.getSessionSummary(sessionId);
     const isComplete = elicitationManager.isSessionComplete(sessionId);
-    const responses = Object.fromEntries(elicitationManager.getSessionResponses(sessionId));
+    const responses = Object.fromEntries(
+      elicitationManager.getSessionResponses(sessionId),
+    );
 
-    const recommendations = this.generateCompletionRecommendations(summary, isComplete);
+    const recommendations = this.generateCompletionRecommendations(
+      summary,
+      isComplete,
+    );
 
     return {
       sessionId,
       summary,
       isComplete,
       responses,
-      recommendations
+      recommendations,
     };
   }
 
@@ -282,7 +348,7 @@ export class ElicitationOperations {
    */
   async generateTagAssignments(
     sessionId: string,
-    migrationAnalysis: any
+    migrationAnalysis: any,
   ): Promise<{
     success: boolean;
     tagAssignments: Record<string, string[]>;
@@ -290,13 +356,14 @@ export class ElicitationOperations {
     validationResults: any;
   }> {
     const isComplete = elicitationManager.isSessionComplete(sessionId);
-    
+
     if (!isComplete) {
       return {
         success: false,
         tagAssignments: {},
-        summary: 'Elicitation session not complete - cannot generate tag assignments',
-        validationResults: { valid: false, errors: ['Session incomplete'] }
+        summary:
+          "Elicitation session not complete - cannot generate tag assignments",
+        validationResults: { valid: false, errors: ["Session incomplete"] },
       };
     }
 
@@ -310,39 +377,42 @@ export class ElicitationOperations {
 
     // Map responses based on order: domain, environment, team
     const responseArray = Array.from(responses.values());
-    if (responseArray.length >= 1 && responseArray[0].data) domain = responseArray[0].data;
-    if (responseArray.length >= 2 && responseArray[1].data) environment = responseArray[1].data;
-    if (responseArray.length >= 3 && responseArray[2].data) team = responseArray[2].data;
+    if (responseArray.length >= 1 && responseArray[0].data)
+      domain = responseArray[0].data;
+    if (responseArray.length >= 2 && responseArray[1].data)
+      environment = responseArray[1].data;
+    if (responseArray.length >= 3 && responseArray[2].data)
+      team = responseArray[2].data;
 
     // CRITICAL: Validate all mandatory fields are provided - NO FALLBACKS
     if (!domain || !environment || !team) {
       const missingFields = [];
-      if (!domain) missingFields.push('domain');
-      if (!environment) missingFields.push('environment');
-      if (!team) missingFields.push('team');
-      
+      if (!domain) missingFields.push("domain");
+      if (!environment) missingFields.push("environment");
+      if (!team) missingFields.push("team");
+
       return {
         success: false,
         tagAssignments: {},
-        summary: `ERROR: Cannot generate tag assignments - missing required fields: ${missingFields.join(', ')}`,
-        validationResults: { 
-          valid: false, 
-          errors: [`Missing mandatory fields: ${missingFields.join(', ')}`] 
-        }
+        summary: `ERROR: Cannot generate tag assignments - missing required fields: ${missingFields.join(", ")}`,
+        validationResults: {
+          valid: false,
+          errors: [`Missing mandatory fields: ${missingFields.join(", ")}`],
+        },
       };
     }
 
     // Generate tag assignments for each entity type based on analysis
     const entityCounts = migrationAnalysis.entityCounts;
-    
+
     // Example tag assignment logic - would need actual entity analysis
     for (let i = 0; i < entityCounts.services; i++) {
       tagAssignments[`service-${i}`] = [
         `env-${environment}`,
         `domain-${domain}`,
         `team-${team}`,
-        'function-api-gateway',
-        'type-external-api'
+        "function-api-gateway",
+        "type-external-api",
       ];
     }
 
@@ -351,26 +421,32 @@ export class ElicitationOperations {
         `env-${environment}`,
         `domain-${domain}`,
         `team-${team}`,
-        'function-routing',
-        'access-public'
+        "function-routing",
+        "access-public",
       ];
     }
 
     const validationResults = this.validateTagAssignments(tagAssignments);
-    const summary = this.generateTagAssignmentSummary(tagAssignments, validationResults);
+    const summary = this.generateTagAssignmentSummary(
+      tagAssignments,
+      validationResults,
+    );
 
     return {
       success: validationResults.valid,
       tagAssignments,
       summary,
-      validationResults
+      validationResults,
     };
   }
 
   // Private helper methods
-  private generateAnalysisSummary(contextDetection: any, migrationAnalysis: any): string {
+  private generateAnalysisSummary(
+    contextDetection: any,
+    migrationAnalysis: any,
+  ): string {
     let summary = `**Migration Context Analysis**\n\n`;
-    
+
     // Context detection summary
     summary += `**Context Detection Results:**\n`;
     if (contextDetection.summary.bestDomain) {
@@ -390,11 +466,13 @@ export class ElicitationOperations {
 
     if (migrationAnalysis.elicitationRequired) {
       summary += `\nWARNING: **Information needed:**\n`;
-      Object.entries(migrationAnalysis.missingInfo).forEach(([key, missing]) => {
-        if (missing) {
-          summary += `• ${key.charAt(0).toUpperCase() + key.slice(1)} specification required\n`;
-        }
-      });
+      Object.entries(migrationAnalysis.missingInfo).forEach(
+        ([key, missing]) => {
+          if (missing) {
+            summary += `• ${key.charAt(0).toUpperCase() + key.slice(1)} specification required\n`;
+          }
+        },
+      );
     } else {
       summary += `\nSUCCESS: All required information available`;
     }
@@ -406,29 +484,40 @@ export class ElicitationOperations {
     // Convert Zod schema to JSON-serializable format
     // This is a simplified version - would need full implementation
     return {
-      type: 'object',
-      description: 'User response schema'
+      type: "object",
+      description: "User response schema",
     };
   }
 
-  private generateCompletionRecommendations(summary: any, isComplete: boolean): string[] {
+  private generateCompletionRecommendations(
+    summary: any,
+    isComplete: boolean,
+  ): string[] {
     const recommendations: string[] = [];
 
     if (!isComplete) {
       if (summary.declined > 0) {
-        recommendations.push("Some information was declined - consider using safe defaults");
+        recommendations.push(
+          "Some information was declined - consider using safe defaults",
+        );
       }
       if (summary.pending > 0) {
-        recommendations.push(`${summary.pending} questions still pending - complete for optimal results`);
+        recommendations.push(
+          `${summary.pending} questions still pending - complete for optimal results`,
+        );
       }
     }
 
     if (summary.completed > 0) {
-      recommendations.push("Use provided information to generate comprehensive tag assignments");
+      recommendations.push(
+        "Use provided information to generate comprehensive tag assignments",
+      );
     }
 
     if (isComplete) {
-      recommendations.push("All information gathered - proceed with migration using tag assignments");
+      recommendations.push(
+        "All information gathered - proceed with migration using tag assignments",
+      );
     }
 
     return recommendations;
@@ -445,20 +534,22 @@ export class ElicitationOperations {
     Object.entries(tagAssignments).forEach(([entity, tags]) => {
       // Check minimum tag count
       if (tags.length < 5) {
-        errors.push(`${entity} has only ${tags.length} tags, minimum 5 required`);
+        errors.push(
+          `${entity} has only ${tags.length} tags, minimum 5 required`,
+        );
       }
 
       // Check mandatory tags
-      const hasEnv = tags.some(tag => tag.startsWith('env-'));
-      const hasDomain = tags.some(tag => tag.startsWith('domain-'));
-      const hasTeam = tags.some(tag => tag.startsWith('team-'));
+      const hasEnv = tags.some((tag) => tag.startsWith("env-"));
+      const hasDomain = tags.some((tag) => tag.startsWith("domain-"));
+      const hasTeam = tags.some((tag) => tag.startsWith("team-"));
 
       if (!hasEnv) errors.push(`${entity} missing env-* tag`);
       if (!hasDomain) errors.push(`${entity} missing domain-* tag`);
       if (!hasTeam) errors.push(`${entity} missing team-* tag`);
 
       // Check tag format
-      tags.forEach(tag => {
+      tags.forEach((tag) => {
         if (!tag.match(/^[a-z0-9-]+$/)) {
           errors.push(`${entity} has invalid tag format: ${tag}`);
         }
@@ -468,19 +559,20 @@ export class ElicitationOperations {
     return {
       valid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
   private generateTagAssignmentSummary(
     tagAssignments: Record<string, string[]>,
-    validationResults: any
+    validationResults: any,
   ): string {
     let summary = `**Tag Assignment Summary**\n\n`;
-    
+
     const entityCount = Object.keys(tagAssignments).length;
     const totalTags = Object.values(tagAssignments).flat().length;
-    const avgTagsPerEntity = entityCount > 0 ? Math.round(totalTags / entityCount) : 0;
+    const avgTagsPerEntity =
+      entityCount > 0 ? Math.round(totalTags / entityCount) : 0;
 
     summary += `• **Entities tagged**: ${entityCount}\n`;
     summary += `• **Total tags**: ${totalTags}\n`;
@@ -501,23 +593,26 @@ export class ElicitationOperations {
   /**
    * Generate Claude Desktop friendly prompt
    */
-  private generateClaudeDesktopPrompt(requests: any[], migrationAnalysis: any): string {
+  private generateClaudeDesktopPrompt(
+    requests: any[],
+    migrationAnalysis: any,
+  ): string {
     const entityCount = migrationAnalysis.entityCounts?.total || 0;
-    
+
     let prompt = `## 🚨 Missing Information for Kong Deployment\n\n`;
     prompt += `I need to deploy **${entityCount} entities** to Kong Konnect, but I'm missing some required information for proper tagging and organization.\n\n`;
-    
+
     prompt += `**Required Information:**\n\n`;
-    
+
     requests.forEach((req, index) => {
       const fieldName = this.extractFieldFromRequest(req);
       const suggestions = req.suggestions || [];
-      
+
       prompt += `**${index + 1}. ${fieldName.toUpperCase()}**\n`;
-      prompt += `${req.message.replace(/[🏷️🌍👥]/g, '').trim()}\n`;
-      
+      prompt += `${req.message.replace(/[🏷️🌍👥]/gu, "").trim()}\n`;
+
       if (suggestions.length > 0) {
-        prompt += `💡 **Suggestions:** ${suggestions.join(', ')}\n`;
+        prompt += `💡 **Suggestions:** ${suggestions.join(", ")}\n`;
       }
       prompt += `\n`;
     });
@@ -538,24 +633,33 @@ export class ElicitationOperations {
    * Generate direct instructions for Claude Desktop
    */
   private generateDirectInstructions(requests: any[]): string {
-    const fields = requests.map(req => this.extractFieldFromRequest(req));
-    return `To proceed, please provide: ${fields.map(f => `${f}=your_${f}`).join(', ')}`;
+    const fields = requests.map((req) => this.extractFieldFromRequest(req));
+    return `To proceed, please provide: ${fields.map((f) => `${f}=your_${f}`).join(", ")}`;
   }
 
   /**
    * Extract field name from request
    */
   private extractFieldFromRequest(request: any): string {
-    if (request.id?.includes('domain') || request.message?.toLowerCase().includes('domain')) {
-      return 'domain';
+    if (
+      request.id?.includes("domain") ||
+      request.message?.toLowerCase().includes("domain")
+    ) {
+      return "domain";
     }
-    if (request.id?.includes('environment') || request.message?.toLowerCase().includes('environment')) {
-      return 'environment';
+    if (
+      request.id?.includes("environment") ||
+      request.message?.toLowerCase().includes("environment")
+    ) {
+      return "environment";
     }
-    if (request.id?.includes('team') || request.message?.toLowerCase().includes('team')) {
-      return 'team';
+    if (
+      request.id?.includes("team") ||
+      request.message?.toLowerCase().includes("team")
+    ) {
+      return "team";
     }
-    return request.id || 'unknown';
+    return request.id || "unknown";
   }
 }
 
@@ -576,11 +680,11 @@ This tool performs intelligent analysis of:
 Returns confidence scores and identifies missing mandatory information (domain, environment, team).
 `,
     parameters: analyzeContextParameters(),
-    category: "elicitation"
+    category: "elicitation",
   },
   {
     method: "create_elicitation_session",
-    name: "Create Elicitation Session", 
+    name: "Create Elicitation Session",
     description: `
 Create an MCP elicitation session to gather missing information for Kong migration.
 
@@ -593,7 +697,7 @@ Based on migration analysis, creates structured prompts for:
 Returns session ID and list of elicitation requests.
 `,
     parameters: createElicitationSessionParameters(),
-    category: "elicitation"
+    category: "elicitation",
   },
   {
     method: "process_elicitation_response",
@@ -610,7 +714,7 @@ Handles:
 Returns success status and next steps.
 `,
     parameters: processElicitationResponseParameters(),
-    category: "elicitation" 
+    category: "elicitation",
   },
   {
     method: "get_session_status",
@@ -625,6 +729,6 @@ Returns:
 - Recommendations for next steps
 `,
     parameters: getSessionStatusParameters(),
-    category: "elicitation"
-  }
+    category: "elicitation",
+  },
 ];

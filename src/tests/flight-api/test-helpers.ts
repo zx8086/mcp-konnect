@@ -10,29 +10,47 @@ export const TEST_CONFIG = {
   controlPlaneId: "1379aab0-2351-4e68-bff9-64e091173c82",
   consumer: {
     id: "5a77ce27-d2cc-420b-b7f3-3ff323165de0",
-    username: "flight-api-client"
+    username: "flight-api-client",
   },
   service: {
     name: "flight-service",
     host: "api.flights.example.com",
     port: 443,
-    protocol: "https"
+    protocol: "https",
   },
   routes: [
     { name: "get-flights", paths: ["/flights"], methods: ["GET"] },
     { name: "create-flight", paths: ["/flights"], methods: ["POST"] },
     { name: "get-flight", paths: ["/flights/(?<id>\\d+)"], methods: ["GET"] },
-    { name: "update-flight", paths: ["/flights/(?<id>\\d+)"], methods: ["PUT"] },
-    { name: "delete-flight", paths: ["/flights/(?<id>\\d+)"], methods: ["DELETE"] },
-    { name: "book-flight", paths: ["/flights/(?<id>\\d+)/book"], methods: ["POST"] }
+    {
+      name: "update-flight",
+      paths: ["/flights/(?<id>\\d+)"],
+      methods: ["PUT"],
+    },
+    {
+      name: "delete-flight",
+      paths: ["/flights/(?<id>\\d+)"],
+      methods: ["DELETE"],
+    },
+    {
+      name: "book-flight",
+      paths: ["/flights/(?<id>\\d+)/book"],
+      methods: ["POST"],
+    },
   ],
   plugins: [
     { name: "rate-limiting", config: { minute: 100, hour: 1000 } },
     { name: "key-auth", config: { key_names: ["X-API-Key"] } },
-    { name: "cors", config: { origins: ["*"], methods: ["GET", "POST", "PUT", "DELETE"] } },
+    {
+      name: "cors",
+      config: { origins: ["*"], methods: ["GET", "POST", "PUT", "DELETE"] },
+    },
     { name: "request-validator", config: { version: "draft4" } },
-    { name: "response-transformer", config: { add: { headers: ["X-Flight-API: v1"] } } }
-  ]
+    {
+      name: "response-transformer",
+      config: { add: { headers: ["X-Flight-API: v1"] } },
+    },
+  ],
 };
 
 // Test Data Fixtures
@@ -44,19 +62,19 @@ export const TEST_FIXTURES = {
     arrivalTime: "2025-01-15T11:30:00Z",
     price: 299.99,
     airline: "Kong Air",
-    flightNumber: "KA101"
+    flightNumber: "KA101",
   },
   bookingData: {
     passengerName: "John Doe",
     email: "john.doe@example.com",
     seatPreference: "window",
-    specialRequests: "vegetarian meal"
+    specialRequests: "vegetarian meal",
   },
   authCredentials: {
     keyAuth: "flight-api-key-12345",
     jwtSecret: "super-secret-jwt-key",
-    oauth2ClientId: "flight-client-oauth2"
-  }
+    oauth2ClientId: "flight-client-oauth2",
+  },
 };
 
 // Test Utilities Class
@@ -81,7 +99,7 @@ export class FlightApiTestUtils {
     credentials: [],
     tokens: [],
     certificates: [],
-    portals: []
+    portals: [],
   };
 
   // Add controlPlaneId property
@@ -90,9 +108,9 @@ export class FlightApiTestUtils {
   constructor() {
     this.kongApi = new KongApi({
       apiKey: process.env.KONNECT_ACCESS_TOKEN!,
-      apiRegion: process.env.KONNECT_REGION || "eu"
+      apiRegion: process.env.KONNECT_REGION || "eu",
     });
-    
+
     // Use the same control plane ID as in the test config
     this.controlPlaneId = TEST_CONFIG.controlPlaneId;
   }
@@ -106,10 +124,13 @@ export class FlightApiTestUtils {
       host: TEST_CONFIG.service.host,
       port: TEST_CONFIG.service.port,
       protocol: TEST_CONFIG.service.protocol,
-      tags: ["test", "flight-api", "automated-test"]
+      tags: ["test", "flight-api", "automated-test"],
     };
 
-    const service = await this.kongApi.createService(TEST_CONFIG.controlPlaneId, serviceData);
+    const service = await this.kongApi.createService(
+      TEST_CONFIG.controlPlaneId,
+      serviceData,
+    );
     this.createdResources.services.push(service.id);
     return service;
   }
@@ -119,17 +140,20 @@ export class FlightApiTestUtils {
    */
   async createFlightRoutes(serviceId: string): Promise<any[]> {
     const routes = [];
-    
+
     for (const routeConfig of TEST_CONFIG.routes) {
       const routeData = {
         name: `${routeConfig.name}-${Date.now()}`,
         service: { id: serviceId },
         paths: routeConfig.paths,
         methods: routeConfig.methods,
-        tags: ["test", "flight-api", routeConfig.name]
+        tags: ["test", "flight-api", routeConfig.name],
       };
 
-      const route = await this.kongApi.createRoute(TEST_CONFIG.controlPlaneId, routeData);
+      const route = await this.kongApi.createRoute(
+        TEST_CONFIG.controlPlaneId,
+        routeData,
+      );
       this.createdResources.routes.push(route.id);
       routes.push(route);
     }
@@ -143,10 +167,13 @@ export class FlightApiTestUtils {
   async createTestConsumer(): Promise<any> {
     const consumerData = {
       username: `${TEST_CONFIG.consumer.username}-${Date.now()}`,
-      tags: ["test", "flight-api", "automated-test"]
+      tags: ["test", "flight-api", "automated-test"],
     };
 
-    const consumer = await this.kongApi.createConsumer(TEST_CONFIG.controlPlaneId, consumerData);
+    const consumer = await this.kongApi.createConsumer(
+      TEST_CONFIG.controlPlaneId,
+      consumerData,
+    );
     this.createdResources.consumers.push(consumer.id);
     return consumer;
   }
@@ -154,15 +181,22 @@ export class FlightApiTestUtils {
   /**
    * Add authentication plugin to service
    */
-  async addAuthPlugin(serviceId: string, pluginName: string, config: any): Promise<any> {
+  async addAuthPlugin(
+    serviceId: string,
+    pluginName: string,
+    config: any,
+  ): Promise<any> {
     const pluginData = {
       name: pluginName,
       service: { id: serviceId },
       config: config,
-      tags: ["test", "flight-api", "auth"]
+      tags: ["test", "flight-api", "auth"],
     };
 
-    const plugin = await this.kongApi.createPlugin(TEST_CONFIG.controlPlaneId, pluginData);
+    const plugin = await this.kongApi.createPlugin(
+      TEST_CONFIG.controlPlaneId,
+      pluginData,
+    );
     this.createdResources.plugins.push(plugin.id);
     return plugin;
   }
@@ -171,7 +205,11 @@ export class FlightApiTestUtils {
    * Add rate limiting plugin
    */
   async addRateLimitingPlugin(serviceId: string): Promise<any> {
-    return this.addAuthPlugin(serviceId, "rate-limiting", TEST_CONFIG.plugins[0].config);
+    return this.addAuthPlugin(
+      serviceId,
+      "rate-limiting",
+      TEST_CONFIG.plugins[0].config,
+    );
   }
 
   /**
@@ -188,9 +226,13 @@ export class FlightApiTestUtils {
     const credentials: any = {};
 
     // Create Key Auth credential
-    const keyAuth = await this.kongApi.createConsumerKey(TEST_CONFIG.controlPlaneId, consumerId, {
-      key: TEST_FIXTURES.authCredentials.keyAuth
-    });
+    const keyAuth = await this.kongApi.createConsumerKey(
+      TEST_CONFIG.controlPlaneId,
+      consumerId,
+      {
+        key: TEST_FIXTURES.authCredentials.keyAuth,
+      },
+    );
     credentials.keyAuth = keyAuth;
     this.createdResources.credentials.push(keyAuth.id);
 
@@ -205,7 +247,7 @@ export class FlightApiTestUtils {
       name: `Flight API Test App ${Date.now()}`,
       description: "Test application for flight API integration testing",
       clientId: `flight-test-client-${Date.now()}`,
-      redirectUri: "https://test.flights.example.com/callback"
+      redirectUri: "https://test.flights.example.com/callback",
     };
 
     const application = await this.kongApi.createPortalApplication(appData);
@@ -217,13 +259,18 @@ export class FlightApiTestUtils {
    * Wait for configuration to propagate
    */
   async waitForPropagation(seconds: number = 2): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+    await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
   }
 
   /**
    * Simulate API request
    */
-  async simulateApiRequest(method: string, path: string, headers: any = {}, body?: any): Promise<any> {
+  async simulateApiRequest(
+    method: string,
+    path: string,
+    headers: any = {},
+    body?: any,
+  ): Promise<any> {
     // This would typically make actual HTTP requests to test the Kong gateway
     // For testing, we'll simulate the request
     return {
@@ -233,7 +280,7 @@ export class FlightApiTestUtils {
       body,
       timestamp: new Date().toISOString(),
       statusCode: 200,
-      response: method === "GET" ? TEST_FIXTURES.flightData : { success: true }
+      response: method === "GET" ? TEST_FIXTURES.flightData : { success: true },
     };
   }
 
@@ -241,7 +288,14 @@ export class FlightApiTestUtils {
    * Get analytics for flight API
    */
   async getFlightApiAnalytics(timeRange: string = "1H"): Promise<any> {
-    return this.kongApi.queryApiRequests(timeRange, undefined, undefined, undefined, undefined, [this.createdResources.services[0]]);
+    return this.kongApi.queryApiRequests(
+      timeRange,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      [this.createdResources.services[0]],
+    );
   }
 
   // =========================
@@ -252,7 +306,10 @@ export class FlightApiTestUtils {
    * Data Plane Token Management
    */
   async createDataPlaneToken(name: string = "test-token"): Promise<any> {
-    const result = await this.kongApi.createDataPlaneToken(this.controlPlaneId, name);
+    const result = await this.kongApi.createDataPlaneToken(
+      this.controlPlaneId,
+      name,
+    );
     this.createdResources.tokens = this.createdResources.tokens || [];
     this.createdResources.tokens.push(result.tokenId);
     return result;
@@ -264,7 +321,8 @@ export class FlightApiTestUtils {
 
   async revokeDataPlaneToken(tokenId: string): Promise<void> {
     await this.kongApi.revokeDataPlaneToken(this.controlPlaneId, tokenId);
-    this.createdResources.tokens = this.createdResources.tokens?.filter(id => id !== tokenId) || [];
+    this.createdResources.tokens =
+      this.createdResources.tokens?.filter((id) => id !== tokenId) || [];
   }
 
   /**
@@ -289,12 +347,19 @@ export class FlightApiTestUtils {
   }
 
   async updateCertificate(certificateId: string, updates: any): Promise<any> {
-    return this.kongApi.updateCertificate(this.controlPlaneId, certificateId, updates);
+    return this.kongApi.updateCertificate(
+      this.controlPlaneId,
+      certificateId,
+      updates,
+    );
   }
 
   async deleteCertificate(certificateId: string): Promise<void> {
     await this.kongApi.deleteCertificate(this.controlPlaneId, certificateId);
-    this.createdResources.certificates = this.createdResources.certificates?.filter(id => id !== certificateId) || [];
+    this.createdResources.certificates =
+      this.createdResources.certificates?.filter(
+        (id) => id !== certificateId,
+      ) || [];
   }
 
   /**
@@ -325,19 +390,27 @@ export class FlightApiTestUtils {
     return this.kongApi.getPortalApplication(applicationId);
   }
 
-  async updatePortalApplication(applicationId: string, updates: any): Promise<any> {
+  async updatePortalApplication(
+    applicationId: string,
+    updates: any,
+  ): Promise<any> {
     return this.kongApi.updatePortalApplication(applicationId, updates);
   }
 
   async deletePortalApplication(applicationId: string): Promise<void> {
     await this.kongApi.deletePortalApplication(applicationId);
-    this.createdResources.applications = this.createdResources.applications?.filter(id => id !== applicationId) || [];
+    this.createdResources.applications =
+      this.createdResources.applications?.filter(
+        (id) => id !== applicationId,
+      ) || [];
   }
 
   /**
    * Portal Application Registration Management
    */
-  async listPortalApplicationRegistrations(applicationId: string): Promise<any> {
+  async listPortalApplicationRegistrations(
+    applicationId: string,
+  ): Promise<any> {
     return this.kongApi.listPortalApplicationRegistrations(applicationId);
   }
 
@@ -348,20 +421,41 @@ export class FlightApiTestUtils {
     return this.kongApi.listPortalCredentials(applicationId);
   }
 
-  async createPortalCredential(applicationId: string, type: string = "api_key", name?: string): Promise<any> {
-    const result = await this.kongApi.createPortalCredential(applicationId, type, name);
+  async createPortalCredential(
+    applicationId: string,
+    type: string = "api_key",
+    name?: string,
+  ): Promise<any> {
+    const result = await this.kongApi.createPortalCredential(
+      applicationId,
+      type,
+      name,
+    );
     this.createdResources.credentials = this.createdResources.credentials || [];
     this.createdResources.credentials.push(result.credentialId);
     return result;
   }
 
-  async updatePortalCredential(applicationId: string, credentialId: string, updates: any): Promise<any> {
-    return this.kongApi.updatePortalCredential(applicationId, credentialId, updates);
+  async updatePortalCredential(
+    applicationId: string,
+    credentialId: string,
+    updates: any,
+  ): Promise<any> {
+    return this.kongApi.updatePortalCredential(
+      applicationId,
+      credentialId,
+      updates,
+    );
   }
 
-  async deletePortalCredential(applicationId: string, credentialId: string): Promise<void> {
+  async deletePortalCredential(
+    applicationId: string,
+    credentialId: string,
+  ): Promise<void> {
     await this.kongApi.deletePortalCredential(applicationId, credentialId);
-    this.createdResources.credentials = this.createdResources.credentials?.filter(id => id !== credentialId) || [];
+    this.createdResources.credentials =
+      this.createdResources.credentials?.filter((id) => id !== credentialId) ||
+      [];
   }
 
   /**
@@ -391,12 +485,12 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
 -----END PRIVATE KEY-----`;
 
     const certificate = await this.kongApi.createCertificate(
-      this.controlPlaneId, 
-      testCert, 
-      testKey, 
-      undefined, 
-      undefined, 
-      [`test-${Date.now()}`]
+      this.controlPlaneId,
+      testCert,
+      testKey,
+      undefined,
+      undefined,
+      [`test-${Date.now()}`],
     );
     this.createdResources.certificates.push(certificate.certificateId);
     return certificate;
@@ -409,7 +503,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
     console.log("INFO: Cleaning up test resources...");
 
     // Clean up in reverse dependency order
-    
+
     // Clean up tokens
     if (this.createdResources.tokens) {
       for (const tokenId of this.createdResources.tokens) {
@@ -422,7 +516,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
       }
     }
 
-    // Clean up credentials  
+    // Clean up credentials
     if (this.createdResources.credentials) {
       for (const credentialId of this.createdResources.credentials) {
         try {
@@ -463,7 +557,10 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
 
     for (const consumerId of this.createdResources.consumers) {
       try {
-        await this.kongApi.deleteConsumer(TEST_CONFIG.controlPlaneId, consumerId);
+        await this.kongApi.deleteConsumer(
+          TEST_CONFIG.controlPlaneId,
+          consumerId,
+        );
         console.log(`Cleaned up consumer: ${consumerId}`);
       } catch (error) {
         console.warn(`Failed to cleanup consumer ${consumerId}:`, error);
@@ -486,7 +583,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
       consumers: [],
       plugins: [],
       applications: [],
-      credentials: []
+      credentials: [],
     };
 
     console.log("SUCCESS: Cleanup completed");
@@ -508,7 +605,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
     const result = await this.kongApi.createControlPlane({
       name: `flight-test-cp-${Date.now()}`,
       description: "Test control plane for flight API",
-      clusterType: "CLUSTER_TYPE_HYBRID"
+      clusterType: "CLUSTER_TYPE_HYBRID",
     });
     this.createdResources.services.push(result.controlPlane.controlPlaneId);
     return result;
@@ -517,7 +614,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
   async testUpdateControlPlane(controlPlaneId: string): Promise<any> {
     return await this.kongApi.updateControlPlane({
       controlPlaneId,
-      description: "Updated flight API control plane"
+      description: "Updated flight API control plane",
     });
   }
 
@@ -528,21 +625,21 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
   async testListDataPlaneNodes(): Promise<any> {
     return await this.kongApi.listDataPlaneNodes({
       controlPlaneId: this.controlPlaneId,
-      pageSize: 10
+      pageSize: 10,
     });
   }
 
   async testGetDataPlaneNode(nodeId: string): Promise<any> {
     return await this.kongApi.getDataPlaneNode({
       controlPlaneId: this.controlPlaneId,
-      nodeId
+      nodeId,
     });
   }
 
   async testCreateDataPlaneToken(): Promise<any> {
     const result = await this.kongApi.createDataPlaneToken({
       controlPlaneId: this.controlPlaneId,
-      name: `flight-test-token-${Date.now()}`
+      name: `flight-test-token-${Date.now()}`,
     });
     this.createdResources.tokens.push(result.token.tokenId);
     return result;
@@ -551,27 +648,27 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
   async testListDataPlaneTokens(): Promise<any> {
     return await this.kongApi.listDataPlaneTokens({
       controlPlaneId: this.controlPlaneId,
-      pageSize: 10
+      pageSize: 10,
     });
   }
 
   async testRevokeDataPlaneToken(tokenId: string): Promise<any> {
     return await this.kongApi.revokeDataPlaneToken({
       controlPlaneId: this.controlPlaneId,
-      tokenId
+      tokenId,
     });
   }
 
   async testGetControlPlaneConfig(): Promise<any> {
     return await this.kongApi.getControlPlaneConfig({
-      controlPlaneId: this.controlPlaneId
+      controlPlaneId: this.controlPlaneId,
     });
   }
 
   async testUpdateControlPlaneConfig(): Promise<any> {
     return await this.kongApi.updateControlPlaneConfig({
       controlPlaneId: this.controlPlaneId,
-      analyticsEnabled: true
+      analyticsEnabled: true,
     });
   }
 
@@ -579,46 +676,49 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
     return await this.kongApi.updateCertificate({
       controlPlaneId: this.controlPlaneId,
       certificateId,
-      tags: ["flight-api", "updated"]
+      tags: ["flight-api", "updated"],
     });
   }
 
   async testDeleteCertificate(certificateId: string): Promise<any> {
     return await this.kongApi.deleteCertificate({
       controlPlaneId: this.controlPlaneId,
-      certificateId
+      certificateId,
     });
   }
 
   async testListPortalApis(): Promise<any> {
     return await this.kongApi.listPortalApis({
-      pageSize: 10
+      pageSize: 10,
     });
   }
 
   async testFetchPortalApi(apiSlug: string): Promise<any> {
     return await this.kongApi.fetchPortalApi({
-      apiIdOrSlug: apiSlug
+      apiIdOrSlug: apiSlug,
     });
   }
 
   async testGetPortalApiActions(apiSlug: string): Promise<any> {
     return await this.kongApi.getPortalApiActions({
-      apiIdOrSlug: apiSlug
+      apiIdOrSlug: apiSlug,
     });
   }
 
   async testListPortalApiDocuments(apiSlug: string): Promise<any> {
     return await this.kongApi.listPortalApiDocuments({
-      apiIdOrSlug: apiSlug
+      apiIdOrSlug: apiSlug,
     });
   }
 
-  async testFetchPortalApiDocument(apiSlug: string, documentSlug: string): Promise<any> {
+  async testFetchPortalApiDocument(
+    apiSlug: string,
+    documentSlug: string,
+  ): Promise<any> {
     return await this.kongApi.fetchPortalApiDocument({
       apiIdOrSlug: apiSlug,
       documentIdOrSlug: documentSlug,
-      format: "json"
+      format: "json",
     });
   }
 
@@ -627,35 +727,46 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
   // Complex workflows (4 tools)
   // =========================
 
-  async testCreatePortalApplicationRegistration(applicationId: string, apiId: string): Promise<any> {
+  async testCreatePortalApplicationRegistration(
+    applicationId: string,
+    apiId: string,
+  ): Promise<any> {
     const result = await this.kongApi.createPortalApplicationRegistration({
       applicationId,
       apiId,
-      requestReason: "Flight API integration for automated booking system"
+      requestReason: "Flight API integration for automated booking system",
     });
     return result;
   }
 
-  async testGetPortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
+  async testGetPortalApplicationRegistration(
+    applicationId: string,
+    registrationId: string,
+  ): Promise<any> {
     return await this.kongApi.getPortalApplicationRegistration({
       applicationId,
-      registrationId
+      registrationId,
     });
   }
 
-  async testDeletePortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
+  async testDeletePortalApplicationRegistration(
+    applicationId: string,
+    registrationId: string,
+  ): Promise<any> {
     return await this.kongApi.deletePortalApplicationRegistration({
       applicationId,
-      registrationId
+      registrationId,
     });
   }
 
-  async testQueryPortalApplicationAnalytics(applicationId: string): Promise<any> {
+  async testQueryPortalApplicationAnalytics(
+    applicationId: string,
+  ): Promise<any> {
     return await this.kongApi.queryPortalApplicationAnalytics({
       applicationId,
       metrics: ["request_count", "response_time", "success_rate"],
       timeRange: "24H",
-      granularity: "hour"
+      granularity: "hour",
     });
   }
 
@@ -668,13 +779,13 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
         email: developerEmail,
         fullName: "Flight API Developer",
         password: "SecurePassword123!",
-        organization: "Kong Flight Services"
+        organization: "Kong Flight Services",
       });
 
       // Step 2: Authenticate developer
       const session = await this.kongApi.authenticatePortalDeveloper({
         username: developerEmail,
-        password: "SecurePassword123!"
+        password: "SecurePassword123!",
       });
 
       // Step 3: Get developer profile
@@ -683,14 +794,14 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
       // Step 4: Create application
       const application = await this.kongApi.createPortalApplication({
         name: `flight-app-${Date.now()}`,
-        description: "Flight booking application"
+        description: "Flight booking application",
       });
 
       // Step 5: Create credentials
       const credential = await this.kongApi.createPortalCredential({
         applicationId: application.applicationId,
         credentialType: "api_key",
-        name: "Flight API Key"
+        name: "Flight API Key",
       });
 
       // Step 6: Logout
@@ -702,10 +813,13 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
         profile,
         application,
         credential,
-        workflow: "complete"
+        workflow: "complete",
       };
     } catch (error: any) {
-      console.warn("Portal developer workflow not fully available:", error.message);
+      console.warn(
+        "Portal developer workflow not fully available:",
+        error.message,
+      );
       return { workflow: "partial", error: error.message };
     }
   }
@@ -714,11 +828,11 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
   async testCompleteApplicationLifecycle(): Promise<any> {
     try {
       const appName = `lifecycle-app-${Date.now()}`;
-      
+
       // Step 1: Create application
       const application = await this.kongApi.createPortalApplication({
         name: appName,
-        description: "Complete lifecycle test application"
+        description: "Complete lifecycle test application",
       });
 
       // Step 2: Create multiple credential types
@@ -727,7 +841,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
         const apiKeyCredential = await this.kongApi.createPortalCredential({
           applicationId: application.applicationId,
           credentialType: "api_key",
-          name: "API Key Credential"
+          name: "API Key Credential",
         });
         credentials.push(apiKeyCredential);
       } catch (error: any) {
@@ -739,7 +853,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
           applicationId: application.applicationId,
           credentialType: "oauth2",
           name: "OAuth2 Credential",
-          scopes: ["read", "write"]
+          scopes: ["read", "write"],
         });
         credentials.push(oauth2Credential);
       } catch (error: any) {
@@ -749,27 +863,28 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
       // Step 3: List and manage credentials
       const credentialsList = await this.kongApi.listPortalCredentials({
         applicationId: application.applicationId,
-        pageSize: 10
+        pageSize: 10,
       });
 
       // Step 4: Update application
       const updatedApp = await this.kongApi.updatePortalApplication({
         applicationId: application.applicationId,
-        description: "Updated lifecycle application with credentials"
+        description: "Updated lifecycle application with credentials",
       });
 
       // Step 5: Get application details
       const appDetails = await this.kongApi.getPortalApplication({
-        applicationId: application.applicationId
+        applicationId: application.applicationId,
       });
 
       // Step 6: Regenerate secret (if OAuth2)
       let regeneratedSecret = null;
       if (credentials.length > 0) {
         try {
-          regeneratedSecret = await this.kongApi.regeneratePortalApplicationSecret({
-            applicationId: application.applicationId
-          });
+          regeneratedSecret =
+            await this.kongApi.regeneratePortalApplicationSecret({
+              applicationId: application.applicationId,
+            });
         } catch (error: any) {
           console.warn("Secret regeneration not available:", error.message);
         }
@@ -781,7 +896,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
           try {
             await this.kongApi.deletePortalCredential({
               applicationId: application.applicationId,
-              credentialId: credential.credentialId
+              credentialId: credential.credentialId,
             });
           } catch (error: any) {
             console.warn("Credential cleanup failed:", error.message);
@@ -791,7 +906,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
 
       // Step 8: Delete application
       await this.kongApi.deletePortalApplication({
-        applicationId: application.applicationId
+        applicationId: application.applicationId,
       });
 
       return {
@@ -801,7 +916,7 @@ TPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTPTMIIBIjANBgkqhkiG9w0B
         updatedApp,
         appDetails,
         regeneratedSecret,
-        lifecycle: "complete"
+        lifecycle: "complete",
       };
     } catch (error: any) {
       console.warn("Application lifecycle not fully available:", error.message);
@@ -836,7 +951,9 @@ export const FlightApiAssertions = {
    */
   assertPluginConfig(plugin: any, expectedConfig: any) {
     expect(plugin.name).toBe(expectedConfig.name);
-    expect(plugin.config).toEqual(expect.objectContaining(expectedConfig.config));
+    expect(plugin.config).toEqual(
+      expect.objectContaining(expectedConfig.config),
+    );
   },
 
   /**
@@ -859,7 +976,7 @@ export const FlightApiAssertions = {
       expect(analytics.data[0]).toHaveProperty("timestamp");
       expect(analytics.data[0]).toHaveProperty("statusCode");
     }
-  }
+  },
 };
 
 // Export types for TypeScript support

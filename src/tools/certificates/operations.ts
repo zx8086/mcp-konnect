@@ -1,8 +1,11 @@
-import { KongApi } from "../../api/kong-api.js";
-import { mcpLogger } from '../../utils/mcp-logger.js';
+import type { KongApi } from "../../api/kong-api.js";
 import { withErrorContext } from "../../utils/error-handling.js";
 import { formatCertificate, formatEntityList } from "../../utils/formatting.js";
-import { validateCertificate, validatePrivateKey } from "../../utils/validation.js";
+import { mcpLogger } from "../../utils/mcp-logger.js";
+import {
+  validateCertificate,
+  validatePrivateKey,
+} from "../../utils/validation.js";
 
 /**
  * List certificates for a specific control plane with health analysis
@@ -11,15 +14,24 @@ export async function listCertificates(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
-  return withErrorContext("list_certificates", "certificate", undefined, controlPlaneId)(async () => {
+  return withErrorContext(
+    "list_certificates",
+    "certificate",
+    undefined,
+    controlPlaneId,
+  )(async () => {
     const result = await api.listCertificates(controlPlaneId, size, offset);
 
     // Analyze certificate health (expiration dates, etc.)
     const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
-    const ninetyDaysFromNow = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000));
+    const thirtyDaysFromNow = new Date(
+      now.getTime() + 30 * 24 * 60 * 60 * 1000,
+    );
+    const ninetyDaysFromNow = new Date(
+      now.getTime() + 90 * 24 * 60 * 60 * 1000,
+    );
 
     return {
       metadata: {
@@ -27,24 +39,26 @@ export async function listCertificates(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       certificates: result.data.map((cert: any) => {
         // Parse certificate to extract expiration date
-        let expirationDate = null;
-        let daysUntilExpiration = null;
+        const expirationDate = null;
+        const daysUntilExpiration = null;
         let expirationStatus = "unknown";
-        
+
         try {
           // This is a simplified approach - in production you'd want proper certificate parsing
           if (cert.cert) {
-            const certLines = cert.cert.split('\n');
+            const certLines = cert.cert.split("\n");
             // Look for certificate validity period (this is simplified)
             // In production, you'd use a proper X.509 certificate parser
             expirationStatus = "valid";
           }
         } catch (error) {
-          mcpLogger.error('certificates', 'Error parsing certificate', { error });
+          mcpLogger.error("certificates", "Error parsing certificate", {
+            error,
+          });
         }
 
         return {
@@ -58,13 +72,15 @@ export async function listCertificates(
             status: expirationStatus,
             daysUntilExpiration: daysUntilExpiration,
             expirationDate: expirationDate,
-            warnings: daysUntilExpiration && daysUntilExpiration < 30 ? 
-              ["Certificate expires within 30 days"] : []
+            warnings:
+              daysUntilExpiration && daysUntilExpiration < 30
+                ? ["Certificate expires within 30 days"]
+                : [],
           },
           metadata: {
             createdAt: cert.created_at,
-            updatedAt: cert.updated_at
-          }
+            updatedAt: cert.updated_at,
+          },
         };
       }),
       healthSummary: {
@@ -76,14 +92,14 @@ export async function listCertificates(
         recommendations: [
           "Review certificates expiring within 30 days",
           "Consider automating certificate renewal with ACME plugin",
-          "Use create-certificate tool to upload new certificates"
-        ]
+          "Use create-certificate tool to upload new certificates",
+        ],
       },
       relatedTools: [
         "Use get-certificate to inspect specific certificate details",
         "Use create-certificate to upload new certificates",
-        "Use list-snis to see SNI associations"
-      ]
+        "Use list-snis to see SNI associations",
+      ],
     };
   });
 }
@@ -94,17 +110,22 @@ export async function listCertificates(
 export async function getCertificate(
   api: KongApi,
   controlPlaneId: string,
-  certificateId: string
+  certificateId: string,
 ) {
-  return withErrorContext("get_certificate", "certificate", certificateId, controlPlaneId)(async () => {
+  return withErrorContext(
+    "get_certificate",
+    "certificate",
+    certificateId,
+    controlPlaneId,
+  )(async () => {
     const result = await api.getCertificate(controlPlaneId, certificateId);
 
     // Enhanced certificate analysis
     const cert = result.data;
-    
+
     // Validate certificate format
     const certValidation = validateCertificate(cert.cert || "");
-    
+
     return {
       certificate: {
         certificateId: cert.id,
@@ -115,24 +136,27 @@ export async function getCertificate(
         snis: cert.snis || [],
         tags: cert.tags || [],
         validation: {
-          certFormat: certValidation.isValid ? "Valid PEM format" : certValidation.error,
+          certFormat: certValidation.isValid
+            ? "Valid PEM format"
+            : certValidation.error,
           hasAlternativeCert: !!cert.cert_alt,
-          hasPrivateKey: !!cert.key
+          hasPrivateKey: !!cert.key,
         },
         metadata: {
           createdAt: cert.created_at,
-          updatedAt: cert.updated_at
-        }
+          updatedAt: cert.updated_at,
+        },
       },
       usage: {
         sniAssociations: cert.snis?.length || 0,
-        relatedServices: "Use list-services to find services using this certificate"
+        relatedServices:
+          "Use list-services to find services using this certificate",
       },
       recommendations: [
         "Regularly rotate certificates before expiration",
         "Use SNI associations to apply certificates to specific domains",
-        "Monitor certificate expiration dates proactively"
-      ]
+        "Monitor certificate expiration dates proactively",
+      ],
     };
   });
 }
@@ -147,15 +171,20 @@ export async function createCertificate(
   key: string,
   certAlt?: string,
   keyAlt?: string,
-  tags?: string[]
+  tags?: string[],
 ) {
-  return withErrorContext("create_certificate", "certificate", undefined, controlPlaneId)(async () => {
+  return withErrorContext(
+    "create_certificate",
+    "certificate",
+    undefined,
+    controlPlaneId,
+  )(async () => {
     // Validate certificate and key format
     const certValidation = validateCertificate(cert);
     if (!certValidation.isValid) {
       throw new Error(`Invalid certificate format: ${certValidation.error}`);
     }
-    
+
     const keyValidation = validatePrivateKey(key);
     if (!keyValidation.isValid) {
       throw new Error(`Invalid private key format: ${keyValidation.error}`);
@@ -165,7 +194,9 @@ export async function createCertificate(
     if (certAlt) {
       const certAltValidation = validateCertificate(certAlt);
       if (!certAltValidation.isValid) {
-        throw new Error(`Invalid alternative certificate format: ${certAltValidation.error}`);
+        throw new Error(
+          `Invalid alternative certificate format: ${certAltValidation.error}`,
+        );
       }
     }
 
@@ -173,7 +204,9 @@ export async function createCertificate(
     if (keyAlt) {
       const keyAltValidation = validatePrivateKey(keyAlt);
       if (!keyAltValidation.isValid) {
-        throw new Error(`Invalid alternative private key format: ${keyAltValidation.error}`);
+        throw new Error(
+          `Invalid alternative private key format: ${keyAltValidation.error}`,
+        );
       }
     }
 
@@ -182,7 +215,7 @@ export async function createCertificate(
       key,
       cert_alt: certAlt,
       key_alt: keyAlt,
-      tags: tags || []
+      tags: tags || [],
     };
 
     const result = await api.createCertificate(controlPlaneId, certificateData);
@@ -196,14 +229,14 @@ export async function createCertificate(
         tags: result.data.tags || [],
         metadata: {
           createdAt: result.data.created_at,
-          updatedAt: result.data.updated_at
-        }
+          updatedAt: result.data.updated_at,
+        },
       },
       nextSteps: [
         "Use create-sni tool to associate this certificate with domain names",
         "Configure services to use this certificate for TLS termination",
-        "Monitor certificate expiration and plan for renewal"
-      ]
+        "Monitor certificate expiration and plan for renewal",
+      ],
     };
   });
 }
@@ -219,9 +252,14 @@ export async function updateCertificate(
   key?: string,
   certAlt?: string,
   keyAlt?: string,
-  tags?: string[]
+  tags?: string[],
 ) {
-  return withErrorContext("update_certificate", "certificate", certificateId, controlPlaneId)(async () => {
+  return withErrorContext(
+    "update_certificate",
+    "certificate",
+    certificateId,
+    controlPlaneId,
+  )(async () => {
     // Validate provided certificate and key if updating
     if (cert) {
       const certValidation = validateCertificate(cert);
@@ -229,7 +267,7 @@ export async function updateCertificate(
         throw new Error(`Invalid certificate format: ${certValidation.error}`);
       }
     }
-    
+
     if (key) {
       const keyValidation = validatePrivateKey(key);
       if (!keyValidation.isValid) {
@@ -240,14 +278,18 @@ export async function updateCertificate(
     if (certAlt) {
       const certAltValidation = validateCertificate(certAlt);
       if (!certAltValidation.isValid) {
-        throw new Error(`Invalid alternative certificate format: ${certAltValidation.error}`);
+        throw new Error(
+          `Invalid alternative certificate format: ${certAltValidation.error}`,
+        );
       }
     }
 
     if (keyAlt) {
       const keyAltValidation = validatePrivateKey(keyAlt);
       if (!keyAltValidation.isValid) {
-        throw new Error(`Invalid alternative private key format: ${keyAltValidation.error}`);
+        throw new Error(
+          `Invalid alternative private key format: ${keyAltValidation.error}`,
+        );
       }
     }
 
@@ -258,7 +300,11 @@ export async function updateCertificate(
     if (keyAlt !== undefined) updateData.key_alt = keyAlt;
     if (tags !== undefined) updateData.tags = tags;
 
-    const result = await api.updateCertificate(controlPlaneId, certificateId, updateData);
+    const result = await api.updateCertificate(
+      controlPlaneId,
+      certificateId,
+      updateData,
+    );
 
     return {
       certificate: {
@@ -268,13 +314,13 @@ export async function updateCertificate(
         tags: result.data.tags || [],
         metadata: {
           createdAt: result.data.created_at,
-          updatedAt: result.data.updated_at
-        }
+          updatedAt: result.data.updated_at,
+        },
       },
       recommendations: [
         "Verify that all services using this certificate continue to work properly",
-        "Update any SNI associations if domain names have changed"
-      ]
+        "Update any SNI associations if domain names have changed",
+      ],
     };
   });
 }
@@ -285,9 +331,14 @@ export async function updateCertificate(
 export async function deleteCertificate(
   api: KongApi,
   controlPlaneId: string,
-  certificateId: string
+  certificateId: string,
 ) {
-  return withErrorContext("delete_certificate", "certificate", certificateId, controlPlaneId)(async () => {
+  return withErrorContext(
+    "delete_certificate",
+    "certificate",
+    certificateId,
+    controlPlaneId,
+  )(async () => {
     await api.deleteCertificate(controlPlaneId, certificateId);
 
     return {
@@ -297,8 +348,8 @@ export async function deleteCertificate(
       warnings: [
         "Any SNI associations for this certificate have been removed",
         "Services configured to use this certificate may experience SSL/TLS errors",
-        "Verify that no services depend on this certificate before deletion"
-      ]
+        "Verify that no services depend on this certificate before deletion",
+      ],
     };
   });
 }

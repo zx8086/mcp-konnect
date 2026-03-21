@@ -2,12 +2,15 @@
  * MCP tool tracer wrapper for comprehensive tool execution tracing
  */
 
-import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import { UniversalTracingManager } from "./tracing.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { getToolByMethod } from "../tools/registry.js";
-import { getOrCreateConversation, trackConversationFlow } from "./conversation-tracker.js";
+import {
+  getOrCreateConversation,
+  trackConversationFlow,
+} from "./conversation-tracker.js";
 import { detectIntent } from "./intent-detector.js";
 import { getCurrentSession } from "./session-manager.js";
+import type { UniversalTracingManager } from "./tracing.js";
 
 interface ToolExecutionContext {
   toolName: string;
@@ -29,31 +32,32 @@ interface ToolExecutionContext {
 export function createTracedToolHandler(
   originalHandler: (args: any, extra: RequestHandlerExtra) => Promise<any>,
   toolName: string,
-  tracingManager: UniversalTracingManager
+  tracingManager: UniversalTracingManager,
 ) {
   return async (args: any, extra: RequestHandlerExtra) => {
     // Get tool information for context
     const toolInfo = getToolByMethod(toolName);
-    const category = toolInfo?.category || 'unknown';
+    const category = toolInfo?.category || "unknown";
 
     // Get current session for conversation tracking
     const session = getCurrentSession();
-    
+
     // Enhanced conversation context
     let conversationContext: any = {};
     if (session?.sessionId) {
       const conversation = getOrCreateConversation(session.sessionId, toolName);
       const intent = detectIntent(toolName, args, conversation.toolSequence);
-      
+
       // Track conversation flow before execution
       trackConversationFlow(toolName, intent.primary);
-      
+
       conversationContext = {
         conversationId: conversation.conversationId,
         messageCount: conversation.messageCount + 1, // Next message
         userIntent: intent.primary,
-        conversationFlow: conversation.toolSequence.length > 1 ? 'continuing' : 'new',
-        sessionId: session.sessionId
+        conversationFlow:
+          conversation.toolSequence.length > 1 ? "continuing" : "new",
+        sessionId: session.sessionId,
       };
     }
 
@@ -65,21 +69,21 @@ export function createTracedToolHandler(
       toolName,
       category,
       parameters: sanitizeParameters(args),
-      region: process.env.KONNECT_REGION || 'us',
+      region: process.env.KONNECT_REGION || "us",
       timestamp: new Date().toISOString(),
       ...conversationContext,
-      ...metadata
+      ...metadata,
     };
 
     // Execute with enhanced tracing
     const { result, traceContext } = await tracingManager.traceToolExecution(
       toolName,
       () => originalHandler(args, extra),
-      context
+      context,
     );
 
     // Enhance result with comprehensive trace context
-    if (traceContext && await tracingManager.isEnabled()) {
+    if (traceContext && (await tracingManager.isEnabled())) {
       return {
         ...result,
         _trace: {
@@ -91,12 +95,16 @@ export function createTracedToolHandler(
           conversationFlow: traceContext.conversationFlow,
           userIntent: traceContext.userIntent,
           messageCount: conversationContext.messageCount,
-          conversationQuality: traceContext.conversationQuality ? {
-            coherenceScore: traceContext.conversationQuality.coherenceScore,
-            efficiencyScore: traceContext.conversationQuality.efficiencyScore,
-            userExperienceScore: traceContext.conversationQuality.userExperienceScore
-          } : undefined
-        }
+          conversationQuality: traceContext.conversationQuality
+            ? {
+                coherenceScore: traceContext.conversationQuality.coherenceScore,
+                efficiencyScore:
+                  traceContext.conversationQuality.efficiencyScore,
+                userExperienceScore:
+                  traceContext.conversationQuality.userExperienceScore,
+              }
+            : undefined,
+        },
       };
     }
 
@@ -117,7 +125,7 @@ function extractToolMetadata(toolName: string, args: any): Record<string, any> {
 
   // Tool-specific metadata extraction
   switch (toolName) {
-    case 'query_api_requests':
+    case "query_api_requests":
       metadata.timeRange = args.timeRange;
       metadata.maxResults = args.maxResults;
       metadata.filterCount = [
@@ -126,44 +134,48 @@ function extractToolMetadata(toolName: string, args: any): Record<string, any> {
         args.httpMethods,
         args.consumerIds,
         args.serviceIds,
-        args.routeIds
-      ].filter(f => f && f.length > 0).length;
+        args.routeIds,
+      ].filter((f) => f && f.length > 0).length;
       break;
 
-    case 'get_consumer_requests':
+    case "get_consumer_requests":
       metadata.timeRange = args.timeRange;
       metadata.consumerId = args.consumerId;
       metadata.successOnly = args.successOnly;
       metadata.failureOnly = args.failureOnly;
       break;
 
-    case 'list_control_planes':
+    case "list_control_planes":
       metadata.pageSize = args.pageSize;
-      metadata.hasFilters = !!(args.filterName || args.filterClusterType || args.filterCloudGateway);
+      metadata.hasFilters = !!(
+        args.filterName ||
+        args.filterClusterType ||
+        args.filterCloudGateway
+      );
       break;
 
-    case 'list_certificates':
+    case "list_certificates":
       metadata.size = args.size;
       metadata.hasOffset = !!args.offset;
       break;
 
-    case 'create_certificate':
+    case "create_certificate":
       metadata.hasAlternativeCert = !!(args.certAlt || args.keyAlt);
       metadata.tagCount = args.tags?.length || 0;
       break;
 
-    case 'update_certificate':
+    case "update_certificate":
       metadata.certificateId = args.certificateId;
       metadata.updateFields = [
-        args.cert && 'cert',
-        args.key && 'key',
-        args.certAlt && 'certAlt',
-        args.keyAlt && 'keyAlt',
-        args.tags && 'tags'
+        args.cert && "cert",
+        args.key && "key",
+        args.certAlt && "certAlt",
+        args.keyAlt && "keyAlt",
+        args.tags && "tags",
       ].filter(Boolean);
       break;
 
-    case 'delete_certificate':
+    case "delete_certificate":
       metadata.certificateId = args.certificateId;
       break;
 
@@ -180,24 +192,31 @@ function extractToolMetadata(toolName: string, args: any): Record<string, any> {
  * Sanitize tool parameters for tracing (remove sensitive data)
  */
 function sanitizeParameters(args: any): any {
-  if (!args || typeof args !== 'object') {
+  if (!args || typeof args !== "object") {
     return args;
   }
 
   const sanitized = { ...args };
-  
+
   // List of sensitive parameter names to redact
   const sensitiveParams = [
-    'cert', 'certificate',
-    'key', 'privateKey', 'private_key',
-    'certAlt', 'keyAlt',
-    'secret', 'token', 'password',
-    'apiKey', 'api_key'
+    "cert",
+    "certificate",
+    "key",
+    "privateKey",
+    "private_key",
+    "certAlt",
+    "keyAlt",
+    "secret",
+    "token",
+    "password",
+    "apiKey",
+    "api_key",
   ];
 
   for (const param of sensitiveParams) {
     if (param in sanitized) {
-      sanitized[param] = '*** REDACTED FOR SECURITY ***';
+      sanitized[param] = "*** REDACTED FOR SECURITY ***";
     }
   }
 
@@ -216,15 +235,18 @@ export class BatchToolTracer {
   constructor(tracingManager: UniversalTracingManager, sessionName: string) {
     this.tracingManager = tracingManager;
     this.sessionName = sessionName;
-    
+
     // Capture conversation context at batch start
     const currentSession = getCurrentSession();
     if (currentSession?.sessionId) {
-      const conversation = getOrCreateConversation(currentSession.sessionId, 'batch');
+      const conversation = getOrCreateConversation(
+        currentSession.sessionId,
+        "batch",
+      );
       this.conversationContext = {
         sessionId: currentSession.sessionId,
         conversationId: conversation.conversationId,
-        batchStartMessageCount: conversation.messageCount
+        batchStartMessageCount: conversation.messageCount,
       };
     }
   }
@@ -234,47 +256,51 @@ export class BatchToolTracer {
     const enhancedMetadata = {
       ...metadata,
       conversationContext: this.conversationContext,
-      batchType: 'conversation-aware',
-      timestamp: new Date().toISOString()
+      batchType: "conversation-aware",
+      timestamp: new Date().toISOString(),
     };
-    
-    this.session = await this.tracingManager.createSessionTrace(enhancedMetadata, async () => {
-      return { sessionStarted: true, sessionName: this.sessionName };
-    });
+
+    this.session = await this.tracingManager.createSessionTrace(
+      enhancedMetadata,
+      async () => {
+        return { sessionStarted: true, sessionName: this.sessionName };
+      },
+    );
     return this.session;
   }
 
   async traceToolBatch<T>(
     toolName: string,
     operations: Array<() => Promise<T>>,
-    batchMetadata: Record<string, any> = {}
+    batchMetadata: Record<string, any> = {},
   ): Promise<T[]> {
     const results: T[] = [];
     const session = getCurrentSession();
-    
+
     // Track batch as a workflow
     if (session?.sessionId) {
-      trackConversationFlow(`batch_${toolName}`, 'bulk_operation');
+      trackConversationFlow(`batch_${toolName}`, "bulk_operation");
     }
-    
+
     for (let i = 0; i < operations.length; i++) {
       const operation = operations[i];
       const metadata = {
-        category: 'batch',
+        category: "batch",
         ...batchMetadata,
         batchIndex: i,
         batchSize: operations.length,
         sessionName: this.sessionName,
         // Enhanced conversation metadata
         conversationId: this.conversationContext?.conversationId,
-        batchStartMessageCount: this.conversationContext?.batchStartMessageCount,
-        batchProgressPercent: Math.round((i / operations.length) * 100)
+        batchStartMessageCount:
+          this.conversationContext?.batchStartMessageCount,
+        batchProgressPercent: Math.round((i / operations.length) * 100),
       };
 
       const { result } = await this.tracingManager.traceToolExecution(
         `${toolName}_batch_${i}`,
         operation,
-        metadata
+        metadata,
       );
 
       results.push(result);
@@ -294,7 +320,7 @@ export class BatchToolTracer {
     return {
       sessionName: this.sessionName,
       conversationContext: this.conversationContext,
-      completedAt: new Date().toISOString()
+      completedAt: new Date().toISOString(),
     };
   }
 }
@@ -303,25 +329,28 @@ export class BatchToolTracer {
  * Tool performance metrics collector
  */
 export class ToolPerformanceCollector {
-  private metrics = new Map<string, {
-    callCount: number;
-    totalDuration: number;
-    errorCount: number;
-    lastCalled: string;
-  }>();
+  private metrics = new Map<
+    string,
+    {
+      callCount: number;
+      totalDuration: number;
+      errorCount: number;
+      lastCalled: string;
+    }
+  >();
 
   recordToolExecution(toolName: string, duration: number, success: boolean) {
     const existing = this.metrics.get(toolName) || {
       callCount: 0,
       totalDuration: 0,
       errorCount: 0,
-      lastCalled: ''
+      lastCalled: "",
     };
 
     existing.callCount++;
     existing.totalDuration += duration;
     existing.lastCalled = new Date().toISOString();
-    
+
     if (!success) {
       existing.errorCount++;
     }
@@ -337,19 +366,19 @@ export class ToolPerformanceCollector {
       ...stats,
       averageDuration: stats.totalDuration / stats.callCount,
       successRate: (stats.callCount - stats.errorCount) / stats.callCount,
-      errorRate: stats.errorCount / stats.callCount
+      errorRate: stats.errorCount / stats.callCount,
     };
   }
 
   getAllStats() {
     const result: Record<string, any> = {};
-    
+
     for (const [toolName, stats] of this.metrics) {
       result[toolName] = {
         ...stats,
         averageDuration: stats.totalDuration / stats.callCount,
         successRate: (stats.callCount - stats.errorCount) / stats.callCount,
-        errorRate: stats.errorCount / stats.callCount
+        errorRate: stats.errorCount / stats.callCount,
       };
     }
 

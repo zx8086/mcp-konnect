@@ -1,5 +1,5 @@
-import { KongApi } from "../../api/kong-api.js";
-import { ApiRequestFilter } from "../../types.js";
+import type { KongApi } from "../../api/kong-api.js";
+import type { ApiRequestFilter } from "../../types.js";
 import { withErrorContext } from "../../utils/error-handling.js";
 import { formatApiRequestsResponse } from "../../utils/formatting.js";
 
@@ -11,8 +11,8 @@ export function formatResponseTimes(data: any) {
     latencyMs: {
       total: data.latencies_response_ms,
       gateway: data.latencies_kong_gateway_ms,
-      upstream: data.latencies_upstream_ms
-    }
+      upstream: data.latencies_upstream_ms,
+    },
   };
 }
 
@@ -28,9 +28,12 @@ export async function queryApiRequests(
   consumerIds?: string[],
   serviceIds?: string[],
   routeIds?: string[],
-  maxResults = 100
+  maxResults = 100,
 ) {
-  return withErrorContext("query_api_requests", "analytics")(async () => {
+  return withErrorContext(
+    "query_api_requests",
+    "analytics",
+  )(async () => {
     // Build filters array
     const filters: ApiRequestFilter[] = [];
 
@@ -39,7 +42,7 @@ export async function queryApiRequests(
       filters.push({
         field: "status_code",
         operator: "in",
-        value: statusCodes
+        value: statusCodes,
       });
     }
 
@@ -47,7 +50,7 @@ export async function queryApiRequests(
       filters.push({
         field: "status_code",
         operator: "not_in",
-        value: excludeStatusCodes
+        value: excludeStatusCodes,
       });
     }
 
@@ -56,7 +59,7 @@ export async function queryApiRequests(
       filters.push({
         field: "http_method",
         operator: "in",
-        value: httpMethods
+        value: httpMethods,
       });
     }
 
@@ -65,7 +68,7 @@ export async function queryApiRequests(
       filters.push({
         field: "consumer",
         operator: "in",
-        value: consumerIds
+        value: consumerIds,
       });
     }
 
@@ -74,7 +77,7 @@ export async function queryApiRequests(
       filters.push({
         field: "gateway_service",
         operator: "in",
-        value: serviceIds
+        value: serviceIds,
       });
     }
 
@@ -83,7 +86,7 @@ export async function queryApiRequests(
       filters.push({
         field: "route",
         operator: "in",
-        value: routeIds
+        value: routeIds,
       });
     }
 
@@ -97,9 +100,9 @@ export async function queryApiRequests(
           start: result.meta.time_range.start,
           end: result.meta.time_range.end,
         },
-        filters: filters
+        filters: filters,
       },
-      requests: result.results.map(req => ({
+      requests: result.results.map((req) => ({
         requestId: req.request_id,
         timestamp: req.request_start,
         httpMethod: req.http_method,
@@ -111,7 +114,7 @@ export async function queryApiRequests(
         latency: {
           totalMs: req.latencies_response_ms,
           gatewayMs: req.latencies_kong_gateway_ms,
-          upstreamMs: req.latencies_upstream_ms
+          upstreamMs: req.latencies_upstream_ms,
         },
         clientIp: req.client_ip,
         apiProduct: req.api_product,
@@ -120,15 +123,15 @@ export async function queryApiRequests(
         authType: req.auth_type,
         headers: {
           host: req.header_host,
-          userAgent: req.header_user_agent
+          userAgent: req.header_user_agent,
         },
         dataPlane: {
           nodeId: req.data_plane_node,
-          version: req.data_plane_node_version
+          version: req.data_plane_node_version,
         },
         controlPlane: {
           id: req.control_plane,
-          group: req.control_plane_group
+          group: req.control_plane_group,
         },
         rateLimiting: {
           enabled: req.ratelimit_enabled,
@@ -139,53 +142,53 @@ export async function queryApiRequests(
             second: {
               enabled: req.ratelimit_enabled_second,
               limit: req.ratelimit_limit_second,
-              remaining: req.ratelimit_remaining_second
+              remaining: req.ratelimit_remaining_second,
             },
             minute: {
               enabled: req.ratelimit_enabled_minute,
               limit: req.ratelimit_limit_minute,
-              remaining: req.ratelimit_remaining_minute
+              remaining: req.ratelimit_remaining_minute,
             },
             hour: {
               enabled: req.ratelimit_enabled_hour,
               limit: req.ratelimit_limit_hour,
-              remaining: req.ratelimit_remaining_hour
+              remaining: req.ratelimit_remaining_hour,
             },
             day: {
               enabled: req.ratelimit_enabled_day,
               limit: req.ratelimit_limit_day,
-              remaining: req.ratelimit_remaining_day
+              remaining: req.ratelimit_remaining_day,
             },
             month: {
               enabled: req.ratelimit_enabled_month,
               limit: req.ratelimit_limit_month,
-              remaining: req.ratelimit_remaining_month
+              remaining: req.ratelimit_remaining_month,
             },
             year: {
               enabled: req.ratelimit_enabled_year,
               limit: req.ratelimit_limit_year,
-              remaining: req.ratelimit_remaining_year
-            }
-          }
+              remaining: req.ratelimit_remaining_year,
+            },
+          },
         },
         service: {
           port: req.service_port,
-          protocol: req.service_protocol
+          protocol: req.service_protocol,
         },
         requestBodySize: req.request_body_size,
         responseBodySize: req.response_body_size,
         responseHeaders: {
           contentType: req.response_header_content_type,
-          contentLength: req.response_header_content_length
+          contentLength: req.response_header_content_length,
         },
         traceId: req.trace_id,
         upstreamUri: req.upstream_uri,
         upstreamStatus: req.upstream_status,
         recommendations: [
           "Use 'get-consumer-requests' tool with consumerId from top failing consumers for more details",
-          "Check 'query-api-requests' with specific status codes for deeper investigation"
-        ]
-      }))
+          "Check 'query-api-requests' with specific status codes for deeper investigation",
+        ],
+      })),
     };
   });
 }
@@ -199,16 +202,20 @@ export async function getConsumerRequests(
   timeRange: string,
   successOnly = false,
   failureOnly = false,
-  maxResults = 100
+  maxResults = 100,
 ) {
-  return withErrorContext("get_consumer_requests", "consumer", consumerId)(async () => {
+  return withErrorContext(
+    "get_consumer_requests",
+    "consumer",
+    consumerId,
+  )(async () => {
     // Build filters array
     const filters: ApiRequestFilter[] = [
       {
         field: "consumer",
         operator: "in",
-        value: [consumerId]
-      }
+        value: [consumerId],
+      },
     ];
 
     // Add status code filter if needed
@@ -216,51 +223,59 @@ export async function getConsumerRequests(
       filters.push({
         field: "status_code_grouped",
         operator: "in",
-        value: ["2XX"]
+        value: ["2XX"],
       });
     } else if (failureOnly) {
       filters.push({
         field: "status_code_grouped",
         operator: "in",
-        value: ["4XX", "5XX"]
+        value: ["4XX", "5XX"],
       });
     }
 
     const result = await api.queryApiRequests(timeRange, filters, maxResults);
-    
+
     // Calculate some statistics if we have results
     let avgLatency = 0;
     let successRate = 0;
-    let statusCodeCounts: Record<string, number> = {};
-    let serviceBreakdown: Record<string, { count: number, statusCodes: Record<string, number> }> = {};
-    
+    const statusCodeCounts: Record<string, number> = {};
+    const serviceBreakdown: Record<
+      string,
+      { count: number; statusCodes: Record<string, number> }
+    > = {};
+
     if (result.results.length > 0) {
       // Calculate average latency
-      avgLatency = result.results.reduce((sum, req) => sum + (req.latencies_response_ms || 0), 0) / result.results.length;
-      
+      avgLatency =
+        result.results.reduce(
+          (sum, req) => sum + (req.latencies_response_ms || 0),
+          0,
+        ) / result.results.length;
+
       // Calculate success rate
-      const successCount = result.results.filter(req => {
+      const successCount = result.results.filter((req) => {
         const status = req.status_code ?? req.response_http_status ?? 0;
         return status >= 200 && status < 300;
       }).length;
       successRate = (successCount / result.results.length) * 100;
-      
+
       // Count status codes
-      result.results.forEach(req => {
+      result.results.forEach((req) => {
         const status = req.status_code ?? req.response_http_status ?? 0;
         statusCodeCounts[status] = (statusCodeCounts[status] || 0) + 1;
       });
-      
+
       // Service breakdown
-      result.results.forEach(req => {
+      result.results.forEach((req) => {
         const service = req.gateway_service ?? "unknown";
         if (!serviceBreakdown[service]) {
           serviceBreakdown[service] = { count: 0, statusCodes: {} };
         }
         serviceBreakdown[service].count++;
-        
+
         const status = req.status_code ?? req.response_http_status ?? 0;
-        serviceBreakdown[service].statusCodes[status] = (serviceBreakdown[service].statusCodes[status] || 0) + 1;
+        serviceBreakdown[service].statusCodes[status] =
+          (serviceBreakdown[service].statusCodes[status] || 0) + 1;
       });
     }
 
@@ -275,28 +290,38 @@ export async function getConsumerRequests(
         },
         filters: {
           successOnly,
-          failureOnly
-        }
+          failureOnly,
+        },
       },
       statistics: {
         averageLatencyMs: parseFloat(avgLatency.toFixed(2)),
         successRate: parseFloat(successRate.toFixed(2)),
-        statusCodeDistribution: Object.entries(statusCodeCounts).map(([code, count]) => ({
-          statusCode: parseInt(code),
-          count: count,
-          percentage: parseFloat(((count / result.results.length) * 100).toFixed(2))
-        })).sort((a, b) => b.count - a.count),
-        serviceDistribution: Object.entries(serviceBreakdown).map(([service, data]) => ({
-          serviceId: service,
-          count: data.count,
-          percentage: parseFloat(((data.count / result.results.length) * 100).toFixed(2)),
-          statusCodeBreakdown: Object.entries(data.statusCodes).map(([code, count]) => ({
+        statusCodeDistribution: Object.entries(statusCodeCounts)
+          .map(([code, count]) => ({
             statusCode: parseInt(code),
-            count: count
-          })).sort((a, b) => b.count - a.count)
-        })).sort((a, b) => b.count - a.count)
+            count: count,
+            percentage: parseFloat(
+              ((count / result.results.length) * 100).toFixed(2),
+            ),
+          }))
+          .sort((a, b) => b.count - a.count),
+        serviceDistribution: Object.entries(serviceBreakdown)
+          .map(([service, data]) => ({
+            serviceId: service,
+            count: data.count,
+            percentage: parseFloat(
+              ((data.count / result.results.length) * 100).toFixed(2),
+            ),
+            statusCodeBreakdown: Object.entries(data.statusCodes)
+              .map(([code, count]) => ({
+                statusCode: parseInt(code),
+                count: count,
+              }))
+              .sort((a, b) => b.count - a.count),
+          }))
+          .sort((a, b) => b.count - a.count),
       },
-      requests: result.results.map(req => ({
+      requests: result.results.map((req) => ({
         timestamp: req.request_start,
         httpMethod: req.http_method,
         uri: req.request_uri,
@@ -306,11 +331,11 @@ export async function getConsumerRequests(
         latency: {
           totalMs: req.latencies_response_ms,
           gatewayMs: req.latencies_kong_gateway_ms,
-          upstreamMs: req.latencies_upstream_ms
+          upstreamMs: req.latencies_upstream_ms,
         },
         clientIp: req.client_ip,
-        traceId: req.trace_id
-      }))
+        traceId: req.trace_id,
+      })),
     };
   });
 }

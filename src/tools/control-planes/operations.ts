@@ -1,4 +1,4 @@
-import { KongApi } from "../../api/kong-api.js";
+import type { KongApi } from "../../api/kong-api.js";
 import { withErrorContext } from "../../utils/error-handling.js";
 import { formatEntity, formatEntityList } from "../../utils/formatting.js";
 import { traceable } from "../../utils/tracing.js";
@@ -14,17 +14,20 @@ export async function listControlPlanes(
   filterClusterType?: string,
   filterCloudGateway?: boolean,
   labels?: string,
-  sort?: string
+  sort?: string,
 ) {
-  return withErrorContext("list_control_planes", "control-planes")(async () => {
+  return withErrorContext(
+    "list_control_planes",
+    "control-planes",
+  )(async () => {
     const result = await api.listControlPlanes(
-      pageSize, 
-      pageNumber, 
-      filterName, 
-      filterClusterType, 
-      filterCloudGateway, 
-      labels, 
-      sort
+      pageSize,
+      pageNumber,
+      filterName,
+      filterClusterType,
+      filterCloudGateway,
+      labels,
+      sort,
     );
 
     // Transform the response to have consistent field names
@@ -37,10 +40,11 @@ export async function listControlPlanes(
         filters: {
           name: filterName || null,
           clusterType: filterClusterType || null,
-          cloudGateway: filterCloudGateway !== undefined ? filterCloudGateway : null,
-          labels: labels || null
+          cloudGateway:
+            filterCloudGateway !== undefined ? filterCloudGateway : null,
+          labels: labels || null,
         },
-        sort: sort || null
+        sort: sort || null,
       },
       controlPlanes: result.data.map((cp: any) => ({
         controlPlaneId: cp.id,
@@ -54,13 +58,15 @@ export async function listControlPlanes(
         labels: cp.labels,
         metadata: {
           createdAt: cp.created_at,
-          updatedAt: cp.updated_at
-        }
+          updatedAt: cp.updated_at,
+        },
       })),
       usage: {
-        instructions: "Use the controlPlaneId from these results with other tools like list-services, list-data-plane-nodes, etc.",
-        pagination: "For more results, increment pageNumber or increase pageSize"
-      }
+        instructions:
+          "Use the controlPlaneId from these results with other tools like list-services, list-data-plane-nodes, etc.",
+        pagination:
+          "For more results, increment pageNumber or increase pageSize",
+      },
     };
   });
 }
@@ -68,11 +74,12 @@ export async function listControlPlanes(
 /**
  * Get detailed information about a specific control plane
  */
-export async function getControlPlane(
-  api: KongApi,
-  controlPlaneId: string
-) {
-  return withErrorContext("get_control_plane", "control-plane", controlPlaneId)(async () => {
+export async function getControlPlane(api: KongApi, controlPlaneId: string) {
+  return withErrorContext(
+    "get_control_plane",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
     const result = await api.getControlPlane(controlPlaneId);
 
     // For single entity endpoints, the result IS the control plane object directly
@@ -91,17 +98,17 @@ export async function getControlPlane(
         labels: cp.labels,
         metadata: {
           createdAt: cp.created_at,
-          updatedAt: cp.updated_at
-        }
+          updatedAt: cp.updated_at,
+        },
       },
       relatedTools: [
         "Use list-services to see services configured in this control plane",
-        "Use list-routes to see routes configured in this control plane", 
+        "Use list-routes to see routes configured in this control plane",
         "Use list-certificates to see certificates in this control plane",
         "Use list-upstreams to see upstreams configured in this control plane",
         "Use list-data-plane-nodes to see data plane nodes connected to this control plane",
-        "Use query-api-requests to analyze traffic for this control plane"
-      ]
+        "Use query-api-requests to analyze traffic for this control plane",
+      ],
     };
   });
 }
@@ -113,10 +120,18 @@ export async function listControlPlaneGroupMemberships(
   api: KongApi,
   groupId: string,
   pageSize = 10,
-  pageAfter?: string
+  pageAfter?: string,
 ) {
-  return withErrorContext("list_control_plane_group_memberships", "control-plane-group", groupId)(async () => {
-    const result = await api.listControlPlaneGroupMemberships(groupId, pageSize, pageAfter);
+  return withErrorContext(
+    "list_control_plane_group_memberships",
+    "control-plane-group",
+    groupId,
+  )(async () => {
+    const result = await api.listControlPlaneGroupMemberships(
+      groupId,
+      pageSize,
+      pageAfter,
+    );
 
     // Transform the response to have consistent field names
     return {
@@ -125,7 +140,7 @@ export async function listControlPlaneGroupMemberships(
         pageSize: pageSize,
         pageAfter: pageAfter || null,
         nextPageAfter: result.meta?.next_page?.after || null,
-        totalCount: result.meta?.total_count || 0
+        totalCount: result.meta?.total_count || 0,
       },
       members: result.data.map((member: any) => ({
         controlPlaneId: member.id,
@@ -136,18 +151,18 @@ export async function listControlPlaneGroupMemberships(
         membershipStatus: {
           status: member.cp_group_member_status?.status,
           message: member.cp_group_member_status?.message,
-          conflicts: member.cp_group_member_status?.conflicts || []
+          conflicts: member.cp_group_member_status?.conflicts || [],
         },
         metadata: {
           createdAt: member.created_at,
-          updatedAt: member.updated_at
-        }
+          updatedAt: member.updated_at,
+        },
       })),
       relatedTools: [
         "Use get-control-plane-group-status to check for configuration conflicts",
         "Use check-control-plane-group-membership to verify if a specific control plane is a member",
-        "Use get-control-plane to get more details about a specific member"
-      ]
+        "Use get-control-plane to get more details about a specific member",
+      ],
     };
   });
 }
@@ -157,9 +172,13 @@ export async function listControlPlaneGroupMemberships(
  */
 export async function checkControlPlaneGroupMembership(
   api: KongApi,
-  controlPlaneId: string
+  controlPlaneId: string,
 ) {
-  return withErrorContext("check_control_plane_group_membership", "control-plane", controlPlaneId)(async () => {
+  return withErrorContext(
+    "check_control_plane_group_membership",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
     const result = await api.checkControlPlaneGroupMembership(controlPlaneId);
 
     // For single entity endpoints, the result IS the membership object directly
@@ -172,12 +191,12 @@ export async function checkControlPlaneGroupMembership(
         groupName: membership.group_name,
         status: membership.status,
         message: membership.message,
-        conflicts: membership.conflicts || []
+        conflicts: membership.conflicts || [],
       },
       relatedTools: [
         "Use list-control-plane-group-memberships to see all members of this group",
-        "Use get-control-plane to get more details about this control plane"
-      ]
+        "Use get-control-plane to get more details about this control plane",
+      ],
     };
   });
 }
@@ -195,9 +214,12 @@ export async function createControlPlane(
     authType?: string;
     proxyUrls?: string[];
     labels?: Record<string, string>;
-  }
+  },
 ) {
-  return withErrorContext("create_control_plane", "control-plane")(async () => {
+  return withErrorContext(
+    "create_control_plane",
+    "control-plane",
+  )(async () => {
     const requestData = {
       name: controlPlaneData.name,
       description: controlPlaneData.description,
@@ -205,7 +227,7 @@ export async function createControlPlane(
       cloud_gateway: controlPlaneData.cloudGateway || false,
       auth_type: controlPlaneData.authType || "pinned_certs",
       proxy_urls: controlPlaneData.proxyUrls,
-      labels: controlPlaneData.labels
+      labels: controlPlaneData.labels,
     };
 
     const result = await api.createControlPlane(requestData);
@@ -220,22 +242,22 @@ export async function createControlPlane(
           clusterType: result.cluster_type,
           cloudGateway: result.cloud_gateway,
           authType: result.auth_type,
-          proxyUrls: result.proxy_urls
+          proxyUrls: result.proxy_urls,
         },
         status: result.status,
         labels: result.labels || {},
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       credentials: result.credentials || {},
       message: `Control plane '${result.name}' created successfully with ID: ${result.id}`,
       relatedTools: [
         "Use create-data-plane-token to generate authentication tokens",
         "Use create-service to start configuring your gateway",
-        "Use list-data-plane-nodes to monitor node connections"
-      ]
+        "Use list-data-plane-nodes to monitor node connections",
+      ],
     };
   });
 }
@@ -250,14 +272,21 @@ export async function updateControlPlane(
     name?: string;
     description?: string;
     labels?: Record<string, string>;
-  }
+  },
 ) {
-  return withErrorContext("update_control_plane", "control-plane", controlPlaneId)(async () => {
+  return withErrorContext(
+    "update_control_plane",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
     const requestData: any = {};
-    
-    if (controlPlaneData.name !== undefined) requestData.name = controlPlaneData.name;
-    if (controlPlaneData.description !== undefined) requestData.description = controlPlaneData.description;
-    if (controlPlaneData.labels !== undefined) requestData.labels = controlPlaneData.labels;
+
+    if (controlPlaneData.name !== undefined)
+      requestData.name = controlPlaneData.name;
+    if (controlPlaneData.description !== undefined)
+      requestData.description = controlPlaneData.description;
+    if (controlPlaneData.labels !== undefined)
+      requestData.labels = controlPlaneData.labels;
 
     const result = await api.updateControlPlane(controlPlaneId, requestData);
 
@@ -271,14 +300,14 @@ export async function updateControlPlane(
         labels: result.labels || {},
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Control plane '${result.name}' updated successfully`,
       relatedTools: [
         "Use get-control-plane to see all updated details",
-        "Use list-control-planes to see the updated control plane in the list"
-      ]
+        "Use list-control-planes to see the updated control plane in the list",
+      ],
     };
   });
 }
@@ -286,21 +315,23 @@ export async function updateControlPlane(
 /**
  * Delete a control plane
  */
-export async function deleteControlPlane(
-  api: KongApi,
-  controlPlaneId: string
-) {
-  return withErrorContext("delete_control_plane", "control-plane", controlPlaneId)(async () => {
+export async function deleteControlPlane(api: KongApi, controlPlaneId: string) {
+  return withErrorContext(
+    "delete_control_plane",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
     await api.deleteControlPlane(controlPlaneId);
 
     return {
       success: true,
       message: `Control plane ${controlPlaneId} deleted successfully`,
-      warning: "All services, routes, consumers, plugins, and data plane connections have been permanently removed",
+      warning:
+        "All services, routes, consumers, plugins, and data plane connections have been permanently removed",
       relatedTools: [
         "Use list-control-planes to see remaining control planes",
-        "Use create-control-plane to create a new control plane"
-      ]
+        "Use create-control-plane to create a new control plane",
+      ],
     };
   });
 }
@@ -314,10 +345,20 @@ export async function listDataPlaneNodes(
   pageSize = 10,
   pageNumber?: number,
   filterStatus?: string,
-  filterHostname?: string
+  filterHostname?: string,
 ) {
-  return withErrorContext("list_data_plane_nodes", "control-plane", controlPlaneId)(async () => {
-    const result = await api.listDataPlaneNodes(controlPlaneId, pageSize, pageNumber, filterStatus, filterHostname);
+  return withErrorContext(
+    "list_data_plane_nodes",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
+    const result = await api.listDataPlaneNodes(
+      controlPlaneId,
+      pageSize,
+      pageNumber,
+      filterStatus,
+      filterHostname,
+    );
 
     return {
       metadata: {
@@ -325,44 +366,62 @@ export async function listDataPlaneNodes(
         pagination: {
           pageSize: pageSize,
           pageNumber: pageNumber || 1,
-          totalPages: Math.ceil((result.page?.total_count || result.meta?.page?.total_count || 0) / pageSize),
-          totalItems: result.page?.total_count || result.meta?.page?.total_count || 0
+          totalPages: Math.ceil(
+            (result.page?.total_count || result.meta?.page?.total_count || 0) /
+              pageSize,
+          ),
+          totalItems:
+            result.page?.total_count || result.meta?.page?.total_count || 0,
         },
         filters: {
           status: filterStatus,
-          hostname: filterHostname
-        }
-      },
-      nodes: (result.items || result.data)?.map((node: any) => ({
-        nodeId: node.id,
-        hostname: node.hostname,
-        status: node.connection_state?.is_connected ? 'connected' : 'disconnected',
-        version: node.version,
-        lastSeen: node.last_ping || node.last_seen,
-        syncStatus: node.sync_status || 'synced',
-        compatibility: node.compatibility_status?.state || node.compatibility,
-        labels: node.labels || {},
-        connections: {
-          ip: node.ip,
-          port: node.port,
-          protocol: node.protocol
+          hostname: filterHostname,
         },
-        health: {
-          status: node.connection_state?.is_connected ? 'healthy' : 'unhealthy',
-          checks: node.health_checks || []
-        }
-      })) || [],
+      },
+      nodes:
+        (result.items || result.data)?.map((node: any) => ({
+          nodeId: node.id,
+          hostname: node.hostname,
+          status: node.connection_state?.is_connected
+            ? "connected"
+            : "disconnected",
+          version: node.version,
+          lastSeen: node.last_ping || node.last_seen,
+          syncStatus: node.sync_status || "synced",
+          compatibility: node.compatibility_status?.state || node.compatibility,
+          labels: node.labels || {},
+          connections: {
+            ip: node.ip,
+            port: node.port,
+            protocol: node.protocol,
+          },
+          health: {
+            status: node.connection_state?.is_connected
+              ? "healthy"
+              : "unhealthy",
+            checks: node.health_checks || [],
+          },
+        })) || [],
       summary: {
-        totalNodes: result.page?.total_count || result.meta?.page?.total_count || 0,
-        connectedNodes: (result.items || result.data)?.filter((n: any) => n.connection_state?.is_connected || n.status === 'connected').length || 0,
-        disconnectedNodes: (result.items || result.data)?.filter((n: any) => !n.connection_state?.is_connected && n.status !== 'connected').length || 0,
-        overallHealth: result.summary?.health_status || "healthy"
+        totalNodes:
+          result.page?.total_count || result.meta?.page?.total_count || 0,
+        connectedNodes:
+          (result.items || result.data)?.filter(
+            (n: any) =>
+              n.connection_state?.is_connected || n.status === "connected",
+          ).length || 0,
+        disconnectedNodes:
+          (result.items || result.data)?.filter(
+            (n: any) =>
+              !n.connection_state?.is_connected && n.status !== "connected",
+          ).length || 0,
+        overallHealth: result.summary?.health_status || "healthy",
       },
       relatedTools: [
         "Use get-data-plane-node for detailed node information",
         "Use create-data-plane-token to generate authentication tokens",
-        "Use list-control-planes to see control plane status"
-      ]
+        "Use list-control-planes to see control plane status",
+      ],
     };
   });
 }
@@ -373,9 +432,13 @@ export async function listDataPlaneNodes(
 export async function getDataPlaneNode(
   api: KongApi,
   controlPlaneId: string,
-  nodeId: string
+  nodeId: string,
 ) {
-  return withErrorContext("get_data_plane_node", "data-plane-node", nodeId)(async () => {
+  return withErrorContext(
+    "get_data_plane_node",
+    "data-plane-node",
+    nodeId,
+  )(async () => {
     const result = await api.getDataPlaneNode(controlPlaneId, nodeId);
 
     return {
@@ -387,23 +450,23 @@ export async function getDataPlaneNode(
         configuration: {
           syncedAt: result.config_synced_at,
           version: result.config_version,
-          hash: result.config_hash
+          hash: result.config_hash,
         },
         performance: {
           cpuUsage: result.cpu_usage,
           memoryUsage: result.memory_usage,
-          requestsPerSecond: result.rps
+          requestsPerSecond: result.rps,
         },
         health: {
           status: result.health_status,
           checks: result.health_checks || [],
-          lastCheck: result.last_health_check
+          lastCheck: result.last_health_check,
         },
         connections: {
           ip: result.ip,
           port: result.port,
           protocol: result.protocol,
-          tlsEnabled: result.tls_enabled
+          tlsEnabled: result.tls_enabled,
         },
         labels: result.labels || {},
         capabilities: result.capabilities || [],
@@ -411,13 +474,13 @@ export async function getDataPlaneNode(
         errors: result.recent_errors || [],
         metadata: {
           registeredAt: result.registered_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use list-data-plane-nodes to see other nodes in this control plane",
-        "Use get-control-plane-config to check control plane configuration"
-      ]
+        "Use get-control-plane-config to check control plane configuration",
+      ],
     };
   });
 }
@@ -429,12 +492,16 @@ export async function createDataPlaneToken(
   api: KongApi,
   controlPlaneId: string,
   name: string,
-  expiresAt?: string
+  expiresAt?: string,
 ) {
-  return withErrorContext("create_data_plane_token", "control-plane", controlPlaneId)(async () => {
+  return withErrorContext(
+    "create_data_plane_token",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
     const requestData = {
       name: name,
-      expires_at: expiresAt
+      expires_at: expiresAt,
     };
 
     const result = await api.createDataPlaneToken(controlPlaneId, requestData);
@@ -447,19 +514,20 @@ export async function createDataPlaneToken(
         token: result.token,
         expiresAt: result.expires_at,
         createdAt: result.created_at,
-        status: result.status
+        status: result.status,
       },
       connectionInfo: {
         controlPlaneEndpoint: result.control_plane_endpoint,
         telemetryEndpoint: result.telemetry_endpoint,
-        configHash: result.config_hash
+        configHash: result.config_hash,
       },
       message: `Data plane token '${result.name}' created successfully`,
-      security: "WARNING: Store the token securely - it cannot be retrieved again",
+      security:
+        "WARNING: Store the token securely - it cannot be retrieved again",
       relatedTools: [
         "Use list-data-plane-tokens to see all tokens",
-        "Use list-data-plane-nodes to monitor node connections"
-      ]
+        "Use list-data-plane-nodes to monitor node connections",
+      ],
     };
   });
 }
@@ -471,10 +539,18 @@ export async function listDataPlaneTokens(
   api: KongApi,
   controlPlaneId: string,
   pageSize = 10,
-  pageNumber?: number
+  pageNumber?: number,
 ) {
-  return withErrorContext("list_data_plane_tokens", "control-plane", controlPlaneId)(async () => {
-    const result = await api.listDataPlaneTokens(controlPlaneId, pageSize, pageNumber);
+  return withErrorContext(
+    "list_data_plane_tokens",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
+    const result = await api.listDataPlaneTokens(
+      controlPlaneId,
+      pageSize,
+      pageNumber,
+    );
 
     return {
       metadata: {
@@ -483,23 +559,24 @@ export async function listDataPlaneTokens(
           pageSize: pageSize,
           pageNumber: pageNumber || 1,
           totalPages: result.meta?.page?.total || 1,
-          totalItems: result.meta?.page?.total_count || 0
-        }
+          totalItems: result.meta?.page?.total_count || 0,
+        },
       },
-      tokens: result.data?.map((token: any) => ({
-        tokenId: token.id,
-        name: token.name,
-        status: token.status,
-        createdAt: token.created_at,
-        expiresAt: token.expires_at,
-        lastUsed: token.last_used,
-        usageCount: token.usage_count || 0
-      })) || [],
+      tokens:
+        result.data?.map((token: any) => ({
+          tokenId: token.id,
+          name: token.name,
+          status: token.status,
+          createdAt: token.created_at,
+          expiresAt: token.expires_at,
+          lastUsed: token.last_used,
+          usageCount: token.usage_count || 0,
+        })) || [],
       relatedTools: [
         "Use create-data-plane-token to generate new tokens",
         "Use revoke-data-plane-token to revoke tokens",
-        "Use list-data-plane-nodes to see which tokens are in use"
-      ]
+        "Use list-data-plane-nodes to see which tokens are in use",
+      ],
     };
   });
 }
@@ -510,20 +587,25 @@ export async function listDataPlaneTokens(
 export async function revokeDataPlaneToken(
   api: KongApi,
   controlPlaneId: string,
-  tokenId: string
+  tokenId: string,
 ) {
-  return withErrorContext("revoke_data_plane_token", "data-plane-token", tokenId)(async () => {
+  return withErrorContext(
+    "revoke_data_plane_token",
+    "data-plane-token",
+    tokenId,
+  )(async () => {
     await api.revokeDataPlaneToken(controlPlaneId, tokenId);
 
     return {
       success: true,
       message: `Data plane token ${tokenId} revoked successfully`,
-      warning: "Nodes using this token will lose connection to the control plane",
+      warning:
+        "Nodes using this token will lose connection to the control plane",
       relatedTools: [
         "Use list-data-plane-tokens to see remaining tokens",
         "Use create-data-plane-token to create replacement tokens",
-        "Use list-data-plane-nodes to check node connection status"
-      ]
+        "Use list-data-plane-nodes to check node connection status",
+      ],
     };
   });
 }
@@ -533,9 +615,13 @@ export async function revokeDataPlaneToken(
  */
 export async function getControlPlaneConfig(
   api: KongApi,
-  controlPlaneId: string
+  controlPlaneId: string,
 ) {
-  return withErrorContext("get_control_plane_config", "control-plane", controlPlaneId)(async () => {
+  return withErrorContext(
+    "get_control_plane_config",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
     const result = await api.getControlPlaneConfig(controlPlaneId);
 
     return {
@@ -549,19 +635,19 @@ export async function getControlPlaneConfig(
         endpoints: {
           proxy: result.proxy_endpoint,
           admin: result.admin_endpoint,
-          telemetry: result.telemetry_endpoint
+          telemetry: result.telemetry_endpoint,
         },
         features: result.enabled_features || [],
         limits: result.limits || {},
         metadata: {
           version: result.config_version,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use update-control-plane-config to modify settings",
-        "Use list-data-plane-nodes to see how changes affect nodes"
-      ]
+        "Use list-data-plane-nodes to see how changes affect nodes",
+      ],
     };
   });
 }
@@ -578,18 +664,30 @@ export async function updateControlPlaneConfig(
     authType?: string;
     cloudGateway?: boolean;
     analyticsEnabled?: boolean;
-  }
+  },
 ) {
-  return withErrorContext("update_control_plane_config", "control-plane", controlPlaneId)(async () => {
+  return withErrorContext(
+    "update_control_plane_config",
+    "control-plane",
+    controlPlaneId,
+  )(async () => {
     const requestData: any = {};
-    
-    if (configData.proxyUrl !== undefined) requestData.proxy_url = configData.proxyUrl;
-    if (configData.telemetryUrl !== undefined) requestData.telemetry_url = configData.telemetryUrl;
-    if (configData.authType !== undefined) requestData.auth_type = configData.authType;
-    if (configData.cloudGateway !== undefined) requestData.cloud_gateway = configData.cloudGateway;
-    if (configData.analyticsEnabled !== undefined) requestData.analytics_enabled = configData.analyticsEnabled;
 
-    const result = await api.updateControlPlaneConfig(controlPlaneId, requestData);
+    if (configData.proxyUrl !== undefined)
+      requestData.proxy_url = configData.proxyUrl;
+    if (configData.telemetryUrl !== undefined)
+      requestData.telemetry_url = configData.telemetryUrl;
+    if (configData.authType !== undefined)
+      requestData.auth_type = configData.authType;
+    if (configData.cloudGateway !== undefined)
+      requestData.cloud_gateway = configData.cloudGateway;
+    if (configData.analyticsEnabled !== undefined)
+      requestData.analytics_enabled = configData.analyticsEnabled;
+
+    const result = await api.updateControlPlaneConfig(
+      controlPlaneId,
+      requestData,
+    );
 
     return {
       success: true,
@@ -600,14 +698,14 @@ export async function updateControlPlaneConfig(
         cloudGateway: result.cloud_gateway,
         analyticsEnabled: result.analytics_enabled,
         version: result.config_version,
-        updatedAt: result.updated_at
+        updatedAt: result.updated_at,
       },
       message: "Control plane configuration updated successfully",
       warnings: result.warnings || [],
       relatedTools: [
         "Use get-control-plane-config to see all updated settings",
-        "Use list-data-plane-nodes to monitor node reconnections"
-      ]
+        "Use list-data-plane-nodes to monitor node reconnections",
+      ],
     };
   });
 }

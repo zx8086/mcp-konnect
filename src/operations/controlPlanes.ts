@@ -1,4 +1,4 @@
-import { KongApi } from "../api.js";
+import type { KongApi } from "../api.js";
 
 /**
  * List all control planes in the organization
@@ -11,17 +11,17 @@ export async function listControlPlanes(
   filterClusterType?: string,
   filterCloudGateway?: boolean,
   labels?: string,
-  sort?: string
+  sort?: string,
 ) {
   try {
     const result = await api.listControlPlanes(
-      pageSize, 
-      pageNumber, 
-      filterName, 
-      filterClusterType, 
-      filterCloudGateway, 
-      labels, 
-      sort
+      pageSize,
+      pageNumber,
+      filterName,
+      filterClusterType,
+      filterCloudGateway,
+      labels,
+      sort,
     );
 
     // Transform the response to have consistent field names
@@ -34,10 +34,11 @@ export async function listControlPlanes(
         filters: {
           name: filterName || null,
           clusterType: filterClusterType || null,
-          cloudGateway: filterCloudGateway !== undefined ? filterCloudGateway : null,
-          labels: labels || null
+          cloudGateway:
+            filterCloudGateway !== undefined ? filterCloudGateway : null,
+          labels: labels || null,
         },
-        sort: sort || null
+        sort: sort || null,
       },
       controlPlanes: result.data.map((cp: any) => ({
         controlPlaneId: cp.id,
@@ -51,13 +52,15 @@ export async function listControlPlanes(
         labels: cp.labels,
         metadata: {
           createdAt: cp.created_at,
-          updatedAt: cp.updated_at
-        }
+          updatedAt: cp.updated_at,
+        },
       })),
       usage: {
-        instructions: "Use the controlPlaneId from these results with other tools like list-services, list-data-plane-nodes, etc.",
-        pagination: "For more results, increment pageNumber or increase pageSize"
-      }
+        instructions:
+          "Use the controlPlaneId from these results with other tools like list-services, list-data-plane-nodes, etc.",
+        pagination:
+          "For more results, increment pageNumber or increase pageSize",
+      },
     };
   } catch (error) {
     throw error;
@@ -67,10 +70,7 @@ export async function listControlPlanes(
 /**
  * Get detailed information about a specific control plane
  */
-export async function getControlPlane(
-  api: KongApi,
-  controlPlaneId: string
-) {
+export async function getControlPlane(api: KongApi, controlPlaneId: string) {
   try {
     const result = await api.getControlPlane(controlPlaneId);
 
@@ -89,14 +89,14 @@ export async function getControlPlane(
         labels: cp.labels,
         metadata: {
           createdAt: cp.created_at,
-          updatedAt: cp.updated_at
-        }
+          updatedAt: cp.updated_at,
+        },
       },
       relatedTools: [
         "Use list-services to see services configured in this control plane",
         "Use list-routes to see routes configured in this control plane",
-        "Use query-api-requests to analyze traffic for this control plane"
-      ]
+        "Use query-api-requests to analyze traffic for this control plane",
+      ],
     };
   } catch (error) {
     throw error;
@@ -110,10 +110,14 @@ export async function listControlPlaneGroupMemberships(
   api: KongApi,
   groupId: string,
   pageSize = 10,
-  pageAfter?: string
+  pageAfter?: string,
 ) {
   try {
-    const result = await api.listControlPlaneGroupMemberships(groupId, pageSize, pageAfter);
+    const result = await api.listControlPlaneGroupMemberships(
+      groupId,
+      pageSize,
+      pageAfter,
+    );
 
     // Transform the response to have consistent field names
     return {
@@ -122,7 +126,7 @@ export async function listControlPlaneGroupMemberships(
         pageSize: pageSize,
         pageAfter: pageAfter || null,
         nextPageAfter: result.meta?.next_page?.after || null,
-        totalCount: result.meta?.total_count || 0
+        totalCount: result.meta?.total_count || 0,
       },
       members: result.data.map((member: any) => ({
         controlPlaneId: member.id,
@@ -133,18 +137,18 @@ export async function listControlPlaneGroupMemberships(
         membershipStatus: {
           status: member.cp_group_member_status?.status,
           message: member.cp_group_member_status?.message,
-          conflicts: member.cp_group_member_status?.conflicts || []
+          conflicts: member.cp_group_member_status?.conflicts || [],
         },
         metadata: {
           createdAt: member.created_at,
-          updatedAt: member.updated_at
-        }
+          updatedAt: member.updated_at,
+        },
       })),
       relatedTools: [
         "Use get-control-plane-group-status to check for configuration conflicts",
         "Use check-control-plane-group-membership to verify if a specific control plane is a member",
-        "Use get-control-plane to get more details about a specific member"
-      ]
+        "Use get-control-plane to get more details about a specific member",
+      ],
     };
   } catch (error) {
     throw error;
@@ -156,7 +160,7 @@ export async function listControlPlaneGroupMemberships(
  */
 export async function checkControlPlaneGroupMembership(
   api: KongApi,
-  controlPlaneId: string
+  controlPlaneId: string,
 ) {
   try {
     const result = await api.checkControlPlaneGroupMembership(controlPlaneId);
@@ -171,12 +175,12 @@ export async function checkControlPlaneGroupMembership(
         groupName: membership.group_name,
         status: membership.status,
         message: membership.message,
-        conflicts: membership.conflicts || []
+        conflicts: membership.conflicts || [],
       },
       relatedTools: [
         "Use list-control-plane-group-memberships to see all members of this group",
-        "Use get-control-plane to get more details about this control plane"
-      ]
+        "Use get-control-plane to get more details about this control plane",
+      ],
     };
   } catch (error) {
     throw error;

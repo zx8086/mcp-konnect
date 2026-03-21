@@ -1,6 +1,6 @@
-import { z } from "zod";
-import * as prompts from "./prompts.js";
+import type { z } from "zod";
 import * as parameters from "./parameters.js";
+import * as prompts from "./prompts.js";
 
 export type AnalyticsTool = {
   method: string;
@@ -16,13 +16,13 @@ export const analyticsTools = (): AnalyticsTool[] => [
     name: "Query API Requests",
     description: prompts.queryApiRequestsPrompt(),
     parameters: parameters.queryApiRequestsParameters(),
-    category: "analytics"
+    category: "analytics",
   },
   {
     method: "get_consumer_requests",
-    name: "Get Consumer Requests", 
+    name: "Get Consumer Requests",
     description: prompts.getConsumerRequestsPrompt(),
     parameters: parameters.getConsumerRequestsParameters(),
-    category: "analytics"
+    category: "analytics",
   },
 ];

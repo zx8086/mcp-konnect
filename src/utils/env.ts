@@ -3,7 +3,7 @@
  * Optimized for Bun runtime with Node.js fallback support
  */
 
-import { mcpLogger } from './mcp-logger.js';
+import { mcpLogger } from "./mcp-logger.js";
 
 /**
  * Universal environment variable access with Bun optimization
@@ -11,10 +11,10 @@ import { mcpLogger } from './mcp-logger.js';
  */
 export function getEnvVar(key: string): string | undefined {
   // Runtime detection - use Bun.env if available for better performance
-  if (typeof Bun !== 'undefined' && Bun.env) {
+  if (typeof Bun !== "undefined" && Bun.env) {
     return Bun.env[key];
   }
-  
+
   // Fallback to standard process.env for Node.js compatibility
   return process.env[key];
 }
@@ -22,7 +22,10 @@ export function getEnvVar(key: string): string | undefined {
 /**
  * Get environment variable with default value
  */
-export function getEnvVarWithDefault(key: string, defaultValue: string): string {
+export function getEnvVarWithDefault(
+  key: string,
+  defaultValue: string,
+): string {
   return getEnvVar(key) ?? defaultValue;
 }
 
@@ -30,38 +33,38 @@ export function getEnvVarWithDefault(key: string, defaultValue: string): string 
  * Check if running under Bun runtime
  */
 export function isBunRuntime(): boolean {
-  return typeof Bun !== 'undefined';
+  return typeof Bun !== "undefined";
 }
 
 /**
  * Get runtime information for debugging
  */
 export function getRuntimeInfo(): {
-  runtime: 'bun' | 'node' | 'unknown';
+  runtime: "bun" | "node" | "unknown";
   version: string;
-  envSource: 'Bun.env' | 'process.env';
+  envSource: "Bun.env" | "process.env";
   autoEnvLoading: boolean;
 } {
-  if (typeof Bun !== 'undefined') {
+  if (typeof Bun !== "undefined") {
     return {
-      runtime: 'bun',
+      runtime: "bun",
       version: Bun.version,
-      envSource: 'Bun.env',
-      autoEnvLoading: true
+      envSource: "Bun.env",
+      autoEnvLoading: true,
     };
-  } else if (typeof process !== 'undefined' && process.versions?.node) {
+  } else if (typeof process !== "undefined" && process.versions?.node) {
     return {
-      runtime: 'node',
+      runtime: "node",
       version: process.version,
-      envSource: 'process.env',
-      autoEnvLoading: false
+      envSource: "process.env",
+      autoEnvLoading: false,
     };
   } else {
     return {
-      runtime: 'unknown',
-      version: 'unknown',
-      envSource: 'process.env',
-      autoEnvLoading: false
+      runtime: "unknown",
+      version: "unknown",
+      envSource: "process.env",
+      autoEnvLoading: false,
     };
   }
 }
@@ -73,37 +76,40 @@ export function getRuntimeInfo(): {
 export async function initializeEnvironment(): Promise<void> {
   // Skip initialization if running under Bun (auto-loads .env files)
   if (isBunRuntime()) {
-    mcpLogger.info('config', 'Running under Bun - .env auto-loading enabled');
+    mcpLogger.info("config", "Running under Bun - .env auto-loading enabled");
     return;
   }
 
   // For Node.js environments, try to load .env files manually
   try {
-    const { config } = await import('dotenv');
-    
+    const { config } = await import("dotenv");
+
     // Try loading .env from multiple locations
-    const envPaths = [
-      '.env',
-      'src/.env',
-      '../.env'
-    ];
+    const envPaths = [".env", "src/.env", "../.env"];
 
     let loaded = false;
     for (const path of envPaths) {
       const result = config({ path, override: false });
       if (!result.error) {
-        mcpLogger.info('config', 'Loaded environment variables from file', { path });
+        mcpLogger.info("config", "Loaded environment variables from file", {
+          path,
+        });
         loaded = true;
         break;
       }
     }
 
     if (!loaded) {
-      mcpLogger.debug('config', 'No .env file found - using system environment variables only');
+      mcpLogger.debug(
+        "config",
+        "No .env file found - using system environment variables only",
+      );
     }
-
   } catch (error) {
-    mcpLogger.warning('config', 'dotenv not available - install with: npm install dotenv');
-    mcpLogger.info('config', 'Using system environment variables only');
+    mcpLogger.warning(
+      "config",
+      "dotenv not available - install with: npm install dotenv",
+    );
+    mcpLogger.info("config", "Using system environment variables only");
   }
 }

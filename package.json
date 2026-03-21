@@ -30,8 +30,12 @@
     "test:flight-api:performance": "bun test src/tests/flight-api/flight-api.performance.test.ts",
     "test:flight-api:portal": "bun test src/tests/flight-api/flight-api.portal.test.ts",
     "test:flight-api:security": "bun test src/tests/flight-api/flight-api.performance.test.ts -t 'Security'",
-    "lint": "echo 'Add linting tool here'",
-    "format": "echo 'Add formatting tool here'",
+    "typecheck": "bunx tsc --noEmit",
+    "lint": "bunx biome check .",
+    "format": "bunx biome check --write .",
+    "biome:check": "bunx biome check .",
+    "biome:check:write": "bunx biome check --write .",
+    "yaml:check": "yamllint -d relaxed demo/",
     "env:check": "bun run src/utils/env-check.ts",
     "config:health": "bun run src/utils/config-health.ts",
     "config:health:prod": "bun run src/utils/config-health.ts --production-check",
@@ -40,11 +44,11 @@
     "health-check": "echo 'Add health check script here'",
     "pre-commit": "bun run lint && bun run test",
     "deck:ping": "source .env && cd demo/dECK && deck gateway ping --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
-    "deck:sync": "source .env && cd demo/dECK && deck gateway sync kong_demo.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
-    "deck:diff": "source .env && cd demo/dECK && deck gateway diff kong_demo.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
-    "deck:dump": "source .env && cd demo/dECK && deck gateway dump --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\" --output-file kong_demo.yaml",
+    "deck:sync": "source .env && cd demo/dECK && deck gateway sync auth-service.yaml  --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
+    "deck:diff": "source .env && cd demo/dECK && deck gateway diff auth-service.yaml  --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
+    "deck:dump": "source .env && cd demo/dECK && deck gateway dump --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\" --output-file kong_demo_new.yaml",
     "deck:reset": "source .env && cd demo/dECK && deck gateway sync kong_reset.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\"",
-    "deck:validate": "source .env && cd demo/dECK && deck gateway validate kong_demo.yaml --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\""
+    "deck:validate": "source .env && cd demo/dECK && deck gateway validate auth-service.yaml  --konnect-control-plane-name=\"$DECK_KONNECT_CONTROL_PLANE_NAME\" --konnect-addr=\"https://eu.api.konghq.com\" --konnect-token=\"$DECK_KONNECT_TOKEN\""
   },
   "keywords": [
     "mcp",
@@ -65,6 +69,7 @@
     "dotenv": "^17.2.2"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
     "@types/bun": "^1.2.21",
     "@types/node": "^24.3.1",
     "bun-types": "^1.2.21",

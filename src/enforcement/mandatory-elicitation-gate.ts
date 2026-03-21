@@ -1,19 +1,26 @@
 /**
  * BULLETPROOF ELICITATION ENFORCEMENT GATE
- * 
+ *
  * This singleton class ensures that ALL Kong operations are blocked
  * until mandatory elicitation is completed. NO EXCEPTIONS.
- * 
+ *
  * ARCHITECTURAL PRINCIPLE: Make it impossible to bypass elicitation
  */
 
-import { ElicitationManager, ElicitationSession, KongElicitationPatterns } from '../utils/elicitation.js';
-import { MigrationAnalyzer, MigrationContext } from '../operations/migration-analyzer.js';
-import { mcpLogger } from '../utils/mcp-logger.js';
+import {
+  MigrationAnalyzer,
+  MigrationContext,
+} from "../operations/migration-analyzer.js";
+import {
+  ElicitationManager,
+  type ElicitationSession,
+  KongElicitationPatterns,
+} from "../utils/elicitation.js";
+import { mcpLogger } from "../utils/mcp-logger.js";
 
 export interface MandatoryContext {
   domain: string;
-  environment: string; 
+  environment: string;
   team: string;
   sessionId?: string;
   elicitationComplete: boolean;
@@ -32,21 +39,21 @@ export interface KongOperationContext {
 
 export class ElicitationBlockedError extends Error {
   constructor(
-    public missingFields: string[], 
+    public missingFields: string[],
     public elicitationSession: ElicitationSession,
-    public message: string = `OPERATION BLOCKED: Missing mandatory context: ${missingFields.join(', ')}`
+    public message: string = `OPERATION BLOCKED: Missing mandatory context: ${missingFields.join(", ")}`,
   ) {
     super(message);
-    this.name = 'ElicitationBlockedError';
+    this.name = "ElicitationBlockedError";
   }
 }
 
 /**
  * SINGLETON ENFORCEMENT GATE
- * 
+ *
  * This class makes elicitation mandatory by:
  * 1. Blocking ALL Kong operations until context is complete
- * 2. Providing zero fallback mechanisms  
+ * 2. Providing zero fallback mechanisms
  * 3. Forcing explicit user input for all critical fields
  * 4. Maintaining session state across interactions
  */
@@ -55,11 +62,14 @@ export class MandatoryElicitationGate {
   private elicitationManager: ElicitationManager;
   private migrationAnalyzer: MigrationAnalyzer;
   private activeSessions: Map<string, MandatoryContext> = new Map();
-  
+
   private constructor() {
     this.elicitationManager = new ElicitationManager();
     const elicitationPatterns = new KongElicitationPatterns();
-    this.migrationAnalyzer = new MigrationAnalyzer(this.elicitationManager, elicitationPatterns);
+    this.migrationAnalyzer = new MigrationAnalyzer(
+      this.elicitationManager,
+      elicitationPatterns,
+    );
   }
 
   public static getInstance(): MandatoryElicitationGate {
@@ -71,109 +81,142 @@ export class MandatoryElicitationGate {
 
   /**
    * MANDATORY CONTEXT VALIDATION - BLOCKS ALL OPERATIONS
-   * 
+   *
    * This is the primary enforcement method. Every Kong operation
    * MUST pass through this validation gate.
    */
   public async validateMandatoryContext(
-    context: KongOperationContext
+    context: KongOperationContext,
   ): Promise<MandatoryContext> {
-    mcpLogger.debug('enforcement', 'Enforcement gate validating context', { operationName: context.operationName });
-    
-    // Step 1: Analyze current context and confidence  
+    mcpLogger.debug("enforcement", "Enforcement gate validating context", {
+      operationName: context.operationName,
+    });
+
+    // Step 1: Analyze current context and confidence
     const migrationContext = {
       userMessage: context.requestContext.userMessage,
       deckFiles: context.requestContext.files || [],
       deckConfigs: context.requestContext.configs || [],
-      gitContext: {}
+      gitContext: {},
     };
-    
-    const analysis = await this.migrationAnalyzer.analyzeMigration(migrationContext);
+
+    const analysis =
+      await this.migrationAnalyzer.analyzeMigration(migrationContext);
 
     // Step 2: Check if we have active elicitation session
     const sessionId = this.generateSessionId(context);
     const existingContext = this.activeSessions.get(sessionId);
 
     if (existingContext?.elicitationComplete) {
-      mcpLogger.debug('enforcement', 'Enforcement gate context already validated', { sessionId });
+      mcpLogger.debug(
+        "enforcement",
+        "Enforcement gate context already validated",
+        { sessionId },
+      );
       return existingContext;
     }
 
     // Step 3: MANDATORY FIELD VALIDATION - NO FALLBACKS
     const missingFields: string[] = [];
-    
+
     if (analysis.missingInfo.domain) {
-      missingFields.push('domain');
+      missingFields.push("domain");
     }
     if (analysis.missingInfo.environment) {
-      missingFields.push('environment');  
+      missingFields.push("environment");
     }
     if (analysis.missingInfo.team) {
-      missingFields.push('team');
+      missingFields.push("team");
     }
 
     // Step 4: BLOCK OPERATION IF ANY MANDATORY FIELDS MISSING
     if (missingFields.length > 0) {
-      mcpLogger.warning('enforcement', 'Enforcement gate blocking operation - missing fields', { operationName: context.operationName, missingFields });
-      
+      mcpLogger.warning(
+        "enforcement",
+        "Enforcement gate blocking operation - missing fields",
+        { operationName: context.operationName, missingFields },
+      );
+
       // Create elicitation session for missing context
       const elicitationSession = this.elicitationManager.createSession({
         analysis,
         requestContext: context.requestContext,
         operationName: context.operationName,
-        deterministic: true // For consistent session IDs
+        deterministic: true, // For consistent session IDs
       });
-      
+
       // Store the original context so we can recreate the deterministic session ID later
       elicitationSession.context.originalKongContext = context;
 
       // Import KongOperationBlockedError from kong-tool-blockers
-      const { KongOperationBlockedError } = await import('./kong-tool-blockers.js');
-      throw new KongOperationBlockedError(context.operationName, missingFields, elicitationSession);
+      const { KongOperationBlockedError } = await import(
+        "./kong-tool-blockers.js"
+      );
+      throw new KongOperationBlockedError(
+        context.operationName,
+        missingFields,
+        elicitationSession,
+      );
     }
 
     // Step 5: Create validated context
     const validatedContext: MandatoryContext = {
-      domain: analysis.domain?.value || 'unknown',
-      environment: analysis.environment?.value || 'unknown',
-      team: analysis.team?.value || 'unknown',
+      domain: analysis.domain?.value || "unknown",
+      environment: analysis.environment?.value || "unknown",
+      team: analysis.team?.value || "unknown",
       sessionId,
       elicitationComplete: true,
-      contextConfidence: analysis.confidence.overall
+      contextConfidence: analysis.confidence.overall,
     };
 
     // Step 6: Cache validated context for session
     this.activeSessions.set(sessionId, validatedContext);
-    
-    mcpLogger.info('enforcement', 'Enforcement gate context validated successfully', { domain: validatedContext.domain, environment: validatedContext.environment, team: validatedContext.team });
-    
+
+    mcpLogger.info(
+      "enforcement",
+      "Enforcement gate context validated successfully",
+      {
+        domain: validatedContext.domain,
+        environment: validatedContext.environment,
+        team: validatedContext.team,
+      },
+    );
+
     return validatedContext;
   }
 
   /**
    * PROCESS ELICITATION RESPONSE
-   * 
+   *
    * Handles user responses from elicitation and updates context
    */
   public async processElicitationResponse(
     sessionId: string,
-    responses: Record<string, string>
+    responses: Record<string, string>,
   ): Promise<MandatoryContext> {
-    mcpLogger.debug('enforcement', 'Enforcement gate processing elicitation response', { sessionId });
-    
+    mcpLogger.debug(
+      "enforcement",
+      "Enforcement gate processing elicitation response",
+      { sessionId },
+    );
+
     // SECURITY: Validate that this session was actually created by a blocked operation
     // This prevents bypass attempts with fake session IDs
     const elicitationSession = this.elicitationManager.getSession(sessionId);
     if (!elicitationSession) {
-      throw new Error(`SECURITY VIOLATION: Session ${sessionId} not found - cannot process elicitation response for non-existent session`);
+      throw new Error(
+        `SECURITY VIOLATION: Session ${sessionId} not found - cannot process elicitation response for non-existent session`,
+      );
     }
-    
+
     // Validate responses contain all mandatory fields
-    const requiredFields = ['domain', 'environment', 'team'];
-    const missingFields = requiredFields.filter(field => !responses[field]);
-    
+    const requiredFields = ["domain", "environment", "team"];
+    const missingFields = requiredFields.filter((field) => !responses[field]);
+
     if (missingFields.length > 0) {
-      throw new Error(`ELICITATION INCOMPLETE: Missing responses for: ${missingFields.join(', ')}`);
+      throw new Error(
+        `ELICITATION INCOMPLETE: Missing responses for: ${missingFields.join(", ")}`,
+      );
     }
 
     // Create validated context from responses
@@ -183,58 +226,74 @@ export class MandatoryElicitationGate {
       team: responses.team,
       sessionId,
       elicitationComplete: true,
-      contextConfidence: 1.0 // Explicit user input = 100% confidence
+      contextConfidence: 1.0, // Explicit user input = 100% confidence
     };
 
     // Cache for future operations in this session
     this.activeSessions.set(sessionId, validatedContext);
-    
+
     // IMPORTANT: Also store using the deterministic session ID that validateMandatoryContext expects
-    // This handles the case where the elicitation session ID (elicit_*) differs from the 
+    // This handles the case where the elicitation session ID (elicit_*) differs from the
     // gate's deterministic session ID (session-*)
-    const elicitationSessionData = this.elicitationManager.getSession(sessionId);
+    const elicitationSessionData =
+      this.elicitationManager.getSession(sessionId);
     if (elicitationSessionData?.context?.originalKongContext) {
-      const originalContext = elicitationSessionData.context.originalKongContext;
+      const originalContext =
+        elicitationSessionData.context.originalKongContext;
       const deterministicSessionId = this.generateSessionId(originalContext);
       this.activeSessions.set(deterministicSessionId, validatedContext);
-      mcpLogger.debug('enforcement', 'Enforcement gate context stored for both sessions', { sessionId, deterministicSessionId });
+      mcpLogger.debug(
+        "enforcement",
+        "Enforcement gate context stored for both sessions",
+        { sessionId, deterministicSessionId },
+      );
     }
-    
-    mcpLogger.info('enforcement', 'Enforcement gate elicitation complete - context validated', { sessionId });
-    
+
+    mcpLogger.info(
+      "enforcement",
+      "Enforcement gate elicitation complete - context validated",
+      { sessionId },
+    );
+
     return validatedContext;
   }
 
   /**
    * GENERATE SESSION ID
-   * 
+   *
    * Creates consistent session identifiers for context tracking
    */
   private generateSessionId(context: KongOperationContext): string {
     // Create a deterministic hash based on operation and message content
     // This ensures the same operation context always gets the same session ID
-    const hash = Buffer.from(JSON.stringify({
-      operation: context.operationName,
-      message: context.requestContext.userMessage.slice(0, 100)
-      // No timestamp - we want consistent session IDs for the same context
-    })).toString('base64').slice(0, 12);
-    
+    const hash = Buffer.from(
+      JSON.stringify({
+        operation: context.operationName,
+        message: context.requestContext.userMessage.slice(0, 100),
+        // No timestamp - we want consistent session IDs for the same context
+      }),
+    )
+      .toString("base64")
+      .slice(0, 12);
+
     return `session-${hash}`;
   }
 
   /**
    * CLEAR SESSION CONTEXT
-   * 
+   *
    * Removes cached context (used for testing and cleanup)
    */
   public clearSession(sessionId: string): void {
     this.activeSessions.delete(sessionId);
-    mcpLogger.debug('enforcement', 'Enforcement gate cleared session context', { sessionId });
+    mcpLogger.debug("enforcement", "Enforcement gate cleared session context", {
+      sessionId,
+    });
   }
 
   /**
    * GET ACTIVE SESSIONS
-   * 
+   *
    * Returns all active sessions (for debugging and monitoring)
    */
   public getActiveSessions(): Map<string, MandatoryContext> {
@@ -243,7 +302,7 @@ export class MandatoryElicitationGate {
 
   /**
    * BYPASS PREVENTION - NO BYPASS METHODS ALLOWED
-   * 
+   *
    * This class intentionally provides NO bypass mechanisms.
    * Any attempt to bypass elicitation is architecturally prevented.
    */
@@ -251,18 +310,22 @@ export class MandatoryElicitationGate {
 
 /**
  * CONVENIENCE WRAPPER - MANDATORY ELICITATION ENFORCEMENT
- * 
+ *
  * This wrapper ensures ALL Kong operations go through mandatory validation
  */
 export async function withMandatoryElicitation<T>(
   operationName: string,
   context: KongOperationContext,
-  operation: (validatedContext: MandatoryContext) => Promise<T>
+  operation: (validatedContext: MandatoryContext) => Promise<T>,
 ): Promise<T> {
   const gate = MandatoryElicitationGate.getInstance();
   const validatedContext = await gate.validateMandatoryContext(context);
-  
-  mcpLogger.info('enforcement', 'Mandatory elicitation executing operation with validated context', { operationName });
-  
+
+  mcpLogger.info(
+    "enforcement",
+    "Mandatory elicitation executing operation with validated context",
+    { operationName },
+  );
+
   return await operation(validatedContext);
 }

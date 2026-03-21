@@ -1,14 +1,14 @@
-import axios, { AxiosRequestConfig } from "axios";
-import { 
-  ApiRequestFilter, 
-  TimeRange, 
-  ApiRequestsResponse 
+import axios, { type AxiosRequestConfig } from "axios";
+import type {
+  ApiRequestFilter,
+  ApiRequestsResponse,
+  TimeRange,
 } from "../types.js";
-import { PortalApi, PortalApiOptions } from "./portal-api.js";
 import { mcpLogger } from "../utils/mcp-logger.js";
+import { PortalApi, type PortalApiOptions } from "./portal-api.js";
 
 /**
- * Kong API Regions - Different geographical API endpoints 
+ * Kong API Regions - Different geographical API endpoints
  */
 export const API_REGIONS = {
   US: "us",
@@ -30,27 +30,35 @@ export class KongApi {
 
   constructor(options: KongApiOptions = {}) {
     // Default to US region if not specified
-    this.apiRegion = options.apiRegion || process.env.KONNECT_REGION || API_REGIONS.US;
+    this.apiRegion =
+      options.apiRegion || process.env.KONNECT_REGION || API_REGIONS.US;
     this.baseUrl = `https://${this.apiRegion}.api.konghq.com/v2`;
     this.apiKey = options.apiKey || process.env.KONNECT_ACCESS_TOKEN || "";
 
     if (!this.apiKey) {
-      mcpLogger.warning('api', 'KONNECT_ACCESS_TOKEN not set in environment - API calls will fail');
+      mcpLogger.warning(
+        "api",
+        "KONNECT_ACCESS_TOKEN not set in environment - API calls will fail",
+      );
     }
   }
 
   /**
    * Makes authenticated requests to Kong APIs with consistent error handling
    */
-  async kongRequest<T>(endpoint: string, method = "GET", data: any = null): Promise<T> {
+  async kongRequest<T>(
+    endpoint: string,
+    method = "GET",
+    data: any = null,
+  ): Promise<T> {
     try {
       const url = `${this.baseUrl}${endpoint}`;
-      mcpLogger.debug('api', 'Making Kong API request', { url });
+      mcpLogger.debug("api", "Making Kong API request", { url });
 
       const headers = {
-        "Authorization": `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        Accept: "application/json",
       };
 
       const config: AxiosRequestConfig = {
@@ -61,38 +69,50 @@ export class KongApi {
       };
 
       const response = await axios(config);
-      mcpLogger.debug('api', 'Received Kong API response', { status: response.status });
+      mcpLogger.debug("api", "Received Kong API response", {
+        status: response.status,
+      });
       return response.data;
     } catch (error: any) {
-      mcpLogger.error('api', 'Kong API request failed', { error: error.message });
+      mcpLogger.error("api", "Kong API request failed", {
+        error: error.message,
+      });
 
       if (error.response) {
         const errorData = error.response.data;
         let errorMessage = `API Error (Status ${error.response.status})`;
 
-        if (typeof errorData === 'object') {
+        if (typeof errorData === "object") {
           const errorDetails = errorData.message || JSON.stringify(errorData);
           errorMessage += `: ${errorDetails}`;
-        } else if (typeof errorData === 'string') {
+        } else if (typeof errorData === "string") {
           errorMessage += `: ${errorData.substring(0, 200)}`;
         }
 
         // Add troubleshooting context based on error type
         if (error.response.status === 401) {
-          errorMessage += "\n\nTroubleshooting: Check that KONNECT_ACCESS_TOKEN is set correctly and has not expired.";
+          errorMessage +=
+            "\n\nTroubleshooting: Check that KONNECT_ACCESS_TOKEN is set correctly and has not expired.";
         } else if (error.response.status === 403) {
-          errorMessage += "\n\nTroubleshooting: Your access token may not have sufficient permissions for this operation.";
+          errorMessage +=
+            "\n\nTroubleshooting: Your access token may not have sufficient permissions for this operation.";
         } else if (error.response.status === 404) {
-          errorMessage += "\n\nTroubleshooting: The requested resource was not found. Verify the control plane ID and resource ID are correct.";
+          errorMessage +=
+            "\n\nTroubleshooting: The requested resource was not found. Verify the control plane ID and resource ID are correct.";
         } else if (error.response.status === 429) {
-          errorMessage += "\n\nTroubleshooting: Rate limit exceeded. Please wait before making more requests.";
+          errorMessage +=
+            "\n\nTroubleshooting: Rate limit exceeded. Please wait before making more requests.";
         }
 
         throw new Error(errorMessage);
       } else if (error.request) {
-        throw new Error("Network Error: No response received from Kong API. Please check your network connection and API endpoint configuration.");
+        throw new Error(
+          "Network Error: No response received from Kong API. Please check your network connection and API endpoint configuration.",
+        );
       } else {
-        throw new Error(`Request Error: ${error.message}. Please check your request parameters and try again.`);
+        throw new Error(
+          `Request Error: ${error.message}. Please check your request parameters and try again.`,
+        );
       }
     }
   }
@@ -100,25 +120,39 @@ export class KongApi {
   // ===========================
   // Analytics API methods
   // ===========================
-  async queryApiRequests(timeRange: string, filters: ApiRequestFilter[] = [], maxResults = 100): Promise<ApiRequestsResponse> {
+  async queryApiRequests(
+    timeRange: string,
+    filters: ApiRequestFilter[] = [],
+    maxResults = 100,
+  ): Promise<ApiRequestsResponse> {
     const requestBody = {
       time_range: {
         type: "relative",
-        time_range: timeRange
+        time_range: timeRange,
       } as TimeRange,
       filters: filters,
-      size: maxResults
+      size: maxResults,
     };
 
-    return this.kongRequest<ApiRequestsResponse>("/api-requests", "POST", requestBody);
+    return this.kongRequest<ApiRequestsResponse>(
+      "/api-requests",
+      "POST",
+      requestBody,
+    );
   }
 
   // ===========================
   // Control Planes API methods
   // ===========================
-  async listControlPlanes(pageSize = 10, pageNumber?: number, filterName?: string, filterClusterType?: string, 
-    filterCloudGateway?: boolean, labels?: string, sort?: string): Promise<any> {
-    
+  async listControlPlanes(
+    pageSize = 10,
+    pageNumber?: number,
+    filterName?: string,
+    filterClusterType?: string,
+    filterCloudGateway?: boolean,
+    labels?: string,
+    sort?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes?page[size]=${pageSize}`;
 
     if (pageNumber) {
@@ -128,11 +162,11 @@ export class KongApi {
     if (filterName) {
       endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
     }
-    
+
     if (filterClusterType) {
       endpoint += `&filter[cluster_type][eq]=${encodeURIComponent(filterClusterType)}`;
     }
-    
+
     if (filterCloudGateway !== undefined) {
       endpoint += `&filter[cloud_gateway]=${filterCloudGateway}`;
     }
@@ -152,7 +186,11 @@ export class KongApi {
     return this.kongRequest<any>(`/control-planes/${controlPlaneId}`);
   }
 
-  async listControlPlaneGroupMemberships(groupId: string, pageSize = 10, pageAfter?: string): Promise<any> {
+  async listControlPlaneGroupMemberships(
+    groupId: string,
+    pageSize = 10,
+    pageAfter?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${groupId}/group-memberships?page[size]=${pageSize}`;
 
     if (pageAfter) {
@@ -163,7 +201,9 @@ export class KongApi {
   }
 
   async checkControlPlaneGroupMembership(controlPlaneId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/group-member-status`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/group-member-status`,
+    );
   }
 
   // Control Plane CRUD operations
@@ -171,8 +211,15 @@ export class KongApi {
     return this.kongRequest<any>(`/control-planes`, "POST", controlPlaneData);
   }
 
-  async updateControlPlane(controlPlaneId: string, controlPlaneData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}`, "PATCH", controlPlaneData);
+  async updateControlPlane(
+    controlPlaneId: string,
+    controlPlaneData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}`,
+      "PATCH",
+      controlPlaneData,
+    );
   }
 
   async deleteControlPlane(controlPlaneId: string): Promise<any> {
@@ -182,20 +229,37 @@ export class KongApi {
   // Data Plane Node Management (deprecated - using newer /nodes endpoint below)
 
   // Data Plane Token Management
-  async createDataPlaneToken(controlPlaneId: string, tokenData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/tokens`, "POST", tokenData);
+  async createDataPlaneToken(
+    controlPlaneId: string,
+    tokenData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/tokens`,
+      "POST",
+      tokenData,
+    );
   }
 
-  async listDataPlaneTokens(controlPlaneId: string, pageSize = 10, pageNumber?: number): Promise<any> {
+  async listDataPlaneTokens(
+    controlPlaneId: string,
+    pageSize = 10,
+    pageNumber?: number,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/tokens?page[size]=${pageSize}`;
-    
+
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
-    
+
     return this.kongRequest<any>(endpoint);
   }
 
-  async revokeDataPlaneToken(controlPlaneId: string, tokenId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/tokens/${tokenId}`, "DELETE");
+  async revokeDataPlaneToken(
+    controlPlaneId: string,
+    tokenId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/tokens/${tokenId}`,
+      "DELETE",
+    );
   }
 
   // Control Plane Configuration
@@ -203,16 +267,27 @@ export class KongApi {
     return this.kongRequest<any>(`/control-planes/${controlPlaneId}/config`);
   }
 
-  async updateControlPlaneConfig(controlPlaneId: string, configData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/config`, "PATCH", configData);
+  async updateControlPlaneConfig(
+    controlPlaneId: string,
+    configData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/config`,
+      "PATCH",
+      configData,
+    );
   }
 
   // ===========================
   // Configuration API methods
   // ===========================
-  async listServices(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
+  async listServices(
+    controlPlaneId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/services?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -221,24 +296,45 @@ export class KongApi {
   }
 
   async getService(controlPlaneId: string, serviceId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`,
+    );
   }
 
   async createService(controlPlaneId: string, serviceData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services`, "POST", serviceData);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/services`,
+      "POST",
+      serviceData,
+    );
   }
 
-  async updateService(controlPlaneId: string, serviceId: string, serviceData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`, "PUT", serviceData);
+  async updateService(
+    controlPlaneId: string,
+    serviceId: string,
+    serviceData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`,
+      "PUT",
+      serviceData,
+    );
   }
 
   async deleteService(controlPlaneId: string, serviceId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`, "DELETE");
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/services/${serviceId}`,
+      "DELETE",
+    );
   }
 
-  async listRoutes(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
+  async listRoutes(
+    controlPlaneId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/routes?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -247,24 +343,45 @@ export class KongApi {
   }
 
   async getRoute(controlPlaneId: string, routeId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`,
+    );
   }
 
   async createRoute(controlPlaneId: string, routeData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes`, "POST", routeData);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/routes`,
+      "POST",
+      routeData,
+    );
   }
 
-  async updateRoute(controlPlaneId: string, routeId: string, routeData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`, "PUT", routeData);
+  async updateRoute(
+    controlPlaneId: string,
+    routeId: string,
+    routeData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`,
+      "PUT",
+      routeData,
+    );
   }
 
   async deleteRoute(controlPlaneId: string, routeId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`, "DELETE");
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/routes/${routeId}`,
+      "DELETE",
+    );
   }
 
-  async listConsumers(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
+  async listConsumers(
+    controlPlaneId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/consumers?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -272,25 +389,52 @@ export class KongApi {
     return this.kongRequest<any>(endpoint);
   }
 
-  async createConsumer(controlPlaneId: string, consumerData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers`, "POST", consumerData);
+  async createConsumer(
+    controlPlaneId: string,
+    consumerData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/consumers`,
+      "POST",
+      consumerData,
+    );
   }
 
   async getConsumer(controlPlaneId: string, consumerId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`,
+    );
   }
 
-  async updateConsumer(controlPlaneId: string, consumerId: string, consumerData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`, "PUT", consumerData);
+  async updateConsumer(
+    controlPlaneId: string,
+    consumerId: string,
+    consumerData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`,
+      "PUT",
+      consumerData,
+    );
   }
 
-  async deleteConsumer(controlPlaneId: string, consumerId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`, "DELETE");
+  async deleteConsumer(
+    controlPlaneId: string,
+    consumerId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}`,
+      "DELETE",
+    );
   }
 
-  async listPlugins(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
+  async listPlugins(
+    controlPlaneId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/plugins?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -299,27 +443,48 @@ export class KongApi {
   }
 
   async getPlugin(controlPlaneId: string, pluginId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`,
+    );
   }
 
   async createPlugin(controlPlaneId: string, pluginData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins`, "POST", pluginData);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/plugins`,
+      "POST",
+      pluginData,
+    );
   }
 
-  async updatePlugin(controlPlaneId: string, pluginId: string, pluginData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`, "PUT", pluginData);
+  async updatePlugin(
+    controlPlaneId: string,
+    pluginId: string,
+    pluginData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`,
+      "PUT",
+      pluginData,
+    );
   }
 
   async deletePlugin(controlPlaneId: string, pluginId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`, "DELETE");
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/plugins/${pluginId}`,
+      "DELETE",
+    );
   }
 
   // ===========================
   // Certificate Management
   // ===========================
-  async listCertificates(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
+  async listCertificates(
+    controlPlaneId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/certificates?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -327,28 +492,58 @@ export class KongApi {
     return this.kongRequest<any>(endpoint);
   }
 
-  async getCertificate(controlPlaneId: string, certificateId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/certificates/${certificateId}`);
+  async getCertificate(
+    controlPlaneId: string,
+    certificateId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/certificates/${certificateId}`,
+    );
   }
 
-  async createCertificate(controlPlaneId: string, certificateData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/certificates`, "POST", certificateData);
+  async createCertificate(
+    controlPlaneId: string,
+    certificateData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/certificates`,
+      "POST",
+      certificateData,
+    );
   }
 
-  async updateCertificate(controlPlaneId: string, certificateId: string, certificateData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/certificates/${certificateId}`, "PUT", certificateData);
+  async updateCertificate(
+    controlPlaneId: string,
+    certificateId: string,
+    certificateData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/certificates/${certificateId}`,
+      "PUT",
+      certificateData,
+    );
   }
 
-  async deleteCertificate(controlPlaneId: string, certificateId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/certificates/${certificateId}`, "DELETE");
+  async deleteCertificate(
+    controlPlaneId: string,
+    certificateId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/certificates/${certificateId}`,
+      "DELETE",
+    );
   }
 
   // ===========================
   // Upstreams Management
   // ===========================
-  async listUpstreams(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
+  async listUpstreams(
+    controlPlaneId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/upstreams?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -357,12 +552,19 @@ export class KongApi {
   }
 
   async getUpstream(controlPlaneId: string, upstreamId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/upstreams/${upstreamId}`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/upstreams/${upstreamId}`,
+    );
   }
 
-  async listUpstreamTargets(controlPlaneId: string, upstreamId: string, size = 100, offset?: string): Promise<any> {
+  async listUpstreamTargets(
+    controlPlaneId: string,
+    upstreamId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/upstreams/${upstreamId}/targets?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -370,41 +572,67 @@ export class KongApi {
     return this.kongRequest<any>(endpoint);
   }
 
-  async getUpstreamHealth(controlPlaneId: string, upstreamId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/upstreams/${upstreamId}/health`);
+  async getUpstreamHealth(
+    controlPlaneId: string,
+    upstreamId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/upstreams/${upstreamId}/health`,
+    );
   }
 
   // ===========================
   // Data Plane Nodes Management
   // ===========================
-  async listDataPlaneNodes(controlPlaneId: string, pageSize = 10, pageNumber?: number, filterStatus?: string, filterHostname?: string): Promise<any> {
+  async listDataPlaneNodes(
+    controlPlaneId: string,
+    pageSize = 10,
+    pageNumber?: number,
+    filterStatus?: string,
+    filterHostname?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/nodes?page[size]=${pageSize}`;
 
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
     if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
-    if (filterHostname) endpoint += `&filter[hostname][contains]=${encodeURIComponent(filterHostname)}`;
+    if (filterHostname)
+      endpoint += `&filter[hostname][contains]=${encodeURIComponent(filterHostname)}`;
 
     return this.kongRequest<any>(endpoint);
   }
 
   async getDataPlaneNode(controlPlaneId: string, nodeId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/nodes/${nodeId}`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/nodes/${nodeId}`,
+    );
   }
 
-  async deleteDataPlaneNode(controlPlaneId: string, nodeId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/nodes/${nodeId}`, "DELETE");
+  async deleteDataPlaneNode(
+    controlPlaneId: string,
+    nodeId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/nodes/${nodeId}`,
+      "DELETE",
+    );
   }
 
   async getExpectedConfigHash(controlPlaneId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/expected-config-hash`);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/expected-config-hash`,
+    );
   }
 
   // ===========================
   // SNI Management
   // ===========================
-  async listSNIs(controlPlaneId: string, size = 100, offset?: string): Promise<any> {
+  async listSNIs(
+    controlPlaneId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/snis?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -413,15 +641,24 @@ export class KongApi {
   }
 
   async createSNI(controlPlaneId: string, sniData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/snis`, "POST", sniData);
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/snis`,
+      "POST",
+      sniData,
+    );
   }
 
   // ===========================
   // Consumer Key Management
   // ===========================
-  async listConsumerKeys(controlPlaneId: string, consumerId: string, size = 100, offset?: string): Promise<any> {
+  async listConsumerKeys(
+    controlPlaneId: string,
+    consumerId: string,
+    size = 100,
+    offset?: string,
+  ): Promise<any> {
     let endpoint = `/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}/key-auth?size=${size}`;
-    
+
     if (offset) {
       endpoint += `&offset=${offset}`;
     }
@@ -429,27 +666,49 @@ export class KongApi {
     return this.kongRequest<any>(endpoint);
   }
 
-  async createConsumerKey(controlPlaneId: string, consumerId: string, keyData: any): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}/key-auth`, "POST", keyData);
+  async createConsumerKey(
+    controlPlaneId: string,
+    consumerId: string,
+    keyData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}/key-auth`,
+      "POST",
+      keyData,
+    );
   }
 
-  async deleteConsumerKey(controlPlaneId: string, consumerId: string, keyId: string): Promise<any> {
-    return this.kongRequest<any>(`/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}/key-auth/${keyId}`, "DELETE");
+  async deleteConsumerKey(
+    controlPlaneId: string,
+    consumerId: string,
+    keyId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/control-planes/${controlPlaneId}/core-entities/consumers/${consumerId}/key-auth/${keyId}`,
+      "DELETE",
+    );
   }
 
   // ===========================
   // Portal API Methods
   // ===========================
-  
+
   // Portal APIs
-  async listPortalApis(pageSize = 10, pageNumber?: number, filterName?: string, filterStatus?: string, sort?: string): Promise<any> {
+  async listPortalApis(
+    pageSize = 10,
+    pageNumber?: number,
+    filterName?: string,
+    filterStatus?: string,
+    sort?: string,
+  ): Promise<any> {
     let endpoint = `/portal/apis?page[size]=${pageSize}`;
-    
+
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
-    if (filterName) endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
+    if (filterName)
+      endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
     if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
     if (sort) endpoint += `&sort=${encodeURIComponent(sort)}`;
-    
+
     return this.kongRequest<any>(endpoint);
   }
 
@@ -465,89 +724,174 @@ export class KongApi {
     return this.kongRequest<any>(`/portal/apis/${apiIdOrSlug}/documents`);
   }
 
-  async fetchPortalApiDocument(apiIdOrSlug: string, documentIdOrSlug: string, format = "json"): Promise<any> {
+  async fetchPortalApiDocument(
+    apiIdOrSlug: string,
+    documentIdOrSlug: string,
+    format = "json",
+  ): Promise<any> {
     const headers = {
-      "Accept": format === "yaml" ? "application/yaml" : 
-               format === "html" ? "text/html" :
-               format === "markdown" ? "text/markdown" : 
-               "application/json"
+      Accept:
+        format === "yaml"
+          ? "application/yaml"
+          : format === "html"
+            ? "text/html"
+            : format === "markdown"
+              ? "text/markdown"
+              : "application/json",
     };
-    return this.kongRequest<any>(`/portal/apis/${apiIdOrSlug}/documents/${documentIdOrSlug}`, "GET");
+    return this.kongRequest<any>(
+      `/portal/apis/${apiIdOrSlug}/documents/${documentIdOrSlug}`,
+      "GET",
+    );
   }
 
   // Application Management
-  async listPortalApplications(pageSize = 10, pageNumber?: number, filterName?: string, filterAuthStrategy?: string): Promise<any> {
+  async listPortalApplications(
+    pageSize = 10,
+    pageNumber?: number,
+    filterName?: string,
+    filterAuthStrategy?: string,
+  ): Promise<any> {
     let endpoint = `/api/v3/applications?page[size]=${pageSize}`;
-    
+
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
-    if (filterName) endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
-    if (filterAuthStrategy) endpoint += `&filter[auth_strategy_id][eq]=${filterAuthStrategy}`;
-    
+    if (filterName)
+      endpoint += `&filter[name][contains]=${encodeURIComponent(filterName)}`;
+    if (filterAuthStrategy)
+      endpoint += `&filter[auth_strategy_id][eq]=${filterAuthStrategy}`;
+
     return this.kongRequest<any>(endpoint);
   }
 
   async createPortalApplication(applicationData: any): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications`, "POST", applicationData);
+    return this.kongRequest<any>(
+      `/api/v3/applications`,
+      "POST",
+      applicationData,
+    );
   }
 
   async getPortalApplication(applicationId: string): Promise<any> {
     return this.kongRequest<any>(`/api/v3/applications/${applicationId}`);
   }
 
-  async updatePortalApplication(applicationId: string, applicationData: any): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}`, "PATCH", applicationData);
+  async updatePortalApplication(
+    applicationId: string,
+    applicationData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}`,
+      "PATCH",
+      applicationData,
+    );
   }
 
   async deletePortalApplication(applicationId: string): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}`, "DELETE");
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}`,
+      "DELETE",
+    );
   }
 
   // Application Registrations
-  async listPortalApplicationRegistrations(applicationId: string, pageSize = 10, pageNumber?: number, filterStatus?: string, filterApiName?: string): Promise<any> {
+  async listPortalApplicationRegistrations(
+    applicationId: string,
+    pageSize = 10,
+    pageNumber?: number,
+    filterStatus?: string,
+    filterApiName?: string,
+  ): Promise<any> {
     let endpoint = `/api/v3/applications/${applicationId}/registrations?page[size]=${pageSize}`;
-    
+
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
     if (filterStatus) endpoint += `&filter[status][eq]=${filterStatus}`;
-    if (filterApiName) endpoint += `&filter[api_name][contains]=${encodeURIComponent(filterApiName)}`;
-    
+    if (filterApiName)
+      endpoint += `&filter[api_name][contains]=${encodeURIComponent(filterApiName)}`;
+
     return this.kongRequest<any>(endpoint);
   }
 
-  async createPortalApplicationRegistration(applicationId: string, registrationData: any): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/registrations`, "POST", registrationData);
+  async createPortalApplicationRegistration(
+    applicationId: string,
+    registrationData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/registrations`,
+      "POST",
+      registrationData,
+    );
   }
 
-  async getPortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/registrations/${registrationId}`);
+  async getPortalApplicationRegistration(
+    applicationId: string,
+    registrationId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/registrations/${registrationId}`,
+    );
   }
 
-  async deletePortalApplicationRegistration(applicationId: string, registrationId: string): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/registrations/${registrationId}`, "DELETE");
+  async deletePortalApplicationRegistration(
+    applicationId: string,
+    registrationId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/registrations/${registrationId}`,
+      "DELETE",
+    );
   }
 
   // Credential Management
-  async listPortalCredentials(applicationId: string, pageSize = 10, pageNumber?: number): Promise<any> {
+  async listPortalCredentials(
+    applicationId: string,
+    pageSize = 10,
+    pageNumber?: number,
+  ): Promise<any> {
     let endpoint = `/api/v3/applications/${applicationId}/credentials?page[size]=${pageSize}`;
-    
+
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
-    
+
     return this.kongRequest<any>(endpoint);
   }
 
-  async createPortalCredential(applicationId: string, credentialData: any): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/credentials`, "POST", credentialData);
+  async createPortalCredential(
+    applicationId: string,
+    credentialData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/credentials`,
+      "POST",
+      credentialData,
+    );
   }
 
-  async updatePortalCredential(applicationId: string, credentialId: string, credentialData: any): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/credentials/${credentialId}`, "PATCH", credentialData);
+  async updatePortalCredential(
+    applicationId: string,
+    credentialId: string,
+    credentialData: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/credentials/${credentialId}`,
+      "PATCH",
+      credentialData,
+    );
   }
 
-  async deletePortalCredential(applicationId: string, credentialId: string): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/credentials/${credentialId}`, "DELETE");
+  async deletePortalCredential(
+    applicationId: string,
+    credentialId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/credentials/${credentialId}`,
+      "DELETE",
+    );
   }
 
   async regeneratePortalApplicationSecret(applicationId: string): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/regenerate-secret`, "POST");
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/regenerate-secret`,
+      "POST",
+    );
   }
 
   // Developer Authentication
@@ -568,8 +912,15 @@ export class KongApi {
   }
 
   // Application Analytics
-  async queryPortalApplicationAnalytics(applicationId: string, analyticsQuery: any): Promise<any> {
-    return this.kongRequest<any>(`/api/v3/applications/${applicationId}/analytics`, "POST", analyticsQuery);
+  async queryPortalApplicationAnalytics(
+    applicationId: string,
+    analyticsQuery: any,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/api/v3/applications/${applicationId}/analytics`,
+      "POST",
+      analyticsQuery,
+    );
   }
 
   // Portal Management Methods
@@ -596,18 +947,32 @@ export class KongApi {
   }
 
   // Portal Products/APIs Management
-  async listPortalProducts(portalId: string, pageSize = 10, pageNumber?: number): Promise<any> {
+  async listPortalProducts(
+    portalId: string,
+    pageSize = 10,
+    pageNumber?: number,
+  ): Promise<any> {
     let endpoint = `/portals/${portalId}/products?page[size]=${pageSize}`;
     if (pageNumber) endpoint += `&page[number]=${pageNumber}`;
     return this.kongRequest<any>(endpoint);
   }
 
   async publishPortalProduct(portalId: string, productData: any): Promise<any> {
-    return this.kongRequest<any>(`/portals/${portalId}/products`, "POST", productData);
+    return this.kongRequest<any>(
+      `/portals/${portalId}/products`,
+      "POST",
+      productData,
+    );
   }
 
-  async unpublishPortalProduct(portalId: string, productId: string): Promise<any> {
-    return this.kongRequest<any>(`/portals/${portalId}/products/${productId}`, "DELETE");
+  async unpublishPortalProduct(
+    portalId: string,
+    productId: string,
+  ): Promise<any> {
+    return this.kongRequest<any>(
+      `/portals/${portalId}/products/${productId}`,
+      "DELETE",
+    );
   }
 
   // =========================
@@ -618,26 +983,32 @@ export class KongApi {
    * Create a Portal API client for portal-specific operations
    * This handles operations that require the portal domain rather than management API
    */
-  async createPortalClient(portalId: string, options?: Partial<PortalApiOptions>): Promise<PortalApi> {
+  async createPortalClient(
+    portalId: string,
+    options?: Partial<PortalApiOptions>,
+  ): Promise<PortalApi> {
     // Fetch portal info to get the correct domain
     const portalInfo = await this.getPortal(portalId);
-    
+
     const portalOptions: PortalApiOptions = {
       apiKey: options?.apiKey || this.apiKey,
       apiRegion: options?.apiRegion || this.apiRegion,
-      portalDomain: portalInfo.default_domain
+      portalDomain: portalInfo.default_domain,
     };
-    
+
     return new PortalApi(portalId, portalOptions);
   }
 
   // Legacy synchronous method for backward compatibility
-  createPortalClientSync(portalId: string, options?: Partial<PortalApiOptions>): PortalApi {
+  createPortalClientSync(
+    portalId: string,
+    options?: Partial<PortalApiOptions>,
+  ): PortalApi {
     const portalOptions: PortalApiOptions = {
       apiKey: options?.apiKey || this.apiKey,
-      apiRegion: options?.apiRegion || this.apiRegion
+      apiRegion: options?.apiRegion || this.apiRegion,
     };
-    
+
     return new PortalApi(portalId, portalOptions);
   }
 

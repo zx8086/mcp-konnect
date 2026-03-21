@@ -3,12 +3,40 @@
  * Using the proven traceable pattern from the implementation guide
  */
 
-import { loadTracingConfig, validateTracingConfig, initializeEnvironment, getRuntimeInfo, type TracingConfig } from '../config/tracing-config.js';
-import { getCurrentSession, incrementToolCallCount, createNamedConnectionTrace, updateSessionWithConversation, detectSessionResumption, getSessionConversationSummary } from './session-manager.js';
-import { getOrCreateConversation, updateConversation, createConversationAwareTraceName, trackConversationFlow, getConversationStats, type ConversationInfo } from './conversation-tracker.js';
-import { detectIntent, detectContextTransition, type UserIntent } from './intent-detector.js';
-import { analyzeConversationQuality, generateConversationInsights, type ConversationQuality } from './conversation-metrics.js';
-import { mcpLogger } from './mcp-logger.js';
+import {
+  getRuntimeInfo,
+  initializeEnvironment,
+  loadTracingConfig,
+  type TracingConfig,
+  validateTracingConfig,
+} from "../config/tracing-config.js";
+import {
+  analyzeConversationQuality,
+  type ConversationQuality,
+  generateConversationInsights,
+} from "./conversation-metrics.js";
+import {
+  type ConversationInfo,
+  createConversationAwareTraceName,
+  getConversationStats,
+  getOrCreateConversation,
+  trackConversationFlow,
+  updateConversation,
+} from "./conversation-tracker.js";
+import {
+  detectContextTransition,
+  detectIntent,
+  type UserIntent,
+} from "./intent-detector.js";
+import { mcpLogger } from "./mcp-logger.js";
+import {
+  createNamedConnectionTrace,
+  detectSessionResumption,
+  getCurrentSession,
+  getSessionConversationSummary,
+  incrementToolCallCount,
+  updateSessionWithConversation,
+} from "./session-manager.js";
 
 interface TraceMetadata {
   category: string;
@@ -55,7 +83,10 @@ export class UniversalTracingManager {
     // Initialize asynchronously - graceful degradation if it fails
     this.initialize().catch(() => {
       this.enabled = false;
-      mcpLogger.warning('tracing', 'LangSmith initialization failed during construction - graceful degradation active');
+      mcpLogger.warning(
+        "tracing",
+        "LangSmith initialization failed during construction - graceful degradation active",
+      );
     });
   }
 
@@ -66,20 +97,25 @@ export class UniversalTracingManager {
     try {
       // Initialize environment loading (handles Bun vs Node.js differences)
       await initializeEnvironment();
-      
+
       // Load configuration after environment is initialized
       this.config = loadTracingConfig();
-      
+
       // Show runtime info for debugging
       const runtimeInfo = await getRuntimeInfo();
-      mcpLogger.info('tracing', `Runtime: ${runtimeInfo.runtime} ${runtimeInfo.version} (env source: ${runtimeInfo.envSource})`);
-      
+      mcpLogger.info(
+        "tracing",
+        `Runtime: ${runtimeInfo.runtime} ${runtimeInfo.version} (env source: ${runtimeInfo.envSource})`,
+      );
+
       // Initialize LangSmith
       await this.initializeLangSmith();
-      
+
       this.initialized = true;
     } catch (error: any) {
-      mcpLogger.error('tracing', 'Tracing initialization failed', { error: error.message });
+      mcpLogger.error("tracing", "Tracing initialization failed", {
+        error: error.message,
+      });
       this.enabled = false;
       this.initialized = true;
     }
@@ -93,47 +129,56 @@ export class UniversalTracingManager {
       // Validate configuration
       const validation = validateTracingConfig(this.config);
       if (!validation.isValid) {
-        mcpLogger.error('tracing', 'LangSmith tracing configuration invalid', { errors: validation.errors });
+        mcpLogger.error("tracing", "LangSmith tracing configuration invalid", {
+          errors: validation.errors,
+        });
         return;
       }
 
       if (!this.config.enabled) {
-        mcpLogger.info('tracing', 'LangSmith tracing disabled (LANGSMITH_TRACING=false)');
+        mcpLogger.info(
+          "tracing",
+          "LangSmith tracing disabled (LANGSMITH_TRACING=false)",
+        );
         return;
       }
 
       // Try to import LangSmith SDK - both Client and traceable
-      const langsmithImport = await import('langsmith');
+      const langsmithImport = await import("langsmith");
       const { Client } = langsmithImport;
-      
+
       // Try to import traceable from correct path (as per implementation guide)
       try {
-        const traceableImport = await import('langsmith/traceable');
-        
-        if ('traceable' in traceableImport) {
+        const traceableImport = await import("langsmith/traceable");
+
+        if ("traceable" in traceableImport) {
           traceable = traceableImport.traceable;
         }
-        
-        if ('getCurrentRunTree' in traceableImport) {
+
+        if ("getCurrentRunTree" in traceableImport) {
           getCurrentRunTree = traceableImport.getCurrentRunTree;
         }
       } catch (traceableError: any) {
-        mcpLogger.warning('tracing', 'Failed to import traceable functions', { error: traceableError.message });
+        mcpLogger.warning("tracing", "Failed to import traceable functions", {
+          error: traceableError.message,
+        });
       }
-      
+
       // Set up environment variables for LangSmith SDK (both standard and legacy)
-      process.env.LANGCHAIN_TRACING_V2 = 'true';
+      process.env.LANGCHAIN_TRACING_V2 = "true";
       process.env.LANGCHAIN_API_KEY = this.config.apiKey;
-      process.env.LANGCHAIN_PROJECT = this.config.project || 'konnect-mcp-server';
-      process.env.LANGCHAIN_ENDPOINT = this.config.endpoint || 'https://api.smith.langchain.com';
-      
+      process.env.LANGCHAIN_PROJECT =
+        this.config.project || "konnect-mcp-server";
+      process.env.LANGCHAIN_ENDPOINT =
+        this.config.endpoint || "https://api.smith.langchain.com";
+
       // Legacy custom names for backward compatibility
-      process.env.LANGSMITH_TRACING = 'true';
+      process.env.LANGSMITH_TRACING = "true";
       process.env.LANGSMITH_API_KEY = this.config.apiKey;
       if (this.config.project) {
         process.env.LANGSMITH_PROJECT = this.config.project;
       }
-      
+
       this.client = new Client({
         apiKey: this.config.apiKey,
         apiUrl: this.config.endpoint,
@@ -141,12 +186,19 @@ export class UniversalTracingManager {
       });
 
       this.enabled = true;
-      mcpLogger.info('tracing', `LangSmith tracing enabled for project: ${this.config.project}`, {
-        dashboardUrl: `${this.config.endpoint?.replace('api.', '')}/p/${this.config.project}`
-      });
-      
+      mcpLogger.info(
+        "tracing",
+        `LangSmith tracing enabled for project: ${this.config.project}`,
+        {
+          dashboardUrl: `${this.config.endpoint?.replace("api.", "")}/p/${this.config.project}`,
+        },
+      );
     } catch (error: any) {
-      mcpLogger.warning('tracing', 'LangSmith initialization failed - graceful degradation active', { error: error.message });
+      mcpLogger.warning(
+        "tracing",
+        "LangSmith initialization failed - graceful degradation active",
+        { error: error.message },
+      );
       this.enabled = false;
     }
   }
@@ -156,13 +208,13 @@ export class UniversalTracingManager {
    */
   private async ensureInitialized(): Promise<void> {
     if (this.initialized) return;
-    
+
     // Wait up to 5 seconds for initialization
     const timeout = 5000;
     const startTime = Date.now();
-    
-    while (!this.initialized && (Date.now() - startTime) < timeout) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+
+    while (!this.initialized && Date.now() - startTime < timeout) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -188,7 +240,7 @@ export class UniversalTracingManager {
   async traceToolExecution<T>(
     toolName: string,
     operation: () => Promise<T>,
-    metadata: TraceMetadata = { category: 'unknown' }
+    metadata: TraceMetadata = { category: "unknown" },
   ): Promise<{ result: T; traceContext?: TraceContext }> {
     // Ensure initialization is complete
     await this.ensureInitialized();
@@ -219,30 +271,41 @@ export class UniversalTracingManager {
       if (session?.sessionId) {
         // Get or create conversation context
         conversation = getOrCreateConversation(session.sessionId, toolName);
-        
+
         // Track conversation flow before execution
         trackConversationFlow(toolName);
-        
+
         // Detect user intent
-        userIntent = detectIntent(toolName, metadata, conversation.toolSequence);
-        
+        userIntent = detectIntent(
+          toolName,
+          metadata,
+          conversation.toolSequence,
+        );
+
         // Update session with conversation context
         const primaryTopic = userIntent.primary;
-        updateSessionWithConversation(toolName, userIntent.primary, primaryTopic);
-        
+        updateSessionWithConversation(
+          toolName,
+          userIntent.primary,
+          primaryTopic,
+        );
+
         // Get conversation statistics for metadata
         conversationStats = getConversationStats(session.sessionId);
-        
+
         // Create conversation-aware trace name
-        conversationAwareTraceName = createConversationAwareTraceName(toolName, conversation);
-        
+        conversationAwareTraceName = createConversationAwareTraceName(
+          toolName,
+          conversation,
+        );
+
         // Detect session resumption
         const resumption = detectSessionResumption(session.sessionId);
         if (resumption.isResumption) {
-          mcpLogger.info('tracing', 'Session resumption detected', {
-            sessionId: session.sessionId.substring(0, 8) + '...',
+          mcpLogger.info("tracing", "Session resumption detected", {
+            sessionId: session.sessionId.substring(0, 8) + "...",
             gapDuration: resumption.gapDuration,
-            contextLoss: resumption.contextLoss
+            contextLoss: resumption.contextLoss,
           });
         }
       }
@@ -252,23 +315,28 @@ export class UniversalTracingManager {
 
       // Create enhanced traceable function with proper input capture
       const toolTracer = traceable(
-        async (toolInput: any) => {  // ✅ NOW CAPTURES INPUT ARGUMENTS
+        async (toolInput: any) => {
+          // ✅ NOW CAPTURES INPUT ARGUMENTS
           const startTime = Date.now();
           const currentRun = getCurrentRunTree ? getCurrentRunTree() : null;
 
-          mcpLogger.debug('tracing', 'Executing tool with enhanced session context', {
-            toolName,
-            conversationAwareTraceName,
-            project: this.config.project,
-            sessionId: session?.sessionId,
-            conversationId: conversation?.conversationId,
-            messageCount: conversation?.messageCount,
-            userIntent: userIntent?.primary,
-            clientName: session?.clientInfo?.name,
-            hasParentTrace: !!currentRun,
-            parentTraceId: currentRun?.id,
-            inputReceived: !!toolInput
-          });
+          mcpLogger.debug(
+            "tracing",
+            "Executing tool with enhanced session context",
+            {
+              toolName,
+              conversationAwareTraceName,
+              project: this.config.project,
+              sessionId: session?.sessionId,
+              conversationId: conversation?.conversationId,
+              messageCount: conversation?.messageCount,
+              userIntent: userIntent?.primary,
+              clientName: session?.clientInfo?.name,
+              hasParentTrace: !!currentRun,
+              parentTraceId: currentRun?.id,
+              inputReceived: !!toolInput,
+            },
+          );
 
           try {
             const result = await operation();
@@ -278,39 +346,46 @@ export class UniversalTracingManager {
             // Update conversation with execution results
             if (session?.sessionId && conversation) {
               const updatedConversation = updateConversation(
-                session.sessionId, 
-                toolName, 
-                executionTime, 
-                success
+                session.sessionId,
+                toolName,
+                executionTime,
+                success,
               );
-              
+
               // Analyze conversation quality
               const conversationStats = getConversationStats(session.sessionId);
               if (conversationStats.conversation) {
                 conversationQuality = analyzeConversationQuality(
                   conversationStats.conversation,
                   userIntent,
-                  conversationStats.flow
+                  conversationStats.flow,
                 );
               }
             }
 
-            mcpLogger.debug('tracing', 'Tool execution completed with conversation context', {
-              toolName,
-              conversationAwareTraceName,
-              project: this.config.project,
-              executionTime,
-              sessionId: session?.sessionId,
-              conversationId: conversation?.conversationId,
-              messageCount: conversation?.messageCount + 1,
-              userIntent: userIntent?.primary,
-              conversationQuality: conversationQuality ? {
-                coherenceScore: conversationQuality.coherenceScore,
-                efficiencyScore: conversationQuality.efficiencyScore,
-                completeness: conversationQuality.conversationCompleteness
-              } : undefined,
-              hasResult: !!result
-            });
+            mcpLogger.debug(
+              "tracing",
+              "Tool execution completed with conversation context",
+              {
+                toolName,
+                conversationAwareTraceName,
+                project: this.config.project,
+                executionTime,
+                sessionId: session?.sessionId,
+                conversationId: conversation?.conversationId,
+                messageCount: conversation?.messageCount + 1,
+                userIntent: userIntent?.primary,
+                conversationQuality: conversationQuality
+                  ? {
+                      coherenceScore: conversationQuality.coherenceScore,
+                      efficiencyScore: conversationQuality.efficiencyScore,
+                      completeness:
+                        conversationQuality.conversationCompleteness,
+                    }
+                  : undefined,
+                hasResult: !!result,
+              },
+            );
 
             // Enhanced result with comprehensive trace metadata
             return {
@@ -325,34 +400,42 @@ export class UniversalTracingManager {
                 conversationFlow: conversationStats?.flow?.type,
                 userIntent: userIntent?.primary,
                 messageCount: conversation?.messageCount,
-                category: metadata.category || 'kong-konnect',
-                conversationQuality: conversationQuality ? {
-                  coherenceScore: conversationQuality.coherenceScore,
-                  efficiencyScore: conversationQuality.efficiencyScore,
-                  userExperienceScore: conversationQuality.userExperienceScore
-                } : undefined
+                category: metadata.category || "kong-konnect",
+                conversationQuality: conversationQuality
+                  ? {
+                      coherenceScore: conversationQuality.coherenceScore,
+                      efficiencyScore: conversationQuality.efficiencyScore,
+                      userExperienceScore:
+                        conversationQuality.userExperienceScore,
+                    }
+                  : undefined,
               },
             };
           } catch (error: any) {
             const executionTime = Date.now() - startTime;
             const success = false;
-            
+
             // Update conversation with execution failure
             if (session?.sessionId && conversation) {
-              updateConversation(session.sessionId, toolName, executionTime, success);
+              updateConversation(
+                session.sessionId,
+                toolName,
+                executionTime,
+                success,
+              );
             }
-            
+
             // Log error with enhanced context
-            mcpLogger.error('tracing', 'Tool execution failed', {
+            mcpLogger.error("tracing", "Tool execution failed", {
               toolName,
               conversationAwareTraceName,
               executionTime,
               sessionId: session?.sessionId,
               conversationId: conversation?.conversationId,
               userIntent: userIntent?.primary,
-              error: error instanceof Error ? error.message : String(error)
+              error: error instanceof Error ? error.message : String(error),
             });
-            
+
             throw error; // Re-throw to maintain error propagation
           }
         },
@@ -363,17 +446,17 @@ export class UniversalTracingManager {
           metadata: {
             // Core tool metadata
             tool_name: toolName,
-            category: metadata.category || 'kong-konnect',
-            toolVersion: '2.1.0', // Updated version with conversation support
-            runtime: 'bun',
-            
+            category: metadata.category || "kong-konnect",
+            toolVersion: "2.1.0", // Updated version with conversation support
+            runtime: "bun",
+
             // Session metadata
             session_id: session?.sessionId,
             connection_id: session?.connectionId,
             client_name: session?.clientInfo?.name,
             client_version: session?.clientInfo?.version,
             transport_mode: session?.transportMode,
-            
+
             // Enhanced conversation metadata
             conversation_id: conversation?.conversationId,
             message_count: conversation?.messageCount,
@@ -381,37 +464,47 @@ export class UniversalTracingManager {
             context_switches: conversation?.contextSwitches,
             topic_count: conversation?.topics?.length || 0,
             current_topic: conversation?.currentTopic,
-            
+
             // Intent and flow metadata
             user_intent_primary: userIntent?.primary,
             user_intent_secondary: userIntent?.secondary,
             intent_confidence: userIntent?.confidence,
             conversation_flow_type: conversationStats?.flow?.type,
             conversation_flow_confidence: conversationStats?.flow?.confidence,
-            
+
             // Quality metrics
             conversation_efficiency: conversationStats?.efficiency,
             conversation_coherence: conversationStats?.coherence,
-            
+
             // Session resumption
-            session_resumption: session ? detectSessionResumption(session.sessionId).isResumption : false,
-            
-            ...metadata // Include any additional metadata
+            session_resumption: session
+              ? detectSessionResumption(session.sessionId).isResumption
+              : false,
+
+            ...metadata, // Include any additional metadata
           },
           tags: [
-            'mcp-server',
-            'mcp-tool',
-            'conversation-aware',
+            "mcp-server",
+            "mcp-tool",
+            "conversation-aware",
             `tool:${toolName}`,
-            `category:${metadata.category || 'unknown'}`,
-            session?.clientInfo?.name ? `client:${session.clientInfo.name}` : 'client:unknown',
+            `category:${metadata.category || "unknown"}`,
+            session?.clientInfo?.name
+              ? `client:${session.clientInfo.name}`
+              : "client:unknown",
             `transport:${session?.transportMode}`,
-            userIntent?.primary ? `intent:${userIntent.primary}` : 'intent:unknown',
-            conversation?.isNewConversation ? 'conversation:new' : 'conversation:continuing',
-            conversationStats?.flow ? `flow:${conversationStats.flow.type}` : null,
-            'kong-konnect'
-          ].filter(Boolean) as string[]
-        }
+            userIntent?.primary
+              ? `intent:${userIntent.primary}`
+              : "intent:unknown",
+            conversation?.isNewConversation
+              ? "conversation:new"
+              : "conversation:continuing",
+            conversationStats?.flow
+              ? `flow:${conversationStats.flow.type}`
+              : null,
+            "kong-konnect",
+          ].filter(Boolean) as string[],
+        },
       );
 
       // Pass the actual tool arguments as input to capture them in the trace
@@ -423,30 +516,31 @@ export class UniversalTracingManager {
           session: {
             sessionId: session?.sessionId,
             conversationId: conversation?.conversationId,
-            clientName: session?.clientInfo?.name
+            clientName: session?.clientInfo?.name,
           },
           timestamp: metadata.timestamp,
-          region: metadata.region
-        }
+          region: metadata.region,
+        },
       };
-      
+
       const result = await toolTracer(toolInput);
-      
-      return { 
-        result, 
-        traceContext: { 
+
+      return {
+        result,
+        traceContext: {
           sessionId: session?.sessionId || this.sessionId,
           runId: result._trace?.runId,
           conversationId: conversation?.conversationId,
           conversationFlow: conversationStats?.flow?.type,
           userIntent: userIntent?.primary,
-          conversationQuality
-        } 
+          conversationQuality,
+        },
       };
-
     } catch (tracingError: any) {
       // If tracing fails, still execute the operation
-      mcpLogger.error('tracing', 'LangSmith tracing error', { error: tracingError.message });
+      mcpLogger.error("tracing", "LangSmith tracing error", {
+        error: tracingError.message,
+      });
       const result = await operation();
       return { result };
     }
@@ -455,7 +549,10 @@ export class UniversalTracingManager {
   /**
    * Create a session-level trace that acts as parent for all tool calls
    */
-  async createSessionTrace<T>(sessionContext: any, operation: () => Promise<T>): Promise<T> {
+  async createSessionTrace<T>(
+    sessionContext: any,
+    operation: () => Promise<T>,
+  ): Promise<T> {
     await this.ensureInitialized();
 
     if (!this.enabled || !traceable) {
@@ -464,29 +561,31 @@ export class UniversalTracingManager {
 
     try {
       const traceName = createNamedConnectionTrace(sessionContext);
-      
+
       const sessionTracer = traceable(
         async () => {
           const startTime = Date.now();
-          
-          mcpLogger.info('tracing', `Starting MCP session: ${traceName}`, {
+
+          mcpLogger.info("tracing", `Starting MCP session: ${traceName}`, {
             connectionId: sessionContext.connectionId,
             transportMode: sessionContext.transportMode,
             clientInfo: sessionContext.clientInfo,
-            sessionId: sessionContext.sessionId
+            sessionId: sessionContext.sessionId,
           });
-          
+
           try {
             const result = await operation();
             const executionTime = Date.now() - startTime;
-            
-            mcpLogger.info('tracing', `MCP session established: ${traceName}`, {
-              executionTime
+
+            mcpLogger.info("tracing", `MCP session established: ${traceName}`, {
+              executionTime,
             });
-            
+
             return result;
           } catch (error) {
-            mcpLogger.error('tracing', `MCP session failed: ${traceName}`, { error });
+            mcpLogger.error("tracing", `MCP session failed: ${traceName}`, {
+              error,
+            });
             throw error;
           }
         },
@@ -505,14 +604,18 @@ export class UniversalTracingManager {
           tags: [
             "mcp-connection",
             `transport:${sessionContext.transportMode}`,
-            sessionContext.clientInfo?.name ? `client:${sessionContext.clientInfo.name}` : "client:unknown"
-          ].filter(Boolean) as string[]
-        }
+            sessionContext.clientInfo?.name
+              ? `client:${sessionContext.clientInfo.name}`
+              : "client:unknown",
+          ].filter(Boolean) as string[],
+        },
       );
 
       return await sessionTracer();
     } catch (error: any) {
-      mcpLogger.error('tracing', 'Session tracing error', { error: error.message });
+      mcpLogger.error("tracing", "Session tracing error", {
+        error: error.message,
+      });
       return await operation();
     }
   }
@@ -521,12 +624,12 @@ export class UniversalTracingManager {
    * Log session information for debugging (sessions are created via metadata)
    */
   logSessionInfo(metadata: Record<string, any> = {}) {
-    mcpLogger.info('tracing', `Session ID: ${this.sessionId}`, {
+    mcpLogger.info("tracing", `Session ID: ${this.sessionId}`, {
       sessionMetadata: {
         createdAt: new Date().toISOString(),
-        version: '2.0.0',
-        ...metadata
-      }
+        version: "2.0.0",
+        ...metadata,
+      },
     });
   }
 
@@ -534,17 +637,25 @@ export class UniversalTracingManager {
    * Sanitize output data for tracing (remove sensitive information)
    */
   private sanitizeOutput(output: any): any {
-    if (!output || typeof output !== 'object') {
+    if (!output || typeof output !== "object") {
       return output;
     }
 
     const sanitized = JSON.parse(JSON.stringify(output));
-    
+
     // Remove or redact sensitive fields
-    const sensitiveFields = ['key', 'cert', 'certificate', 'private_key', 'secret', 'token', 'password'];
-    
+    const sensitiveFields = [
+      "key",
+      "cert",
+      "certificate",
+      "private_key",
+      "secret",
+      "token",
+      "password",
+    ];
+
     function redactSensitive(obj: any): any {
-      if (typeof obj !== 'object' || obj === null) {
+      if (typeof obj !== "object" || obj === null) {
         return obj;
       }
 
@@ -554,13 +665,15 @@ export class UniversalTracingManager {
 
       const result = { ...obj };
       for (const [key, value] of Object.entries(result)) {
-        if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
-          result[key] = '*** REDACTED FOR SECURITY ***';
-        } else if (typeof value === 'object') {
+        if (
+          sensitiveFields.some((field) => key.toLowerCase().includes(field))
+        ) {
+          result[key] = "*** REDACTED FOR SECURITY ***";
+        } else if (typeof value === "object") {
           result[key] = redactSensitive(value);
         }
       }
-      
+
       return result;
     }
 
@@ -571,9 +684,21 @@ export class UniversalTracingManager {
    * Create a dynamically named traceable function for a specific tool
    * This enables proper tool-specific naming in LangSmith traces
    */
-  createToolTracer<T extends any[], R>(toolName: string): (operation: (...args: T) => Promise<R>, metadata?: TraceMetadata) => Promise<R> {
-    return async (operation: (...args: T) => Promise<R>, metadata: TraceMetadata = { category: 'tool' }): Promise<R> => {
-      const { result } = await this.traceToolExecution(toolName, operation, metadata);
+  createToolTracer<T extends any[], R>(
+    toolName: string,
+  ): (
+    operation: (...args: T) => Promise<R>,
+    metadata?: TraceMetadata,
+  ) => Promise<R> {
+    return async (
+      operation: (...args: T) => Promise<R>,
+      metadata: TraceMetadata = { category: "tool" },
+    ): Promise<R> => {
+      const { result } = await this.traceToolExecution(
+        toolName,
+        operation,
+        metadata,
+      );
       return result;
     };
   }
@@ -595,32 +720,32 @@ export class UniversalTracingManager {
   }> {
     await this.ensureInitialized();
     const runtimeInfo = await getRuntimeInfo();
-    
+
     // Get session conversation summary if available
     const sessionSummary = getSessionConversationSummary();
     let conversationQuality: ConversationQuality | undefined;
-    
+
     if (sessionSummary?.sessionId) {
       const conversationStats = getConversationStats(sessionSummary.sessionId);
       if (conversationStats.conversation) {
         conversationQuality = analyzeConversationQuality(
           conversationStats.conversation,
           undefined, // No specific intent for overall stats
-          conversationStats.flow
+          conversationStats.flow,
         );
       }
     }
-    
+
     return {
       enabled: this.enabled,
       initialized: this.initialized,
-      project: this.config.project || 'unknown',
+      project: this.config.project || "unknown",
       sessionId: this.sessionId,
       samplingRate: this.config.samplingRate,
       runtime: `${runtimeInfo.runtime} ${runtimeInfo.version}`,
       conversationSupport: true,
       sessionSummary,
-      conversationQuality
+      conversationQuality,
     };
   }
 
@@ -638,26 +763,29 @@ export class UniversalTracingManager {
     if (!session?.sessionId) {
       return { hasActiveConversation: false };
     }
-    
+
     const conversationStats = getConversationStats(session.sessionId);
     if (!conversationStats.conversation) {
       return { hasActiveConversation: false };
     }
-    
+
     const quality = analyzeConversationQuality(
       conversationStats.conversation,
       undefined,
-      conversationStats.flow
+      conversationStats.flow,
     );
-    
-    const insights = generateConversationInsights(conversationStats.conversation, quality);
-    
+
+    const insights = generateConversationInsights(
+      conversationStats.conversation,
+      quality,
+    );
+
     return {
       hasActiveConversation: true,
       conversation: conversationStats.conversation,
       quality,
       insights,
-      recommendations: insights.recommendedImprovements
+      recommendations: insights.recommendedImprovements,
     };
   }
 }

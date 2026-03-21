@@ -1,4 +1,4 @@
-import { KongApi } from "../api.js";
+import type { KongApi } from "../api.js";
 
 /**
  * List services for a specific control plane
@@ -7,7 +7,7 @@ export async function listServices(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listServices(controlPlaneId, size, offset);
@@ -19,7 +19,7 @@ export async function listServices(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       services: result.data.map((service: any) => ({
         serviceId: service.id,
@@ -40,13 +40,13 @@ export async function listServices(
         enabled: service.enabled,
         metadata: {
           createdAt: service.created_at,
-          updatedAt: service.updated_at
-        }
+          updatedAt: service.updated_at,
+        },
       })),
       relatedTools: [
         "Use list-routes to find routes that point to these services",
-        "Use list-plugins to see plugins configured for these services"
-      ]
+        "Use list-plugins to see plugins configured for these services",
+      ],
     };
   } catch (error) {
     throw error;
@@ -60,7 +60,7 @@ export async function listRoutes(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listRoutes(controlPlaneId, size, offset);
@@ -72,7 +72,7 @@ export async function listRoutes(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       routes: result.data.map((route: any) => ({
         routeId: route.id,
@@ -92,14 +92,14 @@ export async function listRoutes(
         enabled: route.enabled,
         metadata: {
           createdAt: route.created_at,
-          updatedAt: route.updated_at
-        }
+          updatedAt: route.updated_at,
+        },
       })),
       relatedTools: [
         "Use query-api-requests with specific routeIds to analyze traffic",
         "Use list-services to find details about the services these routes connect to",
-        "Use list-plugins to see plugins configured for these routes"
-      ]
+        "Use list-plugins to see plugins configured for these routes",
+      ],
     };
   } catch (error) {
     throw error;
@@ -113,7 +113,7 @@ export async function listConsumers(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listConsumers(controlPlaneId, size, offset);
@@ -125,7 +125,7 @@ export async function listConsumers(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       consumers: result.data.map((consumer: any) => ({
         consumerId: consumer.id,
@@ -135,14 +135,14 @@ export async function listConsumers(
         enabled: consumer.enabled,
         metadata: {
           createdAt: consumer.created_at,
-          updatedAt: consumer.updated_at
-        }
+          updatedAt: consumer.updated_at,
+        },
       })),
       relatedTools: [
         "Use get-consumer-requests to analyze traffic for a specific consumer",
         "Use list-plugins to see plugins configured for these consumers",
-        "Use query-api-requests to identify consumers with high error rates"
-      ]
+        "Use query-api-requests to identify consumers with high error rates",
+      ],
     };
   } catch (error) {
     throw error;
@@ -156,7 +156,7 @@ export async function listPlugins(
   api: KongApi,
   controlPlaneId: string,
   size = 100,
-  offset?: string
+  offset?: string,
 ) {
   try {
     const result = await api.listPlugins(controlPlaneId, size, offset);
@@ -168,7 +168,7 @@ export async function listPlugins(
         size: size,
         offset: offset || null,
         nextOffset: result.offset,
-        totalCount: result.total
+        totalCount: result.total,
       },
       plugins: result.data.map((plugin: any) => ({
         pluginId: plugin.id,
@@ -181,17 +181,17 @@ export async function listPlugins(
           consumerId: plugin.consumer?.id,
           serviceId: plugin.service?.id,
           routeId: plugin.route?.id,
-          global: (!plugin.consumer && !plugin.service && !plugin.route)
+          global: !plugin.consumer && !plugin.service && !plugin.route,
         },
         metadata: {
           createdAt: plugin.created_at,
-          updatedAt: plugin.updated_at
-        }
+          updatedAt: plugin.updated_at,
+        },
       })),
       relatedTools: [
         "Use list-services and list-routes to find entities these plugins are applied to",
-        "Use query-api-requests to analyze traffic affected by these plugins"
-      ]
+        "Use query-api-requests to analyze traffic affected by these plugins",
+      ],
     };
   } catch (error) {
     throw error;
@@ -216,7 +216,7 @@ export async function createService(
     readTimeout?: number;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
 ) {
   try {
     const requestData = {
@@ -230,7 +230,7 @@ export async function createService(
       write_timeout: serviceData.writeTimeout || 60000,
       read_timeout: serviceData.readTimeout || 60000,
       tags: serviceData.tags,
-      enabled: serviceData.enabled ?? true
+      enabled: serviceData.enabled ?? true,
     };
 
     const result = await api.createService(controlPlaneId, requestData);
@@ -252,15 +252,15 @@ export async function createService(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Service '${result.name}' created successfully with ID: ${result.id}`,
       relatedTools: [
         "Use create-route to create routes that point to this service",
         "Use list-services to see all services in this control plane",
-        "Use create-plugin to add plugins to this service"
-      ]
+        "Use create-plugin to add plugins to this service",
+      ],
     };
   } catch (error) {
     throw error;
@@ -273,7 +273,7 @@ export async function createService(
 export async function getService(
   api: KongApi,
   controlPlaneId: string,
-  serviceId: string
+  serviceId: string,
 ) {
   try {
     const result = await api.getService(controlPlaneId, serviceId);
@@ -298,14 +298,14 @@ export async function getService(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       relatedTools: [
         "Use list-routes to find routes that point to this service",
         "Use list-plugins to see plugins configured for this service",
-        "Use update-service to modify this service's configuration"
-      ]
+        "Use update-service to modify this service's configuration",
+      ],
     };
   } catch (error) {
     throw error;
@@ -331,24 +331,34 @@ export async function updateService(
     readTimeout?: number;
     tags?: string[];
     enabled?: boolean;
-  }
+  },
 ) {
   try {
     const requestData: any = {};
-    
+
     if (serviceData.name !== undefined) requestData.name = serviceData.name;
     if (serviceData.host !== undefined) requestData.host = serviceData.host;
     if (serviceData.port !== undefined) requestData.port = serviceData.port;
-    if (serviceData.protocol !== undefined) requestData.protocol = serviceData.protocol;
+    if (serviceData.protocol !== undefined)
+      requestData.protocol = serviceData.protocol;
     if (serviceData.path !== undefined) requestData.path = serviceData.path;
-    if (serviceData.retries !== undefined) requestData.retries = serviceData.retries;
-    if (serviceData.connectTimeout !== undefined) requestData.connect_timeout = serviceData.connectTimeout;
-    if (serviceData.writeTimeout !== undefined) requestData.write_timeout = serviceData.writeTimeout;
-    if (serviceData.readTimeout !== undefined) requestData.read_timeout = serviceData.readTimeout;
+    if (serviceData.retries !== undefined)
+      requestData.retries = serviceData.retries;
+    if (serviceData.connectTimeout !== undefined)
+      requestData.connect_timeout = serviceData.connectTimeout;
+    if (serviceData.writeTimeout !== undefined)
+      requestData.write_timeout = serviceData.writeTimeout;
+    if (serviceData.readTimeout !== undefined)
+      requestData.read_timeout = serviceData.readTimeout;
     if (serviceData.tags !== undefined) requestData.tags = serviceData.tags;
-    if (serviceData.enabled !== undefined) requestData.enabled = serviceData.enabled;
+    if (serviceData.enabled !== undefined)
+      requestData.enabled = serviceData.enabled;
 
-    const result = await api.updateService(controlPlaneId, serviceId, requestData);
+    const result = await api.updateService(
+      controlPlaneId,
+      serviceId,
+      requestData,
+    );
 
     return {
       success: true,
@@ -367,14 +377,14 @@ export async function updateService(
         enabled: result.enabled,
         metadata: {
           createdAt: result.created_at,
-          updatedAt: result.updated_at
-        }
+          updatedAt: result.updated_at,
+        },
       },
       message: `Service '${result.name}' updated successfully`,
       relatedTools: [
         "Use get-service to see the updated service details",
-        "Use list-routes to see routes affected by this change"
-      ]
+        "Use list-routes to see routes affected by this change",
+      ],
     };
   } catch (error) {
     throw error;
@@ -387,7 +397,7 @@ export async function updateService(
 export async function deleteService(
   api: KongApi,
   controlPlaneId: string,
-  serviceId: string
+  serviceId: string,
 ) {
   try {
     await api.deleteService(controlPlaneId, serviceId);
@@ -395,11 +405,12 @@ export async function deleteService(
     return {
       success: true,
       message: `Service ${serviceId} deleted successfully`,
-      warning: "All routes pointing to this service have been orphaned and may need to be updated or deleted",
+      warning:
+        "All routes pointing to this service have been orphaned and may need to be updated or deleted",
       relatedTools: [
         "Use list-routes to check for orphaned routes",
-        "Use list-services to see remaining services in this control plane"
-      ]
+        "Use list-services to see remaining services in this control plane",
+      ],
     };
   } catch (error) {
     throw error;

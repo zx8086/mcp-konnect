@@ -1,36 +1,38 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-
-// Import the new modular architecture
-import { getAllTools, validateToolRegistry } from "./tools/registry.js";
-import { KongApi, API_REGIONS } from "./api/kong-api.js";
-import { formatError } from "./utils/error-handling.js";
-import { UniversalTracingManager } from "./utils/tracing.js";
-import { ToolPerformanceCollector } from "./utils/tool-tracer.js";
-import { 
-  createSessionContext, 
-  generateSessionId, 
-  detectClient, 
-  runWithSession, 
-  logSessionInfo,
-  getCurrentSession 
-} from "./utils/session-manager.js";
-import { getEnvVar, getEnvVarWithDefault, initializeEnvironment, getRuntimeInfo } from "./utils/env.js";
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import { API_REGIONS, KongApi } from "./api/kong-api.js";
 import { loadConfiguration } from "./config/index.js";
-import { mcpLogger } from "./utils/mcp-logger.js";
-import { mcpLogger } from "./utils/mcp-logger.js";
-import { mcpPaginator } from "./utils/pagination.js";
-
 // Import operations
 import * as analyticsOps from "./tools/analytics/operations.js";
-import * as controlPlanesOps from "./tools/control-planes/operations.js";
 import * as certificatesOps from "./tools/certificates/operations.js";
 import * as configurationOps from "./tools/configuration/operations.js";
-import * as portalOps from "./tools/portal/operations.js";
-import * as portalManagementOps from "./tools/portal-management/operations.js";
+import * as controlPlanesOps from "./tools/control-planes/operations.js";
 import { ElicitationOperations } from "./tools/elicitation-tool.js";
 import { enhancedKongTools } from "./tools/enhanced-kong-tools.js";
+import * as portalOps from "./tools/portal/operations.js";
+import * as portalManagementOps from "./tools/portal-management/operations.js";
+// Import the new modular architecture
+import { getAllTools, validateToolRegistry } from "./tools/registry.js";
+import {
+  getEnvVar,
+  getEnvVarWithDefault,
+  getRuntimeInfo,
+  initializeEnvironment,
+} from "./utils/env.js";
+import { formatError } from "./utils/error-handling.js";
+import { mcpLogger } from "./utils/mcp-logger.js";
+import { mcpPaginator } from "./utils/pagination.js";
+import {
+  createSessionContext,
+  detectClient,
+  generateSessionId,
+  getCurrentSession,
+  logSessionInfo,
+  runWithSession,
+} from "./utils/session-manager.js";
+import { ToolPerformanceCollector } from "./utils/tool-tracer.js";
+import { UniversalTracingManager } from "./utils/tracing.js";
 
 /**
  * Enhanced MCP server class for Kong Konnect integration with modular architecture
@@ -45,25 +47,28 @@ class KongKonnectMcpServer extends McpServer {
     super({
       name: "kong-konnect-mcp",
       version: "2.0.0",
-      description: "Comprehensive Kong Konnect API Gateway management with analytics, configuration, certificates, and more",
+      description:
+        "Comprehensive Kong Konnect API Gateway management with analytics, configuration, certificates, and more",
       capabilities: {
         tools: {},
         elicitation: {},
-        logging: {}
-      }
+        logging: {},
+      },
     });
 
     // Initialize the API client with universal environment access
     this.api = new KongApi({
-      apiKey: options.apiKey || getEnvVar('KONNECT_ACCESS_TOKEN'),
-      apiRegion: options.apiRegion || getEnvVarWithDefault('KONNECT_REGION', API_REGIONS.US)
+      apiKey: options.apiKey || getEnvVar("KONNECT_ACCESS_TOKEN"),
+      apiRegion:
+        options.apiRegion ||
+        getEnvVarWithDefault("KONNECT_REGION", API_REGIONS.US),
     });
 
     // Initialize tracing and performance monitoring
     this.tracingManager = new UniversalTracingManager();
     this.performanceCollector = new ToolPerformanceCollector();
     this.elicitationOps = new ElicitationOperations();
-    
+
     // MCP logging will be initialized after server setup
 
     // Log session information for tracing
@@ -72,30 +77,33 @@ class KongKonnectMcpServer extends McpServer {
     // Validate tool registry
     const validation = validateToolRegistry();
     if (!validation.isValid) {
-      mcpLogger.critical("server", "Tool registry validation failed", { 
-        errors: validation.errors 
+      mcpLogger.critical("server", "Tool registry validation failed", {
+        errors: validation.errors,
       });
       throw new Error(`Invalid tool registry: ${validation.errors.join(", ")}`);
     }
 
     // Log tracing status to stderr (never stdout for MCP servers!)
     // Note: getStats() is async, so we'll log this after server startup
-    this.tracingManager.getStats().then(stats => {
-      mcpLogger.info("tracing", "Tracing status", {
-        enabled: stats.enabled,
-        project: stats.project,
-        sessionId: stats.sessionId
+    this.tracingManager
+      .getStats()
+      .then((stats) => {
+        mcpLogger.info("tracing", "Tracing status", {
+          enabled: stats.enabled,
+          project: stats.project,
+          sessionId: stats.sessionId,
+        });
+      })
+      .catch(() => {
+        mcpLogger.debug("tracing", "Tracing initializing");
       });
-    }).catch(() => {
-      mcpLogger.debug("tracing", "Tracing initializing");
-    });
 
     // Register all tools
     this.registerTools();
-    
+
     // Override default tools/list handler to provide pagination
     // TEMPORARILY DISABLED: this.registerPaginatedToolsList();
-    
+
     // MCP-compliant logging will be initialized after server creation
   }
 
@@ -105,36 +113,38 @@ class KongKonnectMcpServer extends McpServer {
   private registerPaginatedToolsList() {
     this.setRequestHandler({ method: "tools/list" }, async (request) => {
       const allTools = getAllTools();
-      
+
       try {
         // Extract pagination parameters (only cursor is in official MCP schema)
         const cursor = request.params?.cursor;
-        
+
         // Use fixed page size since pageSize isn't in MCP schema
         // Category filtering via custom tools/categories endpoint instead
-        
+
         mcpLogger.debug("tools", "Tools list requested", {
           cursor: cursor ? "[CURSOR]" : undefined,
-          totalTools: allTools.length
+          totalTools: allTools.length,
         });
 
         // Apply pagination (use default page size since not in MCP schema)
-        const paginatedResult = mcpPaginator.paginateTools(allTools, { cursor });
+        const paginatedResult = mcpPaginator.paginateTools(allTools, {
+          cursor,
+        });
 
         // Transform tools to official MCP Tool schema format
-        const mcpTools = paginatedResult.items.map(tool => ({
+        const mcpTools = paginatedResult.items.map((tool) => ({
           name: tool.method,
           description: tool.description,
           inputSchema: {
             type: "object" as const,
             properties: tool.parameters.shape || {},
-            required: []
-          }
+            required: [],
+          },
         }));
 
         // Prepare response according to MCP spec
         const response: any = {
-          tools: mcpTools
+          tools: mcpTools,
         };
 
         // Add nextCursor if more results exist
@@ -145,52 +155,54 @@ class KongKonnectMcpServer extends McpServer {
         mcpLogger.debug("tools", "Tools list response", {
           returnedTools: mcpTools.length,
           hasNextPage: !!paginatedResult.nextCursor,
-          categories: [...new Set(paginatedResult.items.map(t => t.category))]
+          categories: [
+            ...new Set(paginatedResult.items.map((t) => t.category)),
+          ],
         });
 
         return response;
-        
       } catch (error: any) {
         mcpLogger.error("tools", "Tools list pagination error", {
           error: error.message,
-          cursor: request.params?.cursor ? "[INVALID]" : undefined
+          cursor: request.params?.cursor ? "[INVALID]" : undefined,
         });
-        
+
         // Return error per MCP spec for invalid cursor
         throw {
           code: -32602,
           message: "Invalid params",
-          data: { error: error.message }
+          data: { error: error.message },
         };
       }
     });
-    
+
     // Register tools/categories helper method for client navigation
     this.setRequestHandler({ method: "tools/categories" }, async (request) => {
       const allTools = getAllTools();
       const categories = mcpPaginator.getToolCategories(allTools);
-      
+
       mcpLogger.debug("tools", "Tool categories requested", {
         categoriesCount: categories.length,
-        categories
+        categories,
       });
-      
+
       return {
-        categories: categories.map(category => ({
+        categories: categories.map((category) => ({
           name: category,
-          toolCount: allTools.filter(tool => tool.category === category).length
-        }))
+          toolCount: allTools.filter((tool) => tool.category === category)
+            .length,
+        })),
       };
     });
   }
 
   private registerTools() {
     const allTools = getAllTools();
-    
+
     mcpLogger.notice("server", "Native MCP elicitation active");
     mcpLogger.info("server", "Registering tools", {
       toolCount: allTools.length,
-      categories: [...new Set(allTools.map(t => t.category))]
+      categories: [...new Set(allTools.map((t) => t.category))],
     });
 
     // Kong modification operations using enhanced MCP elicitation - DISABLED FOR CLAUDE DESKTOP
@@ -198,38 +210,60 @@ class KongKonnectMcpServer extends McpServer {
       // 'create_service', 'create_route', 'create_consumer', 'create_plugin'
     ]);
 
-    allTools.forEach(tool => {
+    allTools.forEach((tool) => {
       // Check if this is an enhanced Kong operation
       const isEnhancedKongOperation = ENHANCED_KONG_OPERATIONS.has(tool.method);
-      
-      let handler: (args: any, extra: RequestHandlerExtra<any, any>) => Promise<any>;
-      
+
+      let handler: (
+        args: any,
+        extra: RequestHandlerExtra<any, any>,
+      ) => Promise<any>;
+
       if (isEnhancedKongOperation) {
         // Use enhanced operation handler with native MCP elicitation
-        mcpLogger.debug("server", "Registering enhanced operation", { method: tool.method });
+        mcpLogger.debug("server", "Registering enhanced operation", {
+          method: tool.method,
+        });
         handler = async (args: any, extra: RequestHandlerExtra<any, any>) => {
           switch (tool.method) {
-            case 'create_service':
-              return await enhancedKongTools.createServiceWithElicitation(this.api, args, extra);
-            case 'create_route':
-              return await enhancedKongTools.createRouteWithElicitation(this.api, args, extra);
-            case 'create_consumer':
-              return await enhancedKongTools.createConsumerWithElicitation(this.api, args, extra);
-            case 'create_plugin':
-              return await enhancedKongTools.createPluginWithElicitation(this.api, args, extra);
+            case "create_service":
+              return await enhancedKongTools.createServiceWithElicitation(
+                this.api,
+                args,
+                extra,
+              );
+            case "create_route":
+              return await enhancedKongTools.createRouteWithElicitation(
+                this.api,
+                args,
+                extra,
+              );
+            case "create_consumer":
+              return await enhancedKongTools.createConsumerWithElicitation(
+                this.api,
+                args,
+                extra,
+              );
+            case "create_plugin":
+              return await enhancedKongTools.createPluginWithElicitation(
+                this.api,
+                args,
+                extra,
+              );
             default:
-              throw new Error(`Enhanced operation ${tool.method} not implemented`);
+              throw new Error(
+                `Enhanced operation ${tool.method} not implemented`,
+              );
           }
         };
-        
       } else {
         // Use original handler logic for non-blocked operations
         handler = async (args: any, extra: RequestHandlerExtra<any, any>) => {
-        const startTime = Date.now();
-        let success = true;
-        
-        try {
-          let result;
+          const startTime = Date.now();
+          let success = true;
+
+          try {
+            let result;
 
             // Route to appropriate handler based on method
             switch (tool.method) {
@@ -246,7 +280,7 @@ class KongKonnectMcpServer extends McpServer {
                   args.consumerIds,
                   args.serviceIds,
                   args.routeIds,
-                  args.maxResults
+                  args.maxResults,
                 );
                 break;
 
@@ -257,7 +291,7 @@ class KongKonnectMcpServer extends McpServer {
                   args.timeRange,
                   args.successOnly,
                   args.failureOnly,
-                  args.maxResults
+                  args.maxResults,
                 );
                 break;
 
@@ -273,47 +307,46 @@ class KongKonnectMcpServer extends McpServer {
                   args.filterClusterType,
                   args.filterCloudGateway,
                   args.labels,
-                  args.sort
+                  args.sort,
                 );
                 break;
 
               case "get_control_plane":
                 result = await controlPlanesOps.getControlPlane(
                   this.api,
-                  args.controlPlaneId
+                  args.controlPlaneId,
                 );
                 break;
 
               case "list_control_plane_group_memberships":
-                result = await controlPlanesOps.listControlPlaneGroupMemberships(
-                  this.api,
-                  args.groupId,
-                  args.pageSize,
-                  args.pageAfter
-                );
+                result =
+                  await controlPlanesOps.listControlPlaneGroupMemberships(
+                    this.api,
+                    args.groupId,
+                    args.pageSize,
+                    args.pageAfter,
+                  );
                 break;
 
               case "check_control_plane_group_membership":
-                result = await controlPlanesOps.checkControlPlaneGroupMembership(
-                  this.api,
-                  args.controlPlaneId
-                );
+                result =
+                  await controlPlanesOps.checkControlPlaneGroupMembership(
+                    this.api,
+                    args.controlPlaneId,
+                  );
                 break;
 
               // Control Plane CRUD Operations
               case "create_control_plane":
-                result = await controlPlanesOps.createControlPlane(
-                  this.api,
-                  {
-                    name: args.name,
-                    description: args.description,
-                    clusterType: args.clusterType,
-                    cloudGateway: args.cloudGateway,
-                    authType: args.authType,
-                    proxyUrls: args.proxyUrls,
-                    labels: args.labels
-                  }
-                );
+                result = await controlPlanesOps.createControlPlane(this.api, {
+                  name: args.name,
+                  description: args.description,
+                  clusterType: args.clusterType,
+                  cloudGateway: args.cloudGateway,
+                  authType: args.authType,
+                  proxyUrls: args.proxyUrls,
+                  labels: args.labels,
+                });
                 break;
 
               case "update_control_plane":
@@ -323,15 +356,15 @@ class KongKonnectMcpServer extends McpServer {
                   {
                     name: args.name,
                     description: args.description,
-                    labels: args.labels
-                  }
+                    labels: args.labels,
+                  },
                 );
                 break;
 
               case "delete_control_plane":
                 result = await controlPlanesOps.deleteControlPlane(
                   this.api,
-                  args.controlPlaneId
+                  args.controlPlaneId,
                 );
                 break;
 
@@ -343,7 +376,7 @@ class KongKonnectMcpServer extends McpServer {
                   args.pageSize,
                   args.pageNumber,
                   args.filterStatus,
-                  args.filterHostname
+                  args.filterHostname,
                 );
                 break;
 
@@ -351,7 +384,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await controlPlanesOps.getDataPlaneNode(
                   this.api,
                   args.controlPlaneId,
-                  args.nodeId
+                  args.nodeId,
                 );
                 break;
 
@@ -361,7 +394,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.controlPlaneId,
                   args.name,
-                  args.expiresAt
+                  args.expiresAt,
                 );
                 break;
 
@@ -370,7 +403,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.controlPlaneId,
                   args.pageSize,
-                  args.pageNumber
+                  args.pageNumber,
                 );
                 break;
 
@@ -378,7 +411,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await controlPlanesOps.revokeDataPlaneToken(
                   this.api,
                   args.controlPlaneId,
-                  args.tokenId
+                  args.tokenId,
                 );
                 break;
 
@@ -386,7 +419,7 @@ class KongKonnectMcpServer extends McpServer {
               case "get_control_plane_config":
                 result = await controlPlanesOps.getControlPlaneConfig(
                   this.api,
-                  args.controlPlaneId
+                  args.controlPlaneId,
                 );
                 break;
 
@@ -399,8 +432,8 @@ class KongKonnectMcpServer extends McpServer {
                     telemetryUrl: args.telemetryUrl,
                     authType: args.authType,
                     cloudGateway: args.cloudGateway,
-                    analyticsEnabled: args.analyticsEnabled
-                  }
+                    analyticsEnabled: args.analyticsEnabled,
+                  },
                 );
                 break;
 
@@ -412,7 +445,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.controlPlaneId,
                   args.size,
-                  args.offset
+                  args.offset,
                 );
                 break;
 
@@ -420,7 +453,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await certificatesOps.getCertificate(
                   this.api,
                   args.controlPlaneId,
-                  args.certificateId
+                  args.certificateId,
                 );
                 break;
 
@@ -432,7 +465,7 @@ class KongKonnectMcpServer extends McpServer {
                   args.key,
                   args.certAlt,
                   args.keyAlt,
-                  args.tags
+                  args.tags,
                 );
                 break;
 
@@ -445,7 +478,7 @@ class KongKonnectMcpServer extends McpServer {
                   args.key,
                   args.certAlt,
                   args.keyAlt,
-                  args.tags
+                  args.tags,
                 );
                 break;
 
@@ -453,7 +486,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await certificatesOps.deleteCertificate(
                   this.api,
                   args.controlPlaneId,
-                  args.certificateId
+                  args.certificateId,
                 );
                 break;
 
@@ -466,7 +499,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.controlPlaneId,
                   args.size,
-                  args.offset
+                  args.offset,
                 );
                 break;
 
@@ -475,7 +508,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.controlPlaneId,
                   args.size,
-                  args.offset
+                  args.offset,
                 );
                 break;
 
@@ -484,7 +517,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.controlPlaneId,
                   args.size,
-                  args.offset
+                  args.offset,
                 );
                 break;
 
@@ -493,7 +526,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.controlPlaneId,
                   args.size,
-                  args.offset
+                  args.offset,
                 );
                 break;
 
@@ -513,9 +546,9 @@ class KongKonnectMcpServer extends McpServer {
                     writeTimeout: args.writeTimeout,
                     readTimeout: args.readTimeout,
                     tags: args.tags,
-                    enabled: args.enabled
+                    enabled: args.enabled,
                   },
-                  extra
+                  extra,
                 );
                 break;
 
@@ -523,7 +556,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await configurationOps.getService(
                   this.api,
                   args.controlPlaneId,
-                  args.serviceId
+                  args.serviceId,
                 );
                 break;
 
@@ -544,9 +577,9 @@ class KongKonnectMcpServer extends McpServer {
                     stripPath: args.stripPath,
                     preserveHost: args.preserveHost,
                     regexPriority: args.regexPriority,
-                    tags: args.tags
+                    tags: args.tags,
                   },
-                  extra
+                  extra,
                 );
                 break;
 
@@ -554,7 +587,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await configurationOps.getRoute(
                   this.api,
                   args.controlPlaneId,
-                  args.routeId
+                  args.routeId,
                 );
                 break;
 
@@ -569,9 +602,9 @@ class KongKonnectMcpServer extends McpServer {
                     username: args.username,
                     customId: args.customId,
                     tags: args.tags,
-                    enabled: args.enabled
+                    enabled: args.enabled,
                   },
-                  extra
+                  extra,
                 );
                 break;
 
@@ -579,7 +612,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await configurationOps.getConsumer(
                   this.api,
                   args.controlPlaneId,
-                  args.consumerId
+                  args.consumerId,
                 );
                 break;
 
@@ -592,8 +625,8 @@ class KongKonnectMcpServer extends McpServer {
                     username: args.username,
                     customId: args.customId,
                     tags: args.tags,
-                    enabled: args.enabled
-                  }
+                    enabled: args.enabled,
+                  },
                 );
                 break;
 
@@ -612,9 +645,9 @@ class KongKonnectMcpServer extends McpServer {
                     serviceId: args.serviceId,
                     routeId: args.routeId,
                     tags: args.tags,
-                    enabled: args.enabled
+                    enabled: args.enabled,
                   },
-                  extra
+                  extra,
                 );
                 break;
 
@@ -622,7 +655,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await configurationOps.getPlugin(
                   this.api,
                   args.controlPlaneId,
-                  args.pluginId
+                  args.pluginId,
                 );
                 break;
 
@@ -631,7 +664,7 @@ class KongKonnectMcpServer extends McpServer {
               case "list_plugin_schemas":
                 result = await configurationOps.listPluginSchemas(
                   this.api,
-                  args.controlPlaneId
+                  args.controlPlaneId,
                 );
                 break;
 
@@ -646,28 +679,25 @@ class KongKonnectMcpServer extends McpServer {
                   args.pageNumber,
                   args.filterName,
                   args.filterStatus,
-                  args.sort
+                  args.sort,
                 );
                 break;
 
               case "fetch_portal_api":
-                result = await portalOps.fetchApi(
-                  this.api,
-                  args.apiIdOrSlug
-                );
+                result = await portalOps.fetchApi(this.api, args.apiIdOrSlug);
                 break;
 
               case "get_portal_api_actions":
                 result = await portalOps.getApiActions(
                   this.api,
-                  args.apiIdOrSlug
+                  args.apiIdOrSlug,
                 );
                 break;
 
               case "list_portal_api_documents":
                 result = await portalOps.listApiDocuments(
                   this.api,
-                  args.apiIdOrSlug
+                  args.apiIdOrSlug,
                 );
                 break;
 
@@ -676,7 +706,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.apiIdOrSlug,
                   args.documentIdOrSlug,
-                  args.format
+                  args.format,
                 );
                 break;
 
@@ -688,28 +718,25 @@ class KongKonnectMcpServer extends McpServer {
                   args.pageSize,
                   args.pageNumber,
                   args.filterName,
-                  args.filterAuthStrategy
+                  args.filterAuthStrategy,
                 );
                 break;
 
               case "create_portal_application":
-                result = await portalOps.createApplication(
-                  this.api,
-                  {
-                    name: args.name,
-                    description: args.description,
-                    clientId: args.clientId,
-                    redirectUri: args.redirectUri,
-                    authStrategyId: args.authStrategyId,
-                    scopes: args.scopes
-                  }
-                );
+                result = await portalOps.createApplication(this.api, {
+                  name: args.name,
+                  description: args.description,
+                  clientId: args.clientId,
+                  redirectUri: args.redirectUri,
+                  authStrategyId: args.authStrategyId,
+                  scopes: args.scopes,
+                });
                 break;
 
               case "get_portal_application":
                 result = await portalOps.getApplication(
                   this.api,
-                  args.applicationId
+                  args.applicationId,
                 );
                 break;
 
@@ -721,15 +748,15 @@ class KongKonnectMcpServer extends McpServer {
                     name: args.name,
                     description: args.description,
                     redirectUri: args.redirectUri,
-                    scopes: args.scopes
-                  }
+                    scopes: args.scopes,
+                  },
                 );
                 break;
 
               case "delete_portal_application":
                 result = await portalOps.deleteApplication(
                   this.api,
-                  args.applicationId
+                  args.applicationId,
                 );
                 break;
 
@@ -741,7 +768,7 @@ class KongKonnectMcpServer extends McpServer {
                   args.pageSize,
                   args.pageNumber,
                   args.filterStatus,
-                  args.filterApiName
+                  args.filterApiName,
                 );
                 break;
 
@@ -752,8 +779,8 @@ class KongKonnectMcpServer extends McpServer {
                   {
                     apiId: args.apiId,
                     apiProductVersionId: args.apiProductVersionId,
-                    requestReason: args.requestReason
-                  }
+                    requestReason: args.requestReason,
+                  },
                 );
                 break;
 
@@ -761,7 +788,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await portalOps.getApplicationRegistration(
                   this.api,
                   args.applicationId,
-                  args.registrationId
+                  args.registrationId,
                 );
                 break;
 
@@ -769,7 +796,7 @@ class KongKonnectMcpServer extends McpServer {
                 result = await portalOps.deleteApplicationRegistration(
                   this.api,
                   args.applicationId,
-                  args.registrationId
+                  args.registrationId,
                 );
                 break;
 
@@ -779,7 +806,7 @@ class KongKonnectMcpServer extends McpServer {
                   this.api,
                   args.applicationId,
                   args.pageSize,
-                  args.pageNumber
+                  args.pageNumber,
                 );
                 break;
 
@@ -791,8 +818,8 @@ class KongKonnectMcpServer extends McpServer {
                     credentialType: args.credentialType,
                     name: args.name,
                     scopes: args.scopes,
-                    expiresAt: args.expiresAt
-                  }
+                    expiresAt: args.expiresAt,
+                  },
                 );
                 break;
 
@@ -804,8 +831,8 @@ class KongKonnectMcpServer extends McpServer {
                   {
                     name: args.name,
                     scopes: args.scopes,
-                    expiresAt: args.expiresAt
-                  }
+                    expiresAt: args.expiresAt,
+                  },
                 );
                 break;
 
@@ -813,36 +840,33 @@ class KongKonnectMcpServer extends McpServer {
                 result = await portalOps.deleteCredential(
                   this.api,
                   args.applicationId,
-                  args.credentialId
+                  args.credentialId,
                 );
                 break;
 
               case "regenerate_portal_application_secret":
                 result = await portalOps.regenerateApplicationSecret(
                   this.api,
-                  args.applicationId
+                  args.applicationId,
                 );
                 break;
 
               // Developer Authentication Operations
               case "register_portal_developer":
-                result = await portalOps.registerDeveloper(
-                  this.api,
-                  {
-                    email: args.email,
-                    fullName: args.fullName,
-                    password: args.password,
-                    organization: args.organization,
-                    customAttributes: args.customAttributes
-                  }
-                );
+                result = await portalOps.registerDeveloper(this.api, {
+                  email: args.email,
+                  fullName: args.fullName,
+                  password: args.password,
+                  organization: args.organization,
+                  customAttributes: args.customAttributes,
+                });
                 break;
 
               case "authenticate_portal_developer":
                 result = await portalOps.authenticate(
                   this.api,
                   args.username,
-                  args.password
+                  args.password,
                 );
                 break;
 
@@ -863,8 +887,8 @@ class KongKonnectMcpServer extends McpServer {
                     metrics: args.metrics,
                     dimensions: args.dimensions,
                     timeRange: args.timeRange,
-                    granularity: args.granularity
-                  }
+                    granularity: args.granularity,
+                  },
                 );
                 break;
 
@@ -872,7 +896,11 @@ class KongKonnectMcpServer extends McpServer {
               // Portal Management Tools
               // ===========================
               case "list_portals":
-                result = await portalManagementOps.listPortals(this.api, args.pageSize, args.pageNumber);
+                result = await portalManagementOps.listPortals(
+                  this.api,
+                  args.pageSize,
+                  args.pageNumber,
+                );
                 break;
 
               case "create_portal":
@@ -880,27 +908,50 @@ class KongKonnectMcpServer extends McpServer {
                 break;
 
               case "get_portal":
-                result = await portalManagementOps.getPortal(this.api, args.portalId);
+                result = await portalManagementOps.getPortal(
+                  this.api,
+                  args.portalId,
+                );
                 break;
 
               case "update_portal":
-                result = await portalManagementOps.updatePortal(this.api, args.portalId, args);
+                result = await portalManagementOps.updatePortal(
+                  this.api,
+                  args.portalId,
+                  args,
+                );
                 break;
 
               case "delete_portal":
-                result = await portalManagementOps.deletePortal(this.api, args.portalId);
+                result = await portalManagementOps.deletePortal(
+                  this.api,
+                  args.portalId,
+                );
                 break;
 
               case "list_portal_products":
-                result = await portalManagementOps.listPortalProducts(this.api, args.portalId, args.pageSize, args.pageNumber);
+                result = await portalManagementOps.listPortalProducts(
+                  this.api,
+                  args.portalId,
+                  args.pageSize,
+                  args.pageNumber,
+                );
                 break;
 
               case "publish_portal_product":
-                result = await portalManagementOps.publishPortalProduct(this.api, args.portalId, args);
+                result = await portalManagementOps.publishPortalProduct(
+                  this.api,
+                  args.portalId,
+                  args,
+                );
                 break;
 
               case "unpublish_portal_product":
-                result = await portalManagementOps.unpublishPortalProduct(this.api, args.portalId, args.productId);
+                result = await portalManagementOps.unpublishPortalProduct(
+                  this.api,
+                  args.portalId,
+                  args.productId,
+                );
                 break;
 
               // ===========================
@@ -918,25 +969,25 @@ class KongKonnectMcpServer extends McpServer {
                   args.userMessage,
                   args.deckFiles,
                   args.deckConfigs,
-                  args.gitContext
+                  args.gitContext,
                 );
                 break;
 
               case "create_elicitation_session":
                 result = await this.elicitationOps.createElicitationSession(
                   args.analysisResult,
-                  args.context
+                  args.context,
                 );
-                
+
                 // Enhance result for Claude Desktop compatibility
                 if (result.needsUserInput && result.claudeDesktopPrompt) {
                   result.content = [
                     {
                       type: "text",
-                      text: result.claudeDesktopPrompt
-                    }
+                      text: result.claudeDesktopPrompt,
+                    },
                   ];
-                  
+
                   // Add structured guidance for Claude Desktop
                   if (result.directInstructions) {
                     result.guidance = result.directInstructions;
@@ -948,13 +999,13 @@ class KongKonnectMcpServer extends McpServer {
                 result = await this.elicitationOps.processElicitationResponse(
                   args.sessionId,
                   args.requestId,
-                  args.response
+                  args.response,
                 );
                 break;
 
               case "get_session_status":
                 result = await this.elicitationOps.getSessionStatus(
-                  args.sessionId
+                  args.sessionId,
                 );
                 break;
 
@@ -962,36 +1013,43 @@ class KongKonnectMcpServer extends McpServer {
                 throw new Error(`Unknown tool method: ${tool.method}`);
             }
 
-          // Record performance metrics
-          const duration = Date.now() - startTime;
-          this.performanceCollector.recordToolExecution(tool.method, duration, success);
+            // Record performance metrics
+            const duration = Date.now() - startTime;
+            this.performanceCollector.recordToolExecution(
+              tool.method,
+              duration,
+              success,
+            );
 
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify(result, null, 2)
-              }
-            ]
-          };
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          } catch (error: any) {
+            success = false;
+            const duration = Date.now() - startTime;
+            this.performanceCollector.recordToolExecution(
+              tool.method,
+              duration,
+              success,
+            );
 
-        } catch (error: any) {
-          success = false;
-          const duration = Date.now() - startTime;
-          this.performanceCollector.recordToolExecution(tool.method, duration, success);
-          
-          const formattedError = formatError(error);
-          
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Error: ${formattedError}`
-              }
-            ],
-            isError: true
-          };
-        }
+            const formattedError = formatError(error);
+
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `Error: ${formattedError}`,
+                },
+              ],
+              isError: true,
+            };
+          }
         };
       }
 
@@ -999,26 +1057,21 @@ class KongKonnectMcpServer extends McpServer {
       const toolTracer = this.tracingManager.createToolTracer(tool.method);
 
       // Create traced handler using dynamic tool tracer
-      const tracedHandler = async (args: any, extra: RequestHandlerExtra<any, any>): Promise<any> => {
-        const result = await toolTracer(
-          async () => handler(args, extra),
-          { 
-            category: tool.category || 'unknown',
-            toolName: tool.method
-          }
-        );
-        
+      const tracedHandler = async (
+        args: any,
+        extra: RequestHandlerExtra<any, any>,
+      ): Promise<any> => {
+        const result = await toolTracer(async () => handler(args, extra), {
+          category: tool.category || "unknown",
+          toolName: tool.method,
+        });
+
         return result;
       };
 
       // Register the traced tool with appropriate parameters
       const toolParams = tool.inputSchema || tool.parameters?.shape || {};
-      this.tool(
-        tool.method,
-        tool.description,
-        toolParams,
-        tracedHandler
-      );
+      this.tool(tool.method, tool.description, toolParams, tracedHandler);
     });
   }
 
@@ -1041,16 +1094,16 @@ class KongKonnectMcpServer extends McpServer {
    */
   private logMCPSessionInfo() {
     this.tracingManager.logSessionInfo({
-      serverVersion: '2.0.0',
-      runtime: 'bun',
-      apiRegion: this.api.region || 'us',
+      serverVersion: "2.0.0",
+      runtime: "bun",
+      apiRegion: this.api.region || "us",
       toolCount: 11,
       capabilities: [
-        'analytics',
-        'control-planes', 
-        'certificates',
-        'configuration'
-      ]
+        "analytics",
+        "control-planes",
+        "certificates",
+        "configuration",
+      ],
     });
   }
 }
@@ -1063,112 +1116,126 @@ async function main() {
     // Load and validate configuration with health checks
     mcpLogger.info("config", "Loading configuration");
     const config = await loadConfiguration();
-    
+
     // Apply log level from configuration to mcpLogger
     mcpLogger.setMinLevelFromConfig(config.application.logLevel);
-    
+
     // Show runtime information
     const runtimeInfo = getRuntimeInfo();
     mcpLogger.info("runtime", "Runtime information", {
       runtime: runtimeInfo.runtime,
       version: runtimeInfo.version,
-      envSource: runtimeInfo.envSource
+      envSource: runtimeInfo.envSource,
     });
-    
+
     // Initialize server with validated configuration
     const server = new KongKonnectMcpServer({
       apiKey: config.kong.accessToken,
-      apiRegion: config.kong.region
+      apiRegion: config.kong.region,
     });
     const transport = new StdioServerTransport();
-    
+
     mcpLogger.startup("server", {
       availableRegions: Object.values(API_REGIONS),
       region: config.kong.region,
       environment: config.application.environment,
       logLevel: config.application.logLevel,
       tracing: config.tracing.enabled,
-      monitoring: config.monitoring.enabled
+      monitoring: config.monitoring.enabled,
     });
-    
+
     // Create session context for connection (implementing AsyncLocalStorage pattern from guide)
     const connectionId = `conn-${Date.now()}`;
     const clientInfo = detectClient("stdio");
     const sessionId = generateSessionId(connectionId, clientInfo);
-    const sessionContext = createSessionContext(connectionId, "stdio", sessionId, clientInfo);
-    
-    mcpLogger.info('server', 'Session context created', {
+    const sessionContext = createSessionContext(
+      connectionId,
+      "stdio",
+      sessionId,
+      clientInfo,
+    );
+
+    mcpLogger.info("server", "Session context created", {
       sessionId,
       connectionId,
       clientName: clientInfo.name,
-      transportMode: "stdio"
+      transportMode: "stdio",
     });
-    
+
     // Wrap server connection in session context AND session-level trace (critical for trace grouping)
     await runWithSession(sessionContext, async () => {
       // Create session-level parent trace that contains all tool calls
-      await server.tracingManager.createSessionTrace(sessionContext, async () => {
-        // All tool calls within this scope inherit session context AND nest under session trace
-        await server.connect(transport);
-        
-        // Set MCP logger default level from configuration
-        const configLogLevel = config.application.logLevel;
-        const mcpLogLevel = configLogLevel === 'warn' ? 'warning' : configLogLevel as any;
-        mcpLogger.initializeWithDefaultLevel(mcpLogLevel);
-        
-        mcpLogger.ready("server", {
-          sessionId,
-          connectionId,
-          clientName: clientInfo.name
-        });
-        
-        // Log session info for debugging
-        logSessionInfo("MCP Server Session Established");
-      });
+      await server.tracingManager.createSessionTrace(
+        sessionContext,
+        async () => {
+          // All tool calls within this scope inherit session context AND nest under session trace
+          await server.connect(transport);
+
+          // Set MCP logger default level from configuration
+          const configLogLevel = config.application.logLevel;
+          const mcpLogLevel =
+            configLogLevel === "warn" ? "warning" : (configLogLevel as any);
+          mcpLogger.initializeWithDefaultLevel(mcpLogLevel);
+
+          mcpLogger.ready("server", {
+            sessionId,
+            connectionId,
+            clientName: clientInfo.name,
+          });
+
+          // Log session info for debugging
+          logSessionInfo("MCP Server Session Established");
+        },
+      );
     });
-    
   } catch (error: any) {
     mcpLogger.critical("server", "Failed to start server", {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
-    
+
     // Provide helpful error context
-    if (error.message.includes('KONNECT_ACCESS_TOKEN')) {
+    if (error.message.includes("KONNECT_ACCESS_TOKEN")) {
       mcpLogger.error("config", "Kong access token missing", {
         fix: "Set KONNECT_ACCESS_TOKEN in .env file",
-        url: "https://cloud.konghq.com/"
+        url: "https://cloud.konghq.com/",
       });
     }
-    
-    if (error.message.includes('LANGSMITH_API_KEY')) {
+
+    if (error.message.includes("LANGSMITH_API_KEY")) {
       mcpLogger.error("config", "LangSmith API key missing", {
-        fix: "Set LANGSMITH_API_KEY in .env or disable with LANGSMITH_TRACING=false"
+        fix: "Set LANGSMITH_API_KEY in .env or disable with LANGSMITH_TRACING=false",
       });
     }
-    
-    mcpLogger.info("help", "Run configuration health check: bun run config:health");
+
+    mcpLogger.info(
+      "help",
+      "Run configuration health check: bun run config:health",
+    );
     process.exit(1);
   }
 }
 
 // Handle graceful shutdown
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   mcpLogger.notice("server", "Shutting down (SIGINT)");
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   mcpLogger.notice("server", "Terminating (SIGTERM)");
   process.exit(0);
 });
 
 // Check if this module is being run directly (ES module compatible)
-const isMainModule = process.argv[1] && import.meta.url.includes(process.argv[1]);
+const isMainModule =
+  process.argv[1] && import.meta.url.includes(process.argv[1]);
 
 if (isMainModule) {
   main().catch((error) => {
-    mcpLogger.error('server', 'Failed to start Kong Konnect MCP Server', { error: error.message });
+    mcpLogger.error("server", "Failed to start Kong Konnect MCP Server", {
+      error: error.message,
+    });
     process.exit(1);
   });
 }

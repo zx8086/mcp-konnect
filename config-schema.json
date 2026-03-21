@@ -18,29 +18,14 @@
         },
         "environment": {
           "type": "string",
-          "enum": [
-            "development",
-            "staging",
-            "production",
-            "test"
-          ]
+          "enum": ["development", "staging", "production", "test"]
         },
         "logLevel": {
           "type": "string",
-          "enum": [
-            "debug",
-            "info",
-            "warn",
-            "error"
-          ]
+          "enum": ["debug", "info", "warn", "error"]
         }
       },
-      "required": [
-        "name",
-        "version",
-        "environment",
-        "logLevel"
-      ]
+      "required": ["name", "version", "environment", "logLevel"]
     },
     "kong": {
       "type": "object",
@@ -52,13 +37,7 @@
         },
         "region": {
           "type": "string",
-          "enum": [
-            "us",
-            "eu",
-            "au",
-            "me",
-            "in"
-          ]
+          "enum": ["us", "eu", "au", "me", "in"]
         },
         "baseUrl": {
           "type": "string",
@@ -158,10 +137,7 @@
               "maximum": 100
             }
           },
-          "required": [
-            "responseTimeMs",
-            "errorRate"
-          ]
+          "required": ["responseTimeMs", "errorRate"]
         }
       },
       "required": [
@@ -185,18 +161,8 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "preferBunEnv",
-        "envFileAutoLoad",
-        "debugMode"
-      ]
+      "required": ["preferBunEnv", "envFileAutoLoad", "debugMode"]
     }
   },
-  "required": [
-    "application",
-    "kong",
-    "tracing",
-    "monitoring",
-    "runtime"
-  ]
+  "required": ["application", "kong", "tracing", "monitoring", "runtime"]
 }

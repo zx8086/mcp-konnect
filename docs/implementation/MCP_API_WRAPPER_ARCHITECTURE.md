@@ -1,6 +1,8 @@
 # MCP API Wrapper Architecture Implementation Guide
 
-This guide explains the comprehensive architectural patterns used in production MCP servers, focusing on API wrapper design and prompt-driven development. These patterns provide clean separation of concerns, maintainability, and scalability for any MCP implementation.
+This guide explains the architectural patterns used in the Kong Konnect MCP Server, focusing on API wrapper design and prompt-driven development. These patterns provide clean separation of concerns, maintainability, and scalability.
+
+> **Kong Konnect implementation**: See the [Kong Konnect Implementation Mapping](#kong-konnect-implementation-mapping) section at the end of this document for how these generic patterns map to actual source files.
 
 ## Overview
 
@@ -2133,4 +2135,53 @@ export class MemoryEfficientOperations {
 
 This implementation guide provides a comprehensive foundation for building production-ready MCP servers using the API wrapper and prompt-driven architecture patterns. The modular design ensures maintainability, the centralized API client provides reliability, and the prompt-driven approach creates clear documentation and contracts for all tools.
 
-Choose the patterns and templates that best fit your specific use case, and adapt the examples to your domain and external API requirements.
+## Kong Konnect Implementation Mapping
+
+The Kong Konnect MCP Server implements this architecture with the following concrete file mapping:
+
+### Layer Mapping
+
+| Architecture Layer | Pattern Role | Kong Konnect File(s) |
+|---|---|---|
+| Server Registration | Entry point, tool routing | `src/index.ts` (`KongKonnectMcpServer` class) |
+| Tool Definitions | Method names, descriptions, categories | `src/tools/{category}/tools.ts` |
+| Parameter Schemas | Zod validation for inputs | `src/tools/{category}/parameters.ts` |
+| Prompt Documentation | AI-facing tool descriptions | `src/tools/{category}/prompts.ts` |
+| Operations Layer | Business logic | `src/tools/{category}/operations.ts` |
+| API Wrapper | Authenticated HTTP client | `src/api/kong-api.ts` (primary), `src/api/portal-api.ts` |
+| Tool Registry | Aggregation and validation | `src/tools/registry.ts` |
+
+### The 4-File-Per-Category Pattern
+
+Each of the 7 tool categories follows the modular pattern described in this guide:
+
+```
+src/tools/
+  analytics/          (2 tools)   -- tools.ts, parameters.ts, prompts.ts, operations.ts
+  certificates/       (5 tools)   -- tools.ts, parameters.ts, prompts.ts, operations.ts
+  configuration/      (21 tools)  -- tools.ts, parameters.ts, prompts.ts, operations.ts
+  control-planes/     (14 tools)  -- tools.ts, parameters.ts, prompts.ts, operations.ts
+  portal/             (24 tools)  -- tools.ts, parameters.ts, prompts.ts, operations.ts
+  portal-management/  (8 tools)   -- tools.ts, parameters.ts, prompts.ts, operations.ts
+  elicitation-tool.ts (4 tools)   -- standalone (combined tool + operations)
+```
+
+**Total: 78 tools** across 7 categories.
+
+### Cross-Cutting Concerns (Universal Tool Wrapping)
+
+The `registerTools()` method in `src/index.ts` wraps every tool handler with:
+
+- **Session context**: `runWithSession()` from `src/utils/session-manager.ts`
+- **Tracing**: `UniversalTracingManager` from `src/utils/tracing.ts`
+- **Performance metrics**: `ToolPerformanceCollector` from `src/utils/tool-tracer.ts`
+- **Error formatting**: `formatError()` from `src/utils/error-handling.ts`
+- **Enforcement gates**: Mandatory tagging validation from `src/enforcement/`
+
+This ensures all 78 tools get consistent observability, error handling, and governance without any per-tool boilerplate.
+
+### Further Reading
+
+- [System Overview](../architecture/SYSTEM_OVERVIEW.md) -- full architecture and data flow
+- [Tool Module Pattern](../architecture/TOOL_MODULE_PATTERN.md) -- detailed guide to the 4-file pattern
+- [Elicitation System](../architecture/ELICITATION_SYSTEM.md) -- context gathering and enforcement

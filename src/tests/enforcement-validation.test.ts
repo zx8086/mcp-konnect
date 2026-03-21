@@ -1,25 +1,28 @@
 /**
  * COMPREHENSIVE ELICITATION ENFORCEMENT VALIDATION TESTS
- * 
+ *
  * These tests validate that the bulletproof elicitation enforcement
  * actually works as designed and cannot be bypassed.
  */
 
-import { describe, it, expect, beforeEach } from "bun:test";
-import { BypassPreventionTests, validateElicitationEnforcement } from "../enforcement/bypass-prevention-tests.js";
-import { MandatoryElicitationGate } from "../enforcement/mandatory-elicitation-gate.js";
-import { 
-  BlockedServiceOperations,
-  BlockedRouteOperations, 
+import { beforeEach, describe, expect, it } from "bun:test";
+import {
+  BypassPreventionTests,
+  validateElicitationEnforcement,
+} from "../enforcement/bypass-prevention-tests.js";
+import { elicitationOrchestrator } from "../enforcement/elicitation-validation-gates.js";
+import {
   BlockedConsumerOperations,
   BlockedPluginOperations,
-  KongOperationBlockedError
+  BlockedRouteOperations,
+  BlockedServiceOperations,
+  KongOperationBlockedError,
 } from "../enforcement/kong-tool-blockers.js";
-import { elicitationOrchestrator } from "../enforcement/elicitation-validation-gates.js";
+import { MandatoryElicitationGate } from "../enforcement/mandatory-elicitation-gate.js";
 
 describe("🔒 Bulletproof Elicitation Enforcement", () => {
   const gate = MandatoryElicitationGate.getInstance();
-  
+
   beforeEach(() => {
     // Clear all sessions between tests
     const sessions = gate.getActiveSessions();
@@ -32,52 +35,56 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
     const testContext = {
       userMessage: "Deploy without context",
       files: [],
-      configs: []
+      configs: [],
     };
 
     it("should block service creation without elicitation", async () => {
       let wasBlocked = false;
       let elicitationSession;
-      
+
       try {
         await BlockedServiceOperations.createService(
           "test-cp-123",
-          "test-service", 
+          "test-service",
           "example.com",
           80,
           "http",
-          testContext
+          testContext,
         );
       } catch (error) {
         wasBlocked = true;
-        console.log("INFO: Caught error:", error.constructor.name, error.message);
-        
+        console.log(
+          "INFO: Caught error:",
+          error.constructor.name,
+          error.message,
+        );
+
         if (error instanceof KongOperationBlockedError) {
           elicitationSession = error.elicitationSession;
           expect(error.missingFields).toContain("domain");
-          expect(error.missingFields).toContain("environment");  
+          expect(error.missingFields).toContain("environment");
           expect(error.missingFields).toContain("team");
         } else if (error.missingFields) {
           // Handle ElicitationBlockedError or similar
-          elicitationSession = { sessionId: 'test-session' };
+          elicitationSession = { sessionId: "test-session" };
           expect(error.missingFields).toContain("domain");
           expect(error.missingFields).toContain("environment");
           expect(error.missingFields).toContain("team");
         }
       }
-      
+
       expect(wasBlocked).toBe(true);
       expect(elicitationSession).toBeDefined();
     });
 
     it("should block route creation without elicitation", async () => {
       let wasBlocked = false;
-      
+
       try {
         await BlockedRouteOperations.createRoute(
           "test-cp-123",
           { name: "test-route", paths: ["/test"] },
-          testContext
+          testContext,
         );
       } catch (error) {
         wasBlocked = true;
@@ -85,39 +92,39 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
           expect(error.missingFields.length).toBeGreaterThan(0);
         }
       }
-      
+
       expect(wasBlocked).toBe(true);
     });
 
     it("should block consumer creation without elicitation", async () => {
       let wasBlocked = false;
-      
+
       try {
         await BlockedConsumerOperations.createConsumer(
           "test-cp-123",
           { username: "test-user" },
-          testContext
+          testContext,
         );
       } catch (error) {
         wasBlocked = true;
       }
-      
+
       expect(wasBlocked).toBe(true);
     });
 
     it("should block plugin creation without elicitation", async () => {
       let wasBlocked = false;
-      
+
       try {
         await BlockedPluginOperations.createPlugin(
           "test-cp-123",
           { name: "rate-limiting" },
-          testContext
+          testContext,
         );
       } catch (error) {
         wasBlocked = true;
       }
-      
+
       expect(wasBlocked).toBe(true);
     });
   });
@@ -127,19 +134,19 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
       const testContext = {
         userMessage: "Deploy with elicitation",
         files: [],
-        configs: []
+        configs: [],
       };
 
       // Step 1: Attempt operation and get blocked
-      let sessionId = '';
+      let sessionId = "";
       try {
         await BlockedServiceOperations.createService(
           "test-cp-123",
           "test-service",
-          "example.com", 
+          "example.com",
           80,
           "http",
-          testContext
+          testContext,
         );
         expect(false).toBe(true); // Should not reach here
       } catch (error) {
@@ -149,7 +156,7 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
           sessionId = error.elicitationSession.sessionId;
         }
       }
-      
+
       expect(sessionId).toBeTruthy();
 
       // Step 2: Complete elicitation
@@ -158,19 +165,22 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
         responses: {
           domain: "api",
           environment: "development",
-          team: "platform"  
+          team: "platform",
         },
-        declined: false
+        declined: false,
       };
 
-      const result = await elicitationOrchestrator.processElicitationResponse(elicitationResponse);
+      const result =
+        await elicitationOrchestrator.processElicitationResponse(
+          elicitationResponse,
+        );
       expect(result.success).toBe(true);
 
       // Step 3: Validate context is now available
       const validatedContext = await gate.validateMandatoryContext({
-        operationName: 'create_service',
+        operationName: "create_service",
         parameters: { controlPlaneId: "test-cp-123" },
-        requestContext: testContext
+        requestContext: testContext,
       });
 
       expect(validatedContext.elicitationComplete).toBe(true);
@@ -184,15 +194,15 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
     it("should prevent all known bypass attempts", async () => {
       const tester = new BypassPreventionTests();
       const results = await tester.runAllBypassPreventionTests();
-      
+
       expect(results.allTestsPassed).toBe(true);
       expect(results.summary.successfulBypasses).toBe(0);
-      
+
       console.log("🔒 Bypass Prevention Results:", {
         totalTests: Object.keys(results.testResults).length,
         allPassed: results.allTestsPassed,
         bypassAttempts: results.summary.totalBypassAttempts,
-        successfulBypasses: results.summary.successfulBypasses
+        successfulBypasses: results.summary.successfulBypasses,
       });
     });
   });
@@ -203,25 +213,25 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
       const sessionId = "tag-test-session";
       await gate.processElicitationResponse(sessionId, {
         domain: "api",
-        environment: "production", 
-        team: "platform"
+        environment: "production",
+        team: "platform",
       });
 
       const validatedContext = await gate.validateMandatoryContext({
-        operationName: 'create_service',
+        operationName: "create_service",
         parameters: { controlPlaneId: "test-cp-123" },
         requestContext: {
           userMessage: "Test tagging",
           files: [],
-          configs: []
-        }
+          configs: [],
+        },
       });
 
       // Validate that mandatory tags would be generated
       expect(validatedContext.domain).toBe("api");
       expect(validatedContext.environment).toBe("production");
       expect(validatedContext.team).toBe("platform");
-      
+
       // Tags would be: env-production, domain-api, team-platform, type-service, purpose-gateway-service
       // Total: 5 tags (3 mandatory + 2 contextual)
     });
@@ -232,41 +242,51 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
       const incompleteResponse = {
         sessionId: "incomplete-test",
         responses: {
-          domain: "api"
+          domain: "api",
           // Missing environment and team
         },
-        declined: false
+        declined: false,
       };
 
-      const result = await elicitationOrchestrator.processElicitationResponse(incompleteResponse);
+      const result =
+        await elicitationOrchestrator.processElicitationResponse(
+          incompleteResponse,
+        );
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
-      expect(result.errors!.some(e => e.includes("Missing required fields"))).toBe(true);
+      expect(
+        result.errors!.some((e) => e.includes("Missing required fields")),
+      ).toBe(true);
     });
 
     it("should handle declined elicitation", async () => {
       const declinedResponse = {
-        sessionId: "declined-test", 
+        sessionId: "declined-test",
         responses: {},
-        declined: true
+        declined: true,
       };
 
-      const result = await elicitationOrchestrator.processElicitationResponse(declinedResponse);
+      const result =
+        await elicitationOrchestrator.processElicitationResponse(
+          declinedResponse,
+        );
       expect(result.success).toBe(false);
-      expect(result.errors!.some(e => e.includes("declined elicitation"))).toBe(true);
+      expect(
+        result.errors!.some((e) => e.includes("declined elicitation")),
+      ).toBe(true);
     });
   });
 
   describe("INFO: Session Management", () => {
     it("should track multiple concurrent sessions", async () => {
       const sessions = ["session-1", "session-2", "session-3"];
-      
+
       // Create multiple sessions
       for (const sessionId of sessions) {
         await gate.processElicitationResponse(sessionId, {
           domain: `domain-${sessionId}`,
           environment: "development",
-          team: "platform"
+          team: "platform",
         });
       }
 
@@ -287,10 +307,10 @@ describe("🔒 Bulletproof Elicitation Enforcement", () => {
 describe("INFO: Integration Validation", () => {
   it("should validate complete enforcement system", async () => {
     console.log("INFO: Running complete enforcement validation...");
-    
+
     const isValid = await validateElicitationEnforcement();
     expect(isValid).toBe(true);
-    
+
     console.log("SUCCESS: Complete enforcement system validation PASSED");
   });
 });

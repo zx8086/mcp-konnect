@@ -173,5 +173,5 @@ Remove an API product from a developer portal, making it no longer available for
 **Example Queries:**
 - "Remove the deprecated Flight API v1 from the portal"
 - "Unpublish the booking API during maintenance"
-- "Hide the internal API from the public portal"`
+- "Hide the internal API from the public portal"`,
 };
