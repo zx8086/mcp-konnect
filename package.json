@@ -62,7 +62,7 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.5",
-    "axios": "^1.11.0",
+    "axios": "^1.13.5",
     "zod": "^3.22.2",
     "langsmith": "^0.3.67",
     "@langchain/core": "^0.3.75",
